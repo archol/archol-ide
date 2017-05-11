@@ -1,0 +1,23 @@
+{
+  "name": "archol-ide",
+  "version": "1.0.0",
+  "description": "IDE for archol",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/archol/archol-ide.git"
+  },
+  "author": "josefernandotolentino@gmail.com",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/archol/archol-ide/issues"
+  },
+  "homepage": "https://github.com/archol/archol-ide#readme",
+  "devDependencies": {
+    "argparse": "^1.0.9",
+    "typescript": "^2.4.0-dev.20170508"
+  }
+}

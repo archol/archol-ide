@@ -1,0 +1,51 @@
+{
+    "version": "0.2.0",
+    "compounds": [{
+            "name": "dev",
+            "configurations": [
+                "dev-start", "server"
+            ]
+        },
+        {
+            "name": "debug",
+            "configurations": [
+                "server", "chrome"
+            ]
+        }
+    ],
+    "configurations": [{
+            "type": "node",
+            "request": "launch",
+            "name": "dev-start",
+            "program": "${workspaceRoot}/dev"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "server",
+            "program": "${workspaceRoot}/bin/server/app.js",
+            "sourceMaps": true,
+            "cwd": "${workspaceRoot}",
+            "outFiles": [
+                "${workspaceRoot}/bin/**/*.js"
+            ]
+        },
+        {
+            "type": "chrome",
+            "request": "attach",
+            "name": "chrome",
+            "webRoot": "${workspaceRoot}/bin",
+            "url": "http://localhost:3000",
+            "urlFilter": "http://localhost:*",
+            "port": 9222,
+            "sourceMaps": true,
+            "pathMapping": {
+                "/js": "${workspaceRoot}/bin/js",
+                "/third": "${workspaceRoot}/third"
+            },
+            "skipFiles": [
+                "${workspaceRoot}/third/**"
+            ]
+        }
+    ]
+}

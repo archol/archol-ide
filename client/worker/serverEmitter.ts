@@ -1,0 +1,3 @@
+function serverEmitter() {
+    let emmit
+}

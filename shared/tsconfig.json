@@ -1,0 +1,23 @@
+{
+    "compilerOptions": {
+        "module": "none",
+        "outFile": "../bin/shared/shared.js",
+        "declaration": true,
+        "sourceMap": true,
+        "inlineSourceMap": false,
+        "noImplicitAny": true,
+        "removeComments": true,
+        "noImplicitThis": true,
+        "noImplicitReturns": true,
+        "lib": [
+            "es2015",
+            "es2016"
+        ]
+    },
+    "include": [
+        "./*.ts"
+    ],
+    "exclude": [
+        "../bin"
+    ]
+}

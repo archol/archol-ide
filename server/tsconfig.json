@@ -1,0 +1,21 @@
+{
+    "compilerOptions": {
+        "sourceMap": true,
+        "inlineSourceMap": false,
+        "noImplicitAny": true,
+        "removeComments": true,
+        "noImplicitThis": true,
+        "noImplicitReturns": true,
+        "outDir": "../bin/server",
+        "lib": [
+            "es2015",
+            "es2016"
+        ]
+    },
+    "files": [
+        "../bin/shared/shared.d.ts"
+    ],
+    "include": [
+        "./*.ts"
+    ]
+}
