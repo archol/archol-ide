@@ -1,32 +1,27 @@
 
-declare interface Object {
-    EMPTY: any
-    clone<T>(this: T): T
-    compare<T>(this: T, o: T, allProperties: boolean): number
-    merge<T, O>(this: T, o: O): T & O
+export function mapObject<T, R>(obj: { [name: string]: T }, fn: (propVal: T, propName: keyof T) => R): { [name: string]: R } {
+    const ret: { [name: string]: R } = {}
+    Object.keys(obj).forEach((propName: any) => {
+        const propVal = obj[propName]
+        const retVal = fn(propVal, propName)
+        ret[propName] = retVal
+    })
+    return ret
 }
 
-Object.prototype.EMPTY = {}
-Object.prototype.clone = function cloneIt<T>(this: T): T {
-    return cloneObject<T>(this)
-}
-Object.prototype.compare = function compareIt<T>(this: T, o: T, allProperties: boolean): number {
-    return compareObj(this, o, allProperties)
+export function mapObjectToArray<T, R>(obj: { [name: string]: T }, fn: (propVal: T, propName: keyof T) => R): R[] {
+    return Object.keys(obj).map((propName: any) => fn(obj[propName], propName))
 }
 
-Object.prototype.merge = function mergeit<T, O>(this: T, o: O): T & O {
-    return mergeObj(this, o);
-}
-
-function cloneObject<T>(obj: T): T {
-    if (typeof obj === 'undefined') return undefined
-    if (obj === null) return null
+export function cloneObject<T>(obj: T): T {
+    if (typeof obj === 'undefined') return undefined as any as T
+    if (obj === null) return null as any as T
     if (Array.isArray(obj))
         return (obj as any).map(cloneObject)
     if (typeof obj === 'function')
-        return obj
+        return obj as any as T
     if (typeof obj !== 'object')
-        return obj
+        return obj as any as T
     if (obj instanceof Date)
         return new Date(obj.getTime() as any) as any
     const n: any = {}
@@ -36,7 +31,7 @@ function cloneObject<T>(obj: T): T {
     return n
 }
 
-function compareObj(a: any, b: any, allProperties: boolean): number {
+export function compareObj(a: any, b: any, allProperties: boolean): number {
     const ta = a === null ? 'null' : typeof a
     const tb = b === null ? 'null' : typeof b
     let r
@@ -73,7 +68,7 @@ function compareObj(a: any, b: any, allProperties: boolean): number {
     }
 }
 
-function mergeObj(a: any, b: any): any {
-    b && Object.getOwnPropertyNames(b).forEach((p) => a[p] = b[p])
+export function merge<A, B>(a: A, b: B): A & B {
+    b && Object.getOwnPropertyNames(b).forEach((p) => (a as any)[p] = (b as any)[p])
     return a as any
 }

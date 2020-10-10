@@ -1,11 +1,11 @@
 {
     "compilerOptions": {
-        "module": "none",
-        "outFile": "../bin/shared/shared.js",
+        "module": "CommonJS",
         "declaration": true,
         "sourceMap": true,
         "inlineSourceMap": false,
         "noImplicitAny": true,
+        "noEmit": true,
         "removeComments": true,
         "noImplicitThis": true,
         "noImplicitReturns": true,
@@ -15,7 +15,7 @@
         ]
     },
     "include": [
-        "./*.ts"
+        "./*.ts", "../server/dreamstream.ts", "../server/archolTypes.ts"
     ],
     "exclude": [
         "../bin"

@@ -1,0 +1,13 @@
+{
+  "apps": [
+    {
+      "name": "appcvv",
+      "build": 1
+    },
+    {
+      "name": "archol",
+      "build": 1
+    }
+  ],
+  "pkgs": []
+}
