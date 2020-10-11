@@ -42,3 +42,4 @@ jspm_packages
 bin
 *.js
 *.map
+dist

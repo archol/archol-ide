@@ -14,6 +14,7 @@
     "@deepstream/client": "^5.1.10",
     "express": "^4.17.1",
     "monk": "^7.3.2",
+    "ts-morph": "^8.1.1",
     "tslib": "^2.0.3"
   },
   "devDependencies": {

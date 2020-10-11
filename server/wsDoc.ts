@@ -1,16 +1,20 @@
 import { existsSync, readFileSync, watchFile, writeFileSync } from 'fs'
 import { ArcholApplication, ArcholPackage, ArcholWorkspace } from './archolTypes'
-import { buildApp } from './build'
+import { generateApp } from './generate'
 import { deepstreamClient } from './dreamstream'
 
 export let wsData: ArcholWorkspace = {
+  node: {
+    kind: 'workspace'
+  },
   apps: [],
   pkgs: [],
 }
 
 let tmChanged: any
+let oldWsData: ArcholWorkspace
 let needSave = false
-const wsFile = __dirname + '/cvv.ws.archol'
+const wsFile = __dirname + '/../cvv.ws.archol.json'
 
 export const wsDoc = {
   get data() {
@@ -22,11 +26,15 @@ export const wsDoc = {
   changed() {
     if (tmChanged) clearTimeout(tmChanged)
     tmChanged = setTimeout(() => {
-      writeFileSync(wsFile, JSON.stringify(wsData, null, 2), 'utf-8')
+      if (needSave) {
+        try {
+          console.log('gravando')
+          writeFileSync(wsFile, JSON.stringify(wsData, null, 2), 'utf-8')
+        } catch (e) {
+          console.log('ws.load', e)
+        }
+      }
       needSave = false
-      wsDoc.emit()
-      setTimeout(() => buildApp('archol', wsData), 1)
-      setTimeout(() => buildApp('appcvv', wsData), 1)
       tmChanged = false
     }, 800)
   },
@@ -35,46 +43,53 @@ export const wsDoc = {
     wsDoc.changed()
   },
   load() {
-    if (existsSync(wsFile)) {
-      const src = readFileSync(wsFile, 'utf-8')
-      wsData = JSON.parse(src)
-      wsDoc.changed()
+    try {
+      if (existsSync(wsFile)) {
+        console.log('carregando')
+        const src = readFileSync(wsFile, 'utf-8')
+        wsData = JSON.parse(src)
+        needSave = false;
+        wsDoc.emit()
+      }
+    } catch (e) {
+      console.log('ws.load', e)
     }
   },
-  createApplication(name: string) {
-    const app: ArcholApplication = { name }
-    wsDoc.data.apps.push(app)
-    wsDoc.save()
-    return app
-  },
-  createPackage(name: string) {
-    const pkg: ArcholPackage = { name }
-    wsDoc.data.pkgs.push(pkg)
-    wsDoc.save()
-    return pkg
-  },
+  // createApplication(app: ArcholApplication) {
+  //   //wsDoc.data.apps.push(app)
+  //   //wsDoc.save()
+  // },
+  // createPackage(name: string) {
+  //   const pkg: ArcholPackage = { name }
+  //   //wsDoc.data.pkgs.push(pkg)
+  //   //wsDoc.save()
+  //   return pkg
+  // },
 }
 
 setTimeout(() => {
-  wsDoc.load()
-  watchFile(wsFile, (curr, prev) => {
+  loadAndGenerate()
+  watchFile(wsFile, (curr, prev) => loadAndGenerate);
+  function loadAndGenerate() {
     wsDoc.load()
-  });
+    //setTimeout(() => buildApp('archol', wsData), 1)
+    setTimeout(() => generateApp('appcvv', wsData), 1)
+  }
 }, 100)
 
-deepstreamClient.rpc.provide('archol.ws$load', async (rpcData, res) => {
+deepstreamClient.rpc.provide('archol.ws$load', (rpcData, res) => {
   wsDoc.emit()
   res.send(true)
 })
 
-deepstreamClient.rpc.provide('archol.ws$createApplication', async (rpcData, res) => {
-  const name: any = rpcData.name
-  wsDoc.createApplication(name)
-  res.send(name)
-})
+// deepstreamClient.rpc.provide('archol.ws$createApplication', (rpcData, res) => {
+//   const name: any = rpcData.name
+//   wsDoc.createApplication(name)
+//   res.send(name)
+// })
 
-deepstreamClient.rpc.provide('archol.ws$createPackage', async (rpcData, res) => {
-  const name: any = rpcData.name
-  wsDoc.createPackage(name)
-  res.send(name)
-})
+// deepstreamClient.rpc.provide('archol.ws$createPackage', (rpcData, res) => {
+//   const name: any = rpcData.name
+//   wsDoc.createPackage(name)
+//   res.send(name)
+// })
