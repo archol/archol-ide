@@ -1,0 +1,25 @@
+{
+  "name": "archol",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/thr0w/archol.git",
+  "author": "thr0w <josefernandotolentino@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "appcvv": "nodemon --watch \"./**\" --ext \"ts,json\" --ignore \"./**/*.spec.ts\" --exec \"ts-node src/index.ts\" \"/home/thr0w/projects/appcvv\" AppCVV"
+  },
+  "dependencies": {
+    "@hoda5/extensions": "^1.3.14",
+    "chokidar": "^3.4.2",
+    "mkdirp": "^1.0.4",
+    "ts-morph": "^8.1.1",
+    "ts-node": "^9.0.0",
+    "tslib": "^2.0.1",
+    "typescript": "^4.0.3"
+  },
+  "devDependencies": {
+    "@types/mkdirp": "^1.0.1",
+    "@types/node": "^14.11.2",
+    "nodemon": "^2.0.4"
+  }
+}

@@ -24,6 +24,8 @@ export interface ArcholApplication {
     number: 1
   },
   uses: ArcholPackageUse[]
+  menu: ArcholMenuItem[]
+  route: ArcholRoute[]
 }
 
 export interface ArcholPackageUse {
@@ -36,4 +38,33 @@ export interface ArcholPackage {
   node: ArcholNode<'package'>
   uri: string
   uses: ArcholPackageUse[]
+}
+
+export interface ArcholMenuItem {
+  node: ArcholNode<'menuItem'>
+  title: ArcholI18N
+  routePath: ArcholRoutePath
+  icon: ArcholIcon
+}
+
+export interface ArcholRoute {
+  node: ArcholNode<'route'>
+  routePath: ArcholRoutePath
+}
+
+export interface ArcholRoutePath {
+  node: ArcholNode<'routePath'>
+  path: string
+}
+
+export interface ArcholIcon {
+  node: ArcholNode<'icon'>
+  path: string
+}
+
+export interface ArcholI18N {
+  node: ArcholNode<'i18n'>
+  msg: {
+    [lang: string]: string
+  }
 }

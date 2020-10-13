@@ -5,7 +5,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug Server",
+      "name": "Debug",
       "type": "node",
       "request": "launch",
       "args": [
@@ -14,10 +14,12 @@
         "--nolazy",
         "-r",
         "ts-node/register",
-        "server.ts"
+        "src/index.ts",
+        "/home/thr0w/projects/appcvv",
+        "AppCVV"
       ],
       "sourceMaps": true,
-      "cwd": "${workspaceRoot}/server",
+      "cwd": "${workspaceRoot}",
       "protocol": "inspector"
     }
   ]

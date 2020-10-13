@@ -20,10 +20,10 @@ export async function generateApp(name: string, ws: ArcholWorkspace) {
   await serverProject.save()
   await clientProject.save()
   async function generateServer() {
-    const ts = serverProject.createSourceFile(absolutePath('server', 'app/index.ts'), (w) => {
+    const ts = createSource(absolutePath('server', 'app/index.ts'), (w) => {
       w.writeLine('import bootApp from \'../lib/bootApp\'');
       w.writeLine('bootApp("' + app.name + '");');
-    }, { overwrite: true })
+    })
     function createSource(relative: string, fn: (w: CodeBlockWriter) => void) {
       const ts = serverProject.createSourceFile(absolutePath('server', relative), fn, { overwrite: true })
       ts.formatText({
@@ -33,7 +33,8 @@ export async function generateApp(name: string, ws: ArcholWorkspace) {
     }
   }
   async function generateClient() {
-    createSource('app/index.ts', (w) => {
+    createSource('src/app/index.tsx', (w) => {
+      w.writeLine('import React from \'react\'')
       w.writeLine('export function renderApp() {')
         .writeLine('return <div>' + app.name + '</div>;')
         .writeLine('}');

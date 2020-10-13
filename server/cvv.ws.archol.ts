@@ -15,7 +15,34 @@ export let wsData: ArcholWorkspace = {
         "path": "/home/thr0w/projects/appcvv",
         "number": 1
       },
-      "uses": []
+      "uses": [],
+      "menu": [
+        {
+          "node": {
+            'kind': 'i18n'
+          },
+          "title": {
+            "node": {
+              'kind': 'i18n'
+            },
+            "msg": {
+              'pt_BR': 'Mural'
+            }
+          },
+          "icon": {
+            "node": {
+              'kind': 'icon'
+             },
+             "path": "home"
+          },
+          "routePath": {
+            "node": {
+              'kind': 'routePath'
+            },
+            "path": ""
+          }
+        }
+      ]
     },
     {
       "node": {
