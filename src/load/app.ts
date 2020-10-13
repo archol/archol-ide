@@ -7,13 +7,15 @@ import {
   Process, Function, View, Type, Document, Route, Code, I18N, arrayConst, Icon, PackageUse, PackageUses,
   Task, UseTask, Roles, UseSysRole, UseLocRole, UseRoles, Fields, Field, UseType, BindVar, ProcessVars,
   UseView, UseFunction, BindVars, FunctionLevel, Widget, ViewAction, BasicType, basicTypes, DocFields, DocIndexes,
-  DocumentStates, DocActions, DocAction, DocField, DocIndex, DocumentState, UseDocStates, Routes, Pagelets, Pagelet, Menu, MenuItem, MenuItemSeparator
+  DocumentStates, DocActions, DocAction, DocField, DocIndex, DocumentState, UseDocStates, Routes, Pagelets,
+  Pagelet, Menu, MenuItem, MenuItemSeparator, SourceNodeMapped, SourceNodeWithName, isPackage
 } from './types'
 
 export async function loadApp(ws: Workspace, appName: string): Promise<Application> {
   const appsource = ws.ts.getSourceFiles().filter(s => s.getBaseName() === appName + '.app.ts')[0]
 
   if (!appsource) ws.fatal('Aplicação não encontrada: ' + appName, ws)
+  const mappingList: string[] = []
   const appPackagesDef: { [pkgFullUri: string]: DeferredPromise<Package> } = {}
   const appPackages: { [pkgFullUri: string]: Package } = {}
   let appsysroles: Roles
@@ -181,8 +183,13 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     }
   }
 
-  function nodeMapping(names: Array<StringConst<any>>) {
-    return names
+  function nodeMapping(names: StringConst[], kind: string) {
+    const id = names.map((n) => n.str).join('/')
+    mappingList.push(id + '#' + kind)
+    return {
+      id,
+      kind
+    }
   }
 
   function parsePropertyName(nameNode: any) {
@@ -329,7 +336,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
   }
 
   async function declareApplication(name: StringConst, opts: ts.Node): Promise<Application> {
-    const appprops: Omit<Omit<Omit<Omit<Omit<Application, 'kind'>, 'sourceRef'>, 'name'>, 'getMapped'>, 'allPackages'>
+    const appprops: Omit<Omit<Omit<Omit<Omit<Omit<Application, 'kind'>, 'sourceRef'>, 'name'>, 'getMapped'>, 'allPackages'>, 'mappingList'>
       = parseObjArg(opts, {
         description: parseI18N,
         icon: parseIcon,
@@ -341,7 +348,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         routes: parseRoutes,
         menu: parseMenu,
         sysroles(val) {
-          return parseRoles(val, true)
+          return parseRoles(name)(val, true)
         }
       })
     appsysroles = appprops.sysroles
@@ -352,6 +359,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       sourceRef: ws.getRef(name),
       name,
       allPackages: mapObjectToArray(appPackages, (p) => p),
+      mappingList,
       getMapped(uri: StringConst) {
         const id = app.mappings.get(uri)
         if (id) return id
@@ -478,27 +486,29 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     })(argMenu)
   }
 
-  function parseRoles(arg: ts.Node, sys: boolean): Roles {
-    const roles = parseColObjArg(arg, (itm, name) => {
-      const rprops = parseObjArg(itm, {
-        description: parseI18N,
-        icon: parseIcon,
+  function parseRoles(parent: StringConst) {
+    return (arg: ts.Node, sys: boolean): Roles => {
+      const roles = parseColObjArg(arg, (itm, name) => {
+        const rprops = parseObjArg(itm, {
+          description: parseI18N,
+          icon: parseIcon,
+        })
+        const role: Role = {
+          kind: 'Role',
+          sourceRef: ws.getRef(itm),
+          nodeMapping: nodeMapping([parent, name], 'Role'),
+          name,
+          ...rprops
+        }
+        return role;
       })
-      const role: Role = {
-        kind: 'Role',
-        sourceRef: ws.getRef(itm),
-        name,
-        nodeMapping: nodeMapping([name]),
-        ...rprops
-      }
-      return role;
-    })
-    sysRoles.forEach((dr) => {
-      const er = roles.get(dr)
-      if (er && (!sys)) ws.error('Role ' + dr + ' yet exists', er)
-      if ((!er) && sys) ws.error('Role ' + dr + ' não é de sistema', roles)
-    })
-    return roles
+      sysRoles.forEach((dr) => {
+        const er = roles.get(dr)
+        if (er && (!sys)) ws.error('Role ' + dr + ' yet exists', er)
+        if ((!er) && sys) ws.error('Role ' + dr + ' não é de sistema', roles)
+      })
+      return roles
+    }
   }
 
   async function loadPkg(pkguri: StringConst): Promise<Package> {
@@ -533,34 +543,34 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     }
   }
 
-  async function declarePackage(ns: StringConst, path: StringConst) {
-    const full: StringConst = {
+  async function declarePackage(pkgns: StringConst, pkgpath: StringConst) {
+    const pkgfull: StringConst = {
       kind: 'StringConst',
       sourceRef: {
-        ...ns.sourceRef,
-        end: path.sourceRef.end
+        ...pkgns.sourceRef,
+        end: pkgpath.sourceRef.end
       },
-      str: join(ns.str, path.str)
+      str: join(pkgns.str, pkgpath.str)
     }
-    if (!appPackagesDef[full.str]) throw ws.fatal('package não definido' + full.str, full)
+    if (!appPackagesDef[pkgfull.str]) throw ws.fatal('package não definido' + pkgfull.str, pkgfull)
 
-    const id: StringConst = {
+    const pkgid: StringConst = {
       kind: 'StringConst',
-      sourceRef: full.sourceRef,
-      str: full.str.replace(/[\/\.]/g, '_').replace(/[^\w.]/g, '')
+      sourceRef: pkgfull.sourceRef,
+      str: pkgfull.str.replace(/[\/\.]/g, '_').replace(/[^\w.]/g, '')
     }
-    const uri = {
-      id,
-      full,
-      ns,
-      path
+    const pkguri = {
+      id: pkgid,
+      full: pkgfull,
+      ns: pkgns,
+      path: pkgpath
     }
     const pkg: Package = {
       kind: 'Package',
-      sourceRef: ws.getRef(full),
-      uri,
+      sourceRef: ws.getRef(pkgfull),
+      uri: pkguri,
     } as any
-    appPackages[full.str] = pkg
+    appPackages[pkgfull.str] = pkg
 
     return { uses }
 
@@ -659,7 +669,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     function roles(expr1Roles: ts.CallExpression) {
       const args = expr1Roles.getArguments()
       if (args.length !== 1) ws.error(expr1Roles.getSourceFile().getFilePath() + ' roles precisa de um parametro', expr1Roles)
-      pkg.roles = parseRoles(args[0], true)
+      pkg.roles = parseRoles(pkgid)(args[0], true)
       return { processes }
     }
     function processes(expr1Process: ts.CallExpression) {
@@ -682,7 +692,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             kind: 'Process',
             sourceRef: ws.getRef(processName),
             name: processName,
-            nodeMapping: nodeMapping([processName]),
+            nodeMapping: nodeMapping([pkgid, processName], 'Process'),
             ...pprops
           }
           pkg.processes.props.push({
@@ -818,7 +828,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           kind: 'Function',
           sourceRef: ws.getRef(argsFunctions[0]),
           name: functionName,
-          nodeMapping: nodeMapping([functionName]),
+          nodeMapping: nodeMapping([pkgid, functionName], 'Function'),
           ...fprops
         }
         return r
@@ -856,7 +866,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           kind: 'View',
           sourceRef: ws.getRef(itmView),
           name: viewName,
-          nodeMapping: nodeMapping([viewName]),
+          nodeMapping: nodeMapping([pkgid, viewName], 'View'),
           allActions,
           ...vprops
         }
@@ -916,7 +926,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           kind: 'Type',
           sourceRef: ws.getRef(itmType),
           name: typeName,
-          nodeMapping: nodeMapping([typeName]),
+          nodeMapping: nodeMapping([pkgid, typeName], 'Type'),
           ...tprops
         }
         return type
@@ -942,7 +952,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           kind: 'Document',
           sourceRef: ws.getRef(itmDoc),
           name: docName,
-          nodeMapping: nodeMapping([docName]),
+          nodeMapping: nodeMapping([pkgid, docName], 'Document'),
           ...dprops
         }
         return doc
@@ -958,7 +968,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             kind: 'DocField',
             sourceRef: ws.getRef(argField),
             name: fieldname,
-            nodeMapping: nodeMapping([docName, fieldname]),
+            nodeMapping: nodeMapping([pkgid, docName, fieldname], 'DocField'),
             ...fprops
           }
           return field
@@ -974,7 +984,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             kind: 'DocIndex',
             sourceRef: ws.getRef(argIndex),
             name: indexname,
-            nodeMapping: nodeMapping([docName, indexname]),
+            nodeMapping: nodeMapping([pkgid, docName, indexname], 'DocIndex'),
             ...iprops
           }
           return index
@@ -991,7 +1001,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             kind: 'DocumentState',
             sourceRef: ws.getRef(argState),
             name: statename,
-            nodeMapping: nodeMapping([docName, statename]),
+            nodeMapping: nodeMapping([pkgid, docName, statename], 'DocState'),
             ...sprops
           }
           return state
@@ -1011,7 +1021,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             kind: 'DocAction',
             sourceRef: ws.getRef(argAction),
             name: actionname,
-            nodeMapping: nodeMapping([docName, actionname]),
+            nodeMapping: nodeMapping([pkgid, docName, actionname], 'DocAction'),
             ...aprops
           }
           return state

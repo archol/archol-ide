@@ -54,8 +54,13 @@ declare type ${appname}_PackageUses = {
 
 declare type ${appname}_Route = (app: ${appname}_Ref, ...args: any[]) => void
 
-declare interface AppRef {
-${app.uses.items.map((u) => `${u.alias.str}: ${quote(u.ref(u.uri.sourceRef).uri.full.str)},`).join('\n')}
+declare interface ${appname}_Ref {
+${app.uses.items.map((u) => `${u.alias.str}: ${u.ref(u.uri.sourceRef).uri.id.str}_Ref,`).join('\n')}
+}
+
+declare type ${appname}_Mapping = ${app.mappingList.map(quote).join('|')}
+declare type ${appname}_Mappings = {
+  [uri in ${appname}_Mapping]?: string
 }
 
 `)
@@ -139,10 +144,6 @@ function quote(s: string) {
 
 declare type PackageNames = "hw"
 
-declare type IMappinghw = 'test.archol.com/hw#teste.role' | 'test.archol.com/hw#partnome.type' | 'test.archol.com/hw#nomes.doc' | 'test.archol.com/hw#askAndShowName.proc'
-declare type IMappingshw = {
-  [uri in IMappinghw]?: string
-}
 declare interface test_archol_com_hw$Ref {
   askAndShowName: test_archol_com_hw$askAndShowName$Ref,
   nomes: test_archol_com_hw$nomes$Ref,

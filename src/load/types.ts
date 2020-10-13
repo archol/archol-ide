@@ -5,8 +5,15 @@ export interface SourceNode<KIND extends string> {
   sourceRef: SourceRef
 }
 
-export interface SourceNodeMapped<KIND extends string> extends SourceNode<KIND> {
-  nodeMapping: Array<StringConst<any>>
+export interface SourceNodeWithName<KIND extends string> extends SourceNode<KIND> {
+  name: StringConst
+}
+
+export interface SourceNodeMapped<KIND extends string> extends SourceNodeWithName<KIND> {
+  nodeMapping: {
+    id: string
+    kind: string
+  }
 }
 
 export interface SourceRef {
@@ -76,6 +83,7 @@ export interface Application extends SourceNode<'Application'> {
   menu: Menu
   routes: Routes
   mappings: AppMappings
+  mappingList: string[]
   sysroles: Roles,
   getMapped(uri: StringConst): StringConst
 }
@@ -98,6 +106,10 @@ export interface PackageUse extends SourceNode<'PackageUse'> {
   uri: StringConst
   ref(sourceRef: SourceRef): Package
   promise: Promise<Package>
+}
+
+export function isPackage(node: SourceNode<any>): node is Package {
+  return node.kind === 'Package'
 }
 
 export interface Package extends SourceNode<'Package'> {
@@ -123,7 +135,6 @@ export interface Package extends SourceNode<'Package'> {
 export type Roles = ObjectConst<Role>
 
 export interface Role extends SourceNodeMapped<'Role'> {
-  name: StringConst,
   description: I18N,
   icon: Icon
 }
@@ -142,7 +153,6 @@ export interface BasicType extends SourceNode<keyof typeof basicTypes> {
 }
 
 export interface Type extends SourceNodeMapped<'Type'> {
-  name: StringConst,
   base: BasicType
   validate?: Code
   format?: Code
@@ -170,7 +180,6 @@ export interface Index extends SourceNode<'Index'> {
 export type Documents = ObjectConst<Document>
 
 export interface Document extends SourceNodeMapped<'Document'> {
-  name: StringConst,
   caption: I18N
   primaryFields: DocFields
   secondaryFields: DocFields
@@ -183,7 +192,6 @@ export interface Document extends SourceNodeMapped<'Document'> {
 export type DocActions = ObjectConst<DocAction>
 
 export interface DocAction extends SourceNodeMapped<'DocAction'> {
-  name: StringConst
   from: UseDocStates
   to: UseDocStates
   icon: Icon
@@ -194,7 +202,6 @@ export interface DocAction extends SourceNodeMapped<'DocAction'> {
 export type DocFields = ObjectConst<DocField>
 
 export interface DocField extends SourceNodeMapped<'DocField'> {
-  name: StringConst
   description: I18N
   type: StringConst
 }
@@ -202,14 +209,12 @@ export interface DocField extends SourceNodeMapped<'DocField'> {
 export type DocIndexes = ObjectConst<DocIndex>
 
 export interface DocIndex extends SourceNodeMapped<'DocIndex'> {
-  name: StringConst
   fields: ArrayConst<StringConst>
 }
 
 export type DocumentStates = ObjectConst<DocumentState>
 
 export interface DocumentState extends SourceNodeMapped<'DocumentState'> {
-  name: StringConst
   icon: Icon
   description: I18N
 }
@@ -222,7 +227,6 @@ export interface UseDocStates extends SourceNode<'UseDocStates'> {
 export type Processes = ObjectConst<Process>
 
 export interface Process extends SourceNodeMapped<'Process'> {
-  name: StringConst
   title: I18N
   caption: I18N
   icon: Icon
@@ -262,7 +266,6 @@ export type Tasks = ObjectConst<Task>
 export type Task = UITask | SystemTask
 
 export interface BaseTask<KIND extends string> extends SourceNodeMapped<KIND> {
-  name: StringConst,
   pool?: StringConst,
   lane?: StringConst,
   roles: UseRoles,
@@ -299,7 +302,6 @@ export interface BindVar extends SourceNode<'BindVar'> {
 export type Views = ObjectConst<View>
 
 export interface View extends SourceNodeMapped<'View'> {
-  name: StringConst
   content: ArrayConst<Widget>
   primaryAction?: ViewAction
   secondaryAction?: ViewAction
@@ -336,7 +338,6 @@ export interface FunctionLevel extends SourceNode<'FunctionLevel'> {
 }
 
 export interface Function extends SourceNodeMapped<'Function'> {
-  name: StringConst
   level: FunctionLevel
   input: Fields
   output: Fields
