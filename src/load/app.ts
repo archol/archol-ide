@@ -1,5 +1,6 @@
 import { join } from 'path';
 import * as ts from 'ts-morph'
+import { deferPromise, DeferredPromise, mapObjectToArray } from '../utils';
 import {
   Application, ArrayConst, BooleanConst, NumberConst, objectConst, ObjectConst, Package, Role,
   SourceNode, StringConst, Workspace, sysRoles,
@@ -13,6 +14,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
   const appsource = ws.ts.getSourceFiles().filter(s => s.getBaseName() === appName + '.app.ts')[0]
 
   if (!appsource) ws.fatal('Aplicação não encontrada: ' + appName, ws)
+  const appPackagesDef: { [pkgFullUri: string]: DeferredPromise<Package> } = {}
   const appPackages: { [pkgFullUri: string]: Package } = {}
   let appsysroles: Roles
 
@@ -41,7 +43,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         const n = fnexpr.getName()
         const propfn = obj[n]
         if (typeof propfn !== 'function') ws.fatal('tsCallExpr.propfn ' + objExpr.getKindName() + '->' + n, objExpr)
-        return propfn(expr1) as T
+        return await Promise.resolve(propfn(expr1) as T)
       }
     }
     throw ws.fatal('tsCallExpr', expr1)
@@ -327,7 +329,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
   }
 
   async function declareApplication(name: StringConst, opts: ts.Node): Promise<Application> {
-    const appprops: Omit<Omit<Omit<Omit<Application, 'kind'>, 'sourceRef'>, 'name'>, 'getMapped'>
+    const appprops: Omit<Omit<Omit<Omit<Omit<Application, 'kind'>, 'sourceRef'>, 'name'>, 'getMapped'>, 'allPackages'>
       = parseObjArg(opts, {
         description: parseI18N,
         icon: parseIcon,
@@ -343,11 +345,13 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         }
       })
     appsysroles = appprops.sysroles
+    appprops.uses = await packageUsesWaitter(appprops.uses)
     const app: Application = {
+      ...appprops,
       kind: 'Application',
       sourceRef: ws.getRef(name),
       name,
-      ...appprops,
+      allPackages: mapObjectToArray(appPackages, (p) => p),
       getMapped(uri: StringConst) {
         const id = app.mappings.get(uri)
         if (id) return id
@@ -359,7 +363,6 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         }
       },
     }
-    debugger
     return app
 
     // function parseBuilderConfigs(arg: ts.Node) {
@@ -383,19 +386,32 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     parseObjArg(arg, {
       '*'(argUri, alias) {
         const uri = parseStrArg(argUri)
-        const pkg = loadPkg(alias, uri)
+        const pkg = loadPkg(uri)
         const pkguse: PackageUse = {
           kind: 'PackageUse',
           sourceRef: ws.getRef(argUri),
           alias,
           uri,
-          package: pkg
+          ref(sourceRef) {
+            const p = appPackages[uri.str]
+            if (!p) throw ws.fatal('pkg not found ' + uri.str, sourceRef)
+            return p
+          },
+          get promise() {
+            return appPackagesDef[uri.str].promise
+          }
         }
         ret.items.push(pkguse)
         return pkguse
       }
     })
     return ret
+  }
+
+  async function packageUsesWaitter(packageUses: PackageUses): Promise<PackageUses> {
+    if (packageUses.items.length)
+      await Promise.all(packageUses.items.map((i) => i.promise))
+    return packageUses
   }
 
   function parseRoutes(argRoutes: ts.Node): Routes {
@@ -485,22 +501,36 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     return roles
   }
 
-  async function loadPkg(alias: StringConst, uri: StringConst): Promise<Package> {
-    const expectedFile = ws.path + '/ws/' + uri.str + '.pkg.ts'
-    const pkgsource = ws.ts.getSourceFiles().filter(s => s.getFilePath() === expectedFile)[0]
+  async function loadPkg(pkguri: StringConst): Promise<Package> {
 
-    if (!pkgsource) ws.fatal('Pacote não encontrado: ' + appName, uri)
+    let pkgdecl = appPackagesDef[pkguri.str]
+    if (pkgdecl) return pkgdecl.promise
 
-    const stmts = pkgsource.getStatements();
-    if (stmts.length != 1) ws.fatal(pkgsource.getFilePath() + ' só deveria ter uma declaração', pkgsource)
-    const stmt = stmts[0]
-    if (stmt instanceof ts.ExpressionStatement) {
-      const expr1 = stmt.getExpression()
-      if (expr1 instanceof ts.CallExpression) {
-        return tsCallExpr<Package>(expr1, 'declarePackage')
+    appPackagesDef[pkguri.str] = deferPromise()
+    try {
+
+      const expectedFile = ws.path + '/ws/' + pkguri.str + '.pkg.ts'
+      const pkgsource = ws.ts.getSourceFiles().filter(s => s.getFilePath() === expectedFile)[0]
+
+      if (!pkgsource) ws.fatal('Pacote não encontrado: ' + appName, pkguri)
+
+      const stmts = pkgsource.getStatements();
+      if (stmts.length != 1) ws.fatal(pkgsource.getFilePath() + ' só deveria ter uma declaração', pkgsource)
+      const stmt = stmts[0]
+      if (stmt instanceof ts.ExpressionStatement) {
+        const expr1 = stmt.getExpression()
+        if (expr1 instanceof ts.CallExpression) {
+          const pkg = await tsCallExpr<Package>(expr1, 'declarePackage')
+          appPackagesDef[pkguri.str].resolve(pkg)
+          return pkg
+        }
       }
+      throw ws.fatal(pkgsource.getFilePath() + ' comando deveria ser declareApplication ou declarePackage', pkgsource)
+    } catch (e) {
+      appPackagesDef[pkguri.str].reject(e)
+      console.log(e)
+      throw e
     }
-    throw ws.fatal(pkgsource.getFilePath() + ' comando deveria ser declareApplication ou declarePackage', pkgsource)
   }
 
   async function declarePackage(ns: StringConst, path: StringConst) {
@@ -512,6 +542,8 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       },
       str: join(ns.str, path.str)
     }
+    if (!appPackagesDef[full.str]) throw ws.fatal('package não definido' + full.str, full)
+
     const id: StringConst = {
       kind: 'StringConst',
       sourceRef: full.sourceRef,
@@ -523,26 +555,13 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       ns,
       path
     }
-    if (appPackages[full.str]) ws.error('Duplicated package uri: ' + full.str, full)
-    let pkg = appPackages[full.str]
-    if (pkg) return pkg
-    pkg = {
+    const pkg: Package = {
       kind: 'Package',
       sourceRef: ws.getRef(full),
       uri,
-      // ...parseObjArg()
-      // redefines?: StringConst
-      // uses: PackageUses,
-      // types: Types,
-      // documents: Documents,
-      // processes: Processes,
-      // roles: Roles
-      // views: Views,
-      // functions: Functions,
-      // pagelets: Pagelets
-      // routes: Routes
-      // menu: Menu
     } as any
+    appPackages[full.str] = pkg
+
     return { uses }
 
     function parseUseRoles(argUseRoles: ts.Node): UseRoles {
@@ -631,10 +650,10 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         return field
       })
     }
-    function uses(expr1Uses: ts.CallExpression) {
+    async function uses(expr1Uses: ts.CallExpression) {
       const args = expr1Uses.getArguments()
       if (args.length !== 1) ws.error(expr1Uses.getSourceFile().getFilePath() + ' uses precisa de um parametro', expr1Uses)
-      pkg.uses = parsePackageUses(args[0])
+      pkg.uses = await packageUsesWaitter(parsePackageUses(args[0]))
       return { roles }
     }
     function roles(expr1Roles: ts.CallExpression) {
@@ -1021,7 +1040,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       const argsRoute = expr1Route.getArguments()
       if (argsRoute.length !== 1) ws.error(expr1Route.getSourceFile().getFilePath() + ' routes precisa de um parametro', expr1Route)
       pkg.routes = parseRoutes(argsRoute[0])
-      return {}
+      return pkg
     }
   }
 }

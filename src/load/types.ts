@@ -69,6 +69,7 @@ export interface Application extends SourceNode<'Application'> {
   description: I18N,
   icon: Icon,
   uses: PackageUses,
+  allPackages: Package[],
   langs: ArrayConst<StringConst>
   builders: ObjectConst<BuilderConfig>
   pagelets: ObjectConst<Pagelet>
@@ -95,7 +96,8 @@ export type PackageUses = ArrayConst<PackageUse>
 export interface PackageUse extends SourceNode<'PackageUse'> {
   alias: StringConst
   uri: StringConst
-  package: Promise<Package>
+  ref(sourceRef: SourceRef): Package
+  promise: Promise<Package>
 }
 
 export interface Package extends SourceNode<'Package'> {
