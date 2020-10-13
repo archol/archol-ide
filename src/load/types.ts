@@ -71,6 +71,9 @@ export interface Application extends SourceNode<'Application'> {
   uses: PackageUses,
   langs: ArrayConst<StringConst>
   builders: ObjectConst<BuilderConfig>
+  pagelets: ObjectConst<Pagelet>
+  menu: Menu
+  routes: Routes
   mappings: AppMappings
   sysroles: Roles,
   getMapped(uri: StringConst): StringConst
@@ -351,12 +354,13 @@ export interface BuilderConfig extends SourceNode<'BuilderConfig'> {
 export type Pagelets = ObjectConst<Pagelet>
 
 export interface Pagelet extends SourceNode<'Pagelet'> {
-  left?: number,
-  top?: number,
-  right?: number,
-  bottom?: number,
-  drawer?: true,
-  content?: true,
+  name: StringConst,
+  left?: NumberConst,
+  top?: NumberConst,
+  right?: NumberConst,
+  bottom?: NumberConst,
+  drawer?: BooleanConst,
+  content?: BooleanConst,
 }
 
 export type Routes = ObjectConst<Route>
@@ -372,11 +376,15 @@ export interface RouteRedirect extends SourceNode<'RouteRedirect'> {
   redirect: StringConst
 }
 
-export type Menu = Array<MenuItem | '-'>
+export type Menu = ArrayConst<MenuItem | MenuItemSeparator>
 
 export interface MenuItem extends SourceNode<'MenuItem'> {
   caption: I18N
   icon: Icon
+  run: StringConst | Code
+}
+
+export interface MenuItemSeparator extends SourceNode<'MenuItemSeparator'> {
 }
 
 export const sysRoles: string[] = ['public', 'anonymous', 'authenticated']

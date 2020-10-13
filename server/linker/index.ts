@@ -1,2 +1,0 @@
-import
-export * from './app'

@@ -6,7 +6,7 @@ import {
   Process, Function, View, Type, Document, Route, Code, I18N, arrayConst, Icon, PackageUse, PackageUses,
   Task, UseTask, Roles, UseSysRole, UseLocRole, UseRoles, Fields, Field, UseType, BindVar, ProcessVars,
   UseView, UseFunction, BindVars, FunctionLevel, Widget, ViewAction, BasicType, basicTypes, DocFields, DocIndexes,
-  DocumentStates, DocActions, DocAction, DocField, DocIndex, DocumentState, UseDocStates
+  DocumentStates, DocActions, DocAction, DocField, DocIndex, DocumentState, UseDocStates, Routes, Pagelets, Pagelet, Menu, MenuItem, MenuItemSeparator
 } from './types'
 
 export async function loadApp(ws: Workspace, appName: string): Promise<Application> {
@@ -335,6 +335,9 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         langs: parserForArrArg(parseStrArg),
         builders: parseAnyArg,
         mappings: parseAnyArg,
+        pagelets: parsePagelets,
+        routes: parseRoutes,
+        menu: parseMenu,
         sysroles(val) {
           return parseRoles(val, true)
         }
@@ -393,6 +396,70 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       }
     })
     return ret
+  }
+
+  function parseRoutes(argRoutes: ts.Node): Routes {
+    return parseColObjArg(argRoutes, (itmRoute) => {
+      const rprops = parseObjArg(itmRoute, {
+        path: parseStrArg,
+        code: parserForCode(),
+        redirect: parseStrArg,
+      })
+      const route: Route = {
+        kind: rprops.code ? 'RouteCode' : 'RouteRedirect',
+        sourceRef: ws.getRef(itmRoute),
+        ...rprops
+      } as any
+      return route
+    })
+  }
+
+  function parsePagelets(argPagelets: ts.Node): Pagelets {
+    return parseColObjArg(argPagelets, (itmPagelet, pageletName) => {
+      const pprops = parseObjArg(itmPagelet, {
+        left: parseNumArg,
+        top: parseNumArg,
+        right: parseNumArg,
+        bottom: parseNumArg,
+        drawer: parseBolArg,
+        content: parseBolArg
+      })
+      const pagelet: Pagelet = {
+        kind: 'Pagelet',
+        sourceRef: ws.getRef(itmPagelet),
+        name: pageletName,
+        ...pprops
+      }
+      return pagelet
+    })
+  }
+
+  function parseMenu(argMenu: ts.Node): Menu {
+    return parserForArrArg((itmMenu) => {
+      if (isStrArg(itmMenu)) {
+        const str = parseStrArg(itmMenu)
+        if (str.str !== '-') ws.error('menu invalido', itmMenu)
+        const sep: MenuItemSeparator = {
+          kind: 'MenuItemSeparator',
+          sourceRef: ws.getRef(itmMenu)
+        }
+        return sep
+      }
+      const pprops = parseObjArg(itmMenu, {
+        caption: parseI18N,
+        icon: parseIcon,
+        run(val): StringConst | Code {
+          if (isStrArg(val)) return parseStrArg(val)
+          return parserForCode()(val)
+        }
+      })
+      const menuItem: MenuItem = {
+        kind: 'MenuItem',
+        sourceRef: ws.getRef(itmMenu),
+        ...pprops
+      }
+      return menuItem
+    })(argMenu)
   }
 
   function parseRoles(arg: ts.Node, sys: boolean): Roles {
@@ -953,19 +1020,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     function routes(expr1Route: ts.CallExpression) {
       const argsRoute = expr1Route.getArguments()
       if (argsRoute.length !== 1) ws.error(expr1Route.getSourceFile().getFilePath() + ' routes precisa de um parametro', expr1Route)
-      pkg.routes = parseColObjArg(argsRoute[0], (itmRoute) => {
-        const rprops = parseObjArg(itmRoute, {
-          path: parseStrArg,
-          code: parserForCode(),
-          redirect: parseStrArg,
-        })
-        const route: Route = {
-          kind: rprops.code ?  'RouteCode' : 'RouteRedirect',
-          sourceRef: ws.getRef(itmRoute),
-          ...rprops
-        } as any
-        return route
-      })
+      pkg.routes = parseRoutes(argsRoute[0])
       return {}
     }
   }
