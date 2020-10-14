@@ -12,7 +12,6 @@ export interface SourceNodeWithName<KIND extends string> extends SourceNode<KIND
 export interface SourceNodeMapped<KIND extends string> extends SourceNodeWithName<KIND> {
   nodeMapping: {
     id: string
-    kind: string
   }
 }
 
@@ -85,7 +84,7 @@ export interface Application extends SourceNode<'Application'> {
   menu: Menu
   routes: Routes
   mappings: AppMappings
-  mappingList: string[]
+  mappingList: { [id: string]: SourceNodeMapped<any> }
   sysroles: Roles,
   getMapped(uri: StringConst): StringConst
 }
@@ -101,12 +100,12 @@ export interface I18N extends SourceNode<'I18N'> {
   //TODO params: Fields
 }
 
-export type PackageUses = ArrayConst<PackageUse>
+export type PackageUses = ObjectConst<PackageUse>
 
 export interface PackageUse extends SourceNode<'PackageUse'> {
   alias: StringConst
   uri: StringConst
-  ref(sourceRef: SourceRef): Package
+  ref(sourceRef: TsNode): Package
   promise: Promise<Package>
 }
 
@@ -166,7 +165,7 @@ export interface Type extends SourceNodeMapped<'Type'> {
 
 export interface UseType extends SourceNode<'UseType'> {
   type: StringConst
-  ref(): Type
+  ref(sourceRef: TsNode): Type
 }
 
 export type Fields = ObjectConst<Field>
@@ -227,7 +226,7 @@ export interface DocumentState extends SourceNodeMapped<'DocumentState'> {
 
 export interface UseDocStates extends SourceNode<'UseDocStates'> {
   states: ArrayConst<StringConst>
-  ref(): DocumentState[]
+  ref(sourceRef: TsNode): DocumentState[]
 }
 
 export type Processes = ObjectConst<Process>
@@ -254,17 +253,17 @@ export type UseRoles = UseLocRole | UseSysRole
 
 export interface UseLocRole extends SourceNode<'UseLocRole'> {
   roles: ArrayConst<StringConst>
-  ref(): Role[]
+  ref(sourceRef: TsNode): Role[]
 }
 
 export interface UseSysRole extends SourceNode<'UseSysRole'> {
   role: StringConst
-  ref(): Role
+  ref(sourceRef: TsNode): Role
 }
 
 export interface UseTask extends SourceNode<'UseTask'> {
   task: StringConst
-  ref(): Task
+  ref(sourceRef: TsNode): Task
 }
 
 export type Tasks = ObjectConst<Task>
@@ -285,7 +284,7 @@ export interface UITask extends BaseTask<'UITask'> {
 export interface UseView extends SourceNode<'UseView'> {
   view: StringConst
   bind: BindVars,
-  ref(): View
+  ref(sourceRef: TsNode): View
 }
 
 export interface SystemTask extends BaseTask<'SystemTask'> {
@@ -296,14 +295,14 @@ export interface UseFunction extends SourceNode<'UseFunction'> {
   function: StringConst
   input: BindVars,
   output: BindVars
-  ref(): Function
+  ref(sourceRef: TsNode): Function
 }
 
 export type BindVars = ObjectConst<BindVar>
 
 export interface BindVar extends SourceNode<'BindVar'> {
   fieldpath: StringConst
-  ref(): Field
+  ref(sourceRef: TsNode): Field
 }
 
 export type Views = ObjectConst<View>

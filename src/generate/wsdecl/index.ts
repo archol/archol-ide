@@ -1,5 +1,5 @@
 import { CodeBlockWriter } from 'ts-morph';
-import { Application, Package, Process, Workspace, Function, Task, View, Type, basicTypes, Document } from '../../load/types';
+import { Application, Package, Process, Workspace, Function, Task, View, Type, basicTypes, Document, Fields } from '../../load/types';
 
 export async function generateDeclaration(ws: Workspace) {
   const declFileName = ws.path + '/ws/decl.d.ts'
@@ -58,10 +58,10 @@ declare type ${appname}_PackageUses = {
 declare type ${appname}_Route = string | ((app: ${appname}_Ref, ...args: any[]) => void)
 
 declare interface ${appname}_Ref {
-${app.uses.items.map((u) => `${u.alias.str}: ${u.ref(u.uri.sourceRef).uri.id.str}_Ref,`).join('\n')}
+${app.uses.props.map((u) => `${u.key.str}: ${u.val.ref(u.val.uri.sourceRef).uri.id.str}_Ref,`).join('\n')}
 }
 
-declare type ${appname}_Mapping = ${app.mappingList.map(quote).join('|')}
+declare type ${appname}_Mapping = ${Object.keys(app.mappingList).map(quote).join('|')}
 declare type ${appname}_Mappings = {
   [uri in ${appname}_Mapping]?: string
 }`.trimStart())
@@ -157,6 +157,18 @@ declare interface ${pkgid}_process_${procName}_DeclVars {
   output: ${pkgid}_DeclFields,
   local: ${pkgid}_DeclFields,
 }
+declare interface ${pkgid}_process_${procName}_InstanceVars {
+  input: ${pkgid}_process_${procName}_InstanceVars_input,
+  output: ${pkgid}_process_${procName}_InstanceVars_output,
+  local: ${pkgid}_process_${procName}_InstanceVars_local,
+}
+${['input', 'output', 'local'].map((scope) => `
+declare interface ${pkgid}_process_${procName}_InstanceVars_${scope} {
+  ${function () {
+          const fields: Fields = (process.vars as any)[scope]
+          return fields.props.map((f) => f.key.str + ': ' + f.val.type.ref(f.key).base).join('\n')
+        }()}
+}`).join('\n')}
 declare type ${pkgid}_process_${procName}_DeclTasks = {
   [task: string]: ${pkgid}_process_${procName}_DeclTask,
 }
@@ -239,8 +251,7 @@ declare type I18N = string | {
 
 declare type Lang = 'pt' | 'en'
 
-declare interface BuilderConfig {
-  rootDir: string
+declare interface BuilderConfig {  
 }
 
 declare type Roles = {

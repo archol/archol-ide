@@ -4,18 +4,19 @@ import { deferPromise, DeferredPromise, mapObjectToArray } from '../utils';
 import {
   Application, ArrayConst, BooleanConst, NumberConst, objectConst, ObjectConst, Package, Role,
   SourceNode, StringConst, Workspace, sysRoles,
-  Process, Function, View, Type, Document, Route, Code, I18N, arrayConst, Icon, PackageUse, PackageUses,
+  Process, Function, View, Type, Document, RoleDef, Code, I18N, arrayConst, Icon, PackageUse, PackageUses,
   Task, UseTask, Roles, UseSysRole, UseLocRole, UseRoles, Fields, Field, UseType, BindVar, ProcessVars,
   UseView, UseFunction, BindVars, FunctionLevel, Widget, ViewAction, BasicType, basicTypes, DocFields, DocIndexes,
   DocumentStates, DocActions, DocAction, DocField, DocIndex, DocumentState, UseDocStates, Routes, Pagelets,
-  Pagelet, Menu, MenuItem, MenuItemSeparator, SourceNodeMapped, SourceNodeWithName, isPackage, RouteRedirect, RouteCode, RoleGroup
+  Pagelet, Menu, MenuItem, MenuItemSeparator, SourceNodeMapped, SourceNodeWithName, isPackage, RouteRedirect, RouteCode, RoleGroup, TsNode
 } from './types'
 
 export async function loadApp(ws: Workspace, appName: string): Promise<Application> {
   const appsource = ws.ts.getSourceFiles().filter(s => s.getBaseName() === appName + '.app.ts')[0]
 
   if (!appsource) ws.fatal('Aplicação não encontrada: ' + appName + debugFiles(), ws)
-  const mappingList: string[] = []
+  const mappingList: { [id: string]: SourceNodeMapped<any> } = {}
+  const mappingPending: Array<Promise<any>> = []
   const appPackagesDef: { [pkgFullUri: string]: DeferredPromise<Package> } = {}
   const appPackages: { [pkgFullUri: string]: Package } = {}
   let appsysroles: Roles
@@ -26,7 +27,9 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
   if (stmt instanceof ts.ExpressionStatement) {
     const expr1 = stmt.getExpression()
     if (expr1 instanceof ts.CallExpression) {
-      return tsCallExpr<Application>(expr1, 'declareApplication')
+      const app = await tsCallExpr<Application>(expr1, 'declareApplication')
+      await Promise.all(mappingPending)
+      return app
     }
   }
   throw ws.fatal(appsource.getFilePath() + ' comando deveria ser declareApplication ou declarePackage', appsource)
@@ -199,12 +202,29 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     }
   }
 
-  function nodeMapping(names: StringConst[], kind: string) {
-    const id = names.map((n) => n.str).join('/')
-    mappingList.push(id + '#' + kind)
+  function getMapped<KIND extends string, T extends SourceNodeMapped<KIND>>(
+    sourceRef: TsNode, id: string, kind: KIND, def: () => T): T {
+    let r: any = mappingList[id]
+    if (!r) ws.error('nao existe ' + id, sourceRef)
+    else if (r.kind !== kind) ws.error(' esperado ' + kind + ' em' + id, sourceRef)
+    if (!r) {
+      r = def()
+      if (!r.kind) r.kind = kind
+      if (!r.sourceRef) r.kind = ws.getRef(sourceRef)
+    }
+    return r
+  }
+
+  function nodeMapping(names: string[], register: () => SourceNodeMapped<any>) {
+    const id = names.join('.')
+    mappingPending.push(new Promise((resolve) => {
+      setTimeout(() => {
+        mappingList[id] = register()
+        resolve()
+      }, 1)
+    }))
     return {
-      id,
-      kind
+      id
     }
   }
 
@@ -406,36 +426,30 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
   }
 
   function parsePackageUses(arg: ts.Node): PackageUses {
-    console.log('parsePackageUses', arg.getText())
-    let ret = arrayConst<PackageUse>(ws.getRef(arg))
-    parseObjArg(arg, {
-      '*'(argUri, alias) {
-        const uri = parseStrArg(argUri)
-        loadPkg(uri)
-        const pkguse: PackageUse = {
-          kind: 'PackageUse',
-          sourceRef: ws.getRef(argUri),
-          alias,
-          uri,
-          ref(sourceRef) {
-            const p = appPackages[uri.str]
-            if (!p) throw ws.fatal('pkg not found ' + uri.str, sourceRef)
-            return p
-          },
-          get promise() {
-            return appPackagesDef[uri.str].promise
-          }
+    return parseColObjArg(arg, (argUri, alias) => {
+      const uri = parseStrArg(argUri)
+      loadPkg(uri)
+      const pkguse: PackageUse = {
+        kind: 'PackageUse',
+        sourceRef: ws.getRef(argUri),
+        alias,
+        uri,
+        ref(sourceRef) {
+          const p = appPackages[uri.str]
+          if (!p) throw ws.fatal('pkg not found ' + uri.str, sourceRef)
+          return p
+        },
+        get promise() {
+          return appPackagesDef[uri.str].promise
         }
-        ret.items.push(pkguse)
-        return pkguse
       }
+      return pkguse
     })
-    return ret
   }
 
   async function packageUsesWaitter(packageUses: PackageUses): Promise<PackageUses> {
-    if (packageUses.items.length)
-      await Promise.all(packageUses.items.map((i) => i.promise))
+    if (packageUses.props.length)
+      await Promise.all(packageUses.props.map((i) => i.val.promise))
     return packageUses
   }
 
@@ -514,15 +528,15 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
   function parseRoles(parent: StringConst) {
     return (arg: ts.Node, sys: boolean): Roles => {
       const roles = parseColObjArg(arg, (itm, name) => {
-        if (isStrArg(itm)) {
+        if (isObjArg(itm)) {
           const rprops = parseObjArg(itm, {
             description: parseI18N,
             icon: parseIcon,
           })
-          const role: Role = {
+          const role: RoleDef = {
             kind: 'Role',
             sourceRef: ws.getRef(itm),
-            nodeMapping: nodeMapping([parent, name], 'Role'),
+            nodeMapping: nodeMapping([parent.str, 'role', name.str], () => role),
             name,
             ...rprops
           }
@@ -666,14 +680,41 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     }
     function parseUseType(argUseType: ts.Node): UseType {
       const str = parseStrArg(argUseType)
+      str.str = str.str.replace(/^\.\//g, pkgid + '/')
       const ret: UseType = {
         kind: 'UseType',
         sourceRef: str.sourceRef,
         type: str,
-        ref() {
-          const t = pkg.types.get(str)
-          if (!t) throw ws.fatal('Tipo inválido: ' + str.str, str.sourceRef)
-          return t
+        ref(sourceRef) {
+          let tn = str.str
+          const b = (basicTypes as any)[tn]
+          if (b) return def(tn)
+          if (tn.includes('.')) {
+            const parts = tn.split('.')
+            if (parts.length === 2) {
+              const [pkgalias, typename] = parts
+              if (pkgalias === '.') tn = pkgid.str + '.type.' + tn
+              else {
+                const u = pkg.uses.get(pkgalias)
+                if (u) {
+                  const t = u.ref(str).types.get(typename)
+                  if (t) return t
+                }
+              }
+            }
+          } else tn = pkgid.str + '.type.' + tn
+          return getMapped(sourceRef, tn, 'Type', def)
+          function def(base?: string): Type {
+            return {
+              kind: 'Type',
+              name: str,
+              nodeMapping: {
+                id: tn
+              },
+              sourceRef: ws.getRef(sourceRef),
+              base: (base || ('invalid_type_' + tn)) as any
+            }
+          }
         }
       }
       return ret
@@ -694,7 +735,6 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       })
     }
     async function uses(expr1Uses: ts.CallExpression) {
-      console.log('pkg ', pkgid, expr1Uses.getText())
       const argsUses = expr1Uses.getArguments()
       if (argsUses.length !== 1) ws.error(expr1Uses.getSourceFile().getFilePath() + ' uses precisa de um parametro', expr1Uses)
       pkg.uses = await packageUsesWaitter(parsePackageUses(argsUses[0]))
@@ -726,7 +766,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             kind: 'Process',
             sourceRef: ws.getRef(processName),
             name: processName,
-            nodeMapping: nodeMapping([pkgid, processName], 'Process'),
+            nodeMapping: nodeMapping([pkgid.str, 'process', processName.str], () => process),
             ...pprops
           }
           pkg.processes.props.push({
@@ -858,14 +898,14 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           output: parseFields,
           code: parserForCode(),
         })
-        const r: Function = {
+        const func: Function = {
           kind: 'Function',
           sourceRef: ws.getRef(argsFunctions[0]),
           name: functionName,
-          nodeMapping: nodeMapping([pkgid, functionName], 'Function'),
+          nodeMapping: nodeMapping([pkgid.str, 'function', functionName.str], () => func),
           ...fprops
         }
-        return r
+        return func
         function parseFunctionLevel(argFuncLevel: ts.Node): FunctionLevel {
           const str = parseStrArg(argFuncLevel)
           if (!["cpu", "io", "net"].includes(str.str))
@@ -900,7 +940,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           kind: 'View',
           sourceRef: ws.getRef(itmView),
           name: viewName,
-          nodeMapping: nodeMapping([pkgid, viewName], 'View'),
+          nodeMapping: nodeMapping([pkgid.str, 'view', viewName.str], () => view),
           allActions,
           ...vprops
         }
@@ -960,7 +1000,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           kind: 'Type',
           sourceRef: ws.getRef(itmType),
           name: typeName,
-          nodeMapping: nodeMapping([pkgid, typeName], 'Type'),
+          nodeMapping: nodeMapping([pkgid.str, 'type', typeName.str], () => type),
           ...tprops
         }
         return type
@@ -987,7 +1027,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           kind: 'Document',
           sourceRef: ws.getRef(itmDoc),
           name: docName,
-          nodeMapping: nodeMapping([pkgid, docName], 'Document'),
+          nodeMapping: nodeMapping([pkgid.str, 'document', docName.str], () => doc),
           ...dprops
         }
         return doc
@@ -1003,7 +1043,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             kind: 'DocField',
             sourceRef: ws.getRef(argField),
             name: fieldname,
-            nodeMapping: nodeMapping([pkgid, docName, fieldname], 'DocField'),
+            nodeMapping: nodeMapping([pkgid.str, 'document', docName.str, 'field', fieldname.str], () => field),
             ...fprops
           }
           return field
@@ -1017,7 +1057,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             kind: 'DocIndex',
             sourceRef: ws.getRef(argIndex),
             name: indexname,
-            nodeMapping: nodeMapping([pkgid, docName, indexname], 'DocIndex'),
+            nodeMapping: nodeMapping([pkgid.str, 'document', docName.str, 'index', indexname.str], () => index),
             fields
           }
           return index
@@ -1034,7 +1074,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             kind: 'DocumentState',
             sourceRef: ws.getRef(argState),
             name: statename,
-            nodeMapping: nodeMapping([pkgid, docName, statename], 'DocState'),
+            nodeMapping: nodeMapping([pkgid.str, 'document', docName.str, 'state', statename.str], () => state),
             ...sprops
           }
           return state
@@ -1050,14 +1090,14 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             description: parseI18N,
             run: parserForCode()
           })
-          const state: DocAction = {
+          const ac: DocAction = {
             kind: 'DocAction',
             sourceRef: ws.getRef(argAction),
             name: actionname,
-            nodeMapping: nodeMapping([pkgid, docName, actionname], 'DocAction'),
+            nodeMapping: nodeMapping([pkgid.str, 'document', docName.str, 'action', actionname.str], () => ac),
             ...aprops
           }
-          return state
+          return ac
         }
         function parseUseDocStates(argUseDocStates: ts.Node): UseDocStates {
           const useDocStates: UseDocStates = {
@@ -1098,7 +1138,7 @@ function invalidPackage(uri: StringConst) {
       ns: uri,
       path: uri
     },
-    uses: arrayConst(uri.sourceRef),
+    uses: objectConst(uri.sourceRef),
     types: objectConst(uri.sourceRef),
     documents: objectConst(uri.sourceRef),
     processes: objectConst(uri.sourceRef),
