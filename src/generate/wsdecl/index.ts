@@ -61,7 +61,7 @@ declare interface ${appname}_Ref {
 ${app.uses.props.map((u) => `${u.key.str}: ${u.val.ref(u.val.uri.sourceRef).uri.id.str}_Ref,`).join('\n')}
 }
 
-declare type ${appname}_Mapping = ${Object.keys(app.mappingList).map(quote).join('|')}
+declare type ${appname}_Mapping = ${typePipes(Object.keys(app.mappingList), 'NOTHING MAPPED', quote)}
 declare type ${appname}_Mappings = {
   [uri in ${appname}_Mapping]?: string
 }`.trimStart())
@@ -104,6 +104,9 @@ declare interface ${pkgid}_DeclRoutes {
 declare type ${pkgid}_Route = string | ((app: ${pkgid}_Ref, ...args: any[]) => void)
 
 declare interface ${pkgid}_Ref {
+  dep: {
+    ${pkg.uses.props.map((u) => `${u.key.str}: ${u.val.ref(u.val.uri.sourceRef).uri.id.str}_Ref,`).join('\n')}
+  },
   process: {  
     ${pkg.processes.props.map((p) => `${p.key.str}: ${pkgid}_process_${p.key.str}_Ref,`).join('\n')}
   },
@@ -116,9 +119,9 @@ declare interface ${pkgid}_Ref {
 }
 
 type ${pkgid}_Roles = 'public' | 'anonymous' | 'authenticated' | ${pkgid}_Role | ${pkgid}_Role[]
-type ${pkgid}_Role = ${pkg.roles.props.map((r) => quote(r.key.str)).join('|')}
+type ${pkgid}_Role = ${typePipes(pkg.roles.props.map((r) => r.key.str), 'public', quote)}
 
-type ${pkgid}_TypeName = ${pkg.types.props.map((t) => t.key.str).concat(Object.keys(basicTypes)).map(quote).join('|')}
+type ${pkgid}_TypeName = ${typePipes(pkg.types.props.map((t) => t.key.str).concat(Object.keys(basicTypes)), 'string', quote)}
 interface ${pkgid}_DeclFields {
   [fieldName:string]: {
      description: string
@@ -145,7 +148,7 @@ declare interface ${pkgid}_process_${procName}_Decl {
   vars: ${pkgid}_process_${procName}_DeclVars,
   tasks: ${pkgid}_process_${procName}_DeclTasks,
 }
-declare type ${pkgid}_process_${procName}_Tasknames = ${process.tasks.props.map((t) => quote(t.key.str)).join('|')}
+declare type ${pkgid}_process_${procName}_Tasknames = ${typePipes(process.tasks.props.map((t) => t.key.str), '', quote)}
 declare interface ${pkgid}_process_${procName}_Ref {
   start(): ${pkgid}_process_${procName}_Instance;
 }
@@ -162,26 +165,33 @@ declare interface ${pkgid}_process_${procName}_InstanceVars {
   output: ${pkgid}_process_${procName}_InstanceVars_output,
   local: ${pkgid}_process_${procName}_InstanceVars_local,
 }
-${['input', 'output', 'local'].map((scope) => `
-declare interface ${pkgid}_process_${procName}_InstanceVars_${scope} {
-  ${function () {
-          const fields: Fields = (process.vars as any)[scope]
-          return fields.props.map((f) => f.key.str + ': ' + f.val.type.ref(null).base.kind).join('\n')
-        }()}
-}`).join('\n')}
 declare type ${pkgid}_process_${procName}_DeclTasks = {
   [task: string]: ${pkgid}_process_${procName}_DeclTask,
 }
-declare type ${pkgid}_process_${procName}_DeclTask = ${pkg.functions.props.map(f => `{
+declare type ${pkgid}_process_${procName}_DeclTask = ${typePipes(pkg.functions.props.map(f => `{
     useFunction: ${pkgid}_function_${f.key.str}_Use,
     next: ${pkgid}_process_${procName}_NextTask,
 }`).concat(pkg.views.props.map(f => `{
   useView: ${pkgid}_view_${f.key.str}_Use,
   next: ${pkgid}_process_${procName}_NextTask,
   roles: ${pkgid}_Roles,
-}`)).join('|')
-        }`.trimStart())
-
+}`)), '{}')
+        }
+declare type ${pkgid}_process_${procName}_NextTask = ${pkgid}_process_${procName}_Tasknames | ${pkgid}_process_${procName}_Tasknames[] | {
+  [task in ${pkgid}_process_${procName}_Tasknames]?: (vars: ${pkgid}_process_${procName}_InstanceVars) => boolean
+}
+        
+        `.trimStart())
+      genDeclPkgProcessFields()
+      function genDeclPkgProcessFields() {
+        ['input', 'output', 'local'].forEach((scope) => w.writeLine(`
+        declare interface ${pkgid}_process_${procName}_InstanceVars_${scope} {
+          ${function () {
+            const fields: Fields = (process.vars as any)[scope]
+            return fields.props.map((f) => f.key.str + ': ' + f.val.type.ref(null).base.kind).join('\n')
+          }()}
+        }`.trimStart()))
+      }
     }
     function genDeclPkgFunction(func: Function) {
       const funcName = func.name.str
@@ -191,6 +201,12 @@ declare interface ${pkgid}_function_${funcName}_Decl {
   input: ${pkgid}_DeclFields,
   output: ${pkgid}_DeclFields,
   code (vars: { input: ${pkgid}_function_${funcName}_DeclRef, output: ${pkgid}_function_${funcName}_DeclRef }): void
+}
+declare interface ${pkgid}_function_${funcName}_Ref {
+  x
+}
+declare interface ${pkgid}_function_${funcName}_Use {
+  x
 }
 `.trimStart())
     }
@@ -214,12 +230,15 @@ declare interface ${pkgid}_view_${viewName}_DeclData {
 declare interface ${pkgid}_view_${viewName}_DeclBind<S> {
   firstName: S
 }
+declare interface ${pkgid}_view_${viewName}_Use {
+  x
+}
 `.trimStart())
     }
     function genDeclPkgDoc(doc: Document) {
       const docName = doc.name.str
       w.writeLine(`
-declare interface ${pkgid}_doc_${docName}_Decl {
+declare interface ${pkgid}_document_${docName}_Decl {
   persistence: DocPersistence
   states: {
     partial: DocState
@@ -230,7 +249,7 @@ declare interface ${pkgid}_doc_${docName}_Decl {
   indexes: { [name: string]: Itest_archol_com_hwDOCOLNAMEnomes[] }
   actions: Itest_archol_com_hwDOCACTIONSnomes  
 }
-declare interface ${pkgid}_doc_${docName}_Ref {
+declare interface ${pkgid}_document_${docName}_Ref {
   x
 }
 `.trimStart())
@@ -302,9 +321,9 @@ declare type IPagelet = {
 
 declare interface Builders { "node-tsx-deepstream": BuilderConfig }
 
-declare type AllPackageUris = ${AllPackageUris.map(quote).join('|')}
+declare type AllPackageUris = ${typePipes(AllPackageUris, '', quote)}
 
-declare type TypeDecl = ${Object.keys(basicTypes).map((b) => {
+declare type TypeDecl = ${typePipes(Object.keys(basicTypes).map((b) => {
         const js = b === 'date' ? 'Date' : b
         return `{
   base: ${quote(b)}
@@ -313,11 +332,16 @@ declare type TypeDecl = ${Object.keys(basicTypes).map((b) => {
   parse?(this: void, str: string): ${js}
 }`.trim()
       }
-      ).join('|')}}
+      ), '{}')}}
 
 `.trimStart())
     })
   }
+}
+
+function typePipes(s: string[], def: string, fn?: (s: string) => string) {
+  fn = fn || ((i) => i)
+  return s.length ? s.map(fn).join('|') : fn(def)
 }
 
 function quote(s: string) {
