@@ -1,14 +1,15 @@
+import { create } from 'domain';
 import { join } from 'path';
 import * as ts from 'ts-morph'
 import { deferPromise, DeferredPromise, mapObjectToArray } from '../utils';
 import {
   Application, ArrayConst, BooleanConst, NumberConst, objectConst, ObjectConst, Package, Role,
-  SourceNode, StringConst, Workspace, sysRoles,
+  SourceNode, StringConst, Workspace, sysRoles, isDocument,
   Process, Function, View, Type, Document, RoleDef, Code, I18N, arrayConst, Icon, PackageUse, PackageUses,
   Task, UseTask, Roles, UseSysRole, UseLocRole, UseRoles, Fields, Field, UseType, BindVar, ProcessVars,
   UseView, UseFunction, BindVars, FunctionLevel, Widget, ViewAction, BasicType, basicTypes, DocFields, DocIndexes,
   DocumentStates, DocActions, DocAction, DocField, DocIndex, DocumentState, UseDocStates, Routes, Pagelets,
-  Pagelet, Menu, MenuItem, MenuItemSeparator, SourceNodeMapped, SourceNodeWithName, isPackage, RouteRedirect, RouteCode, RoleGroup, TsNode, basicTypes3
+  Pagelet, Menu, MenuItem, MenuItemSeparator, SourceNodeMapped, SourceNodeWithName, isPackage, RouteRedirect, RouteCode, RoleGroup, TsNode, basicTypes3, PackageRefs, PackageRef
 } from './types'
 
 export async function loadApp(ws: Workspace, appName: string): Promise<Application> {
@@ -576,8 +577,9 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       if (stmt instanceof ts.ExpressionStatement) {
         const expr1 = stmt.getExpression()
         if (expr1 instanceof ts.CallExpression) {
-          const pkg = await tsCallExpr<Package>(expr1, 'declarePackage')
-          appPackagesDef[pkguri.str].resolve(pkg)
+          const p = await tsCallExpr<Package>(expr1, 'declarePackage')
+          createPkgRefs(p)
+          appPackagesDef[pkguri.str].resolve(p)
           return
         }
       }
@@ -1070,6 +1072,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           kind: 'Document',
           sourceRef: ws.getRef(itmDoc),
           name: docName,
+          refs: null as any,
           nodeMapping: nodeMapping([pkgid.str, 'document', docName.str], () => doc),
           ...dprops
         }
@@ -1169,6 +1172,54 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       return pkg
     }
   }
+
+  function createPkgRefs(finishedPkg: Package) {
+    finishedPkg.refs = {
+      types: createRefs<Type>(finishedPkg, 'types', './'),
+      documents: createRefs<Document>(finishedPkg, 'documents', './'),
+      processes: createRefs<Process>(finishedPkg, 'processes', './'),
+      roles: createRefs<Role>(finishedPkg, 'roles', './'),
+      views: createRefs<View>(finishedPkg, 'views', './'),
+      functions: createRefs<Function>(finishedPkg, 'functions', './'),
+    }
+    function createRefs<T extends SourceNode<any>>(n: SourceNode<any>, kindObj: string, root?: string): PackageRefs<T> {
+      const ret: PackageRefs<T> = {
+        items: [],
+      }
+      listrefs(n, '')
+      return ret
+      function listrefs(sn: SourceNode<any>, ppath: string) {
+        const items: ObjectConst<T> = (sn as any)[kindObj]
+        items.props.forEach((item) => {
+          const ipath = (ppath ? ppath : root || '') + item.key.str
+          const iref = item.val
+          ret.items.push({
+            path: ipath,
+            ref: iref
+          })
+          if (isDocument(iref)) {
+            if (kindObj === 'documents') {
+              iref.refs = {
+                allFields: null as any,
+                primaryFields: createRefs<DocField>(iref, 'primaryFields'),
+                secondaryFields: createRefs<DocField>(iref, 'secondaryFields'),
+                indexes: createRefs<DocIndex>(iref, 'indexes'),
+                states: createRefs<DocumentState>(iref, 'states'),
+                actions: createRefs<DocAction>(iref, 'actions'),
+              }
+              iref.refs.allFields = {
+                items: iref.refs.primaryFields.items.concat(iref.refs.secondaryFields.items)
+              }
+            }
+          }
+        })
+        if (isPackage(sn))
+          sn.uses.props.forEach((u) =>
+            listrefs(u.val.ref(sn.sourceRef), ppath + u.key.str + '/')
+          )
+      }
+    }
+  }
 }
 
 function invalidPackage(uri: StringConst) {
@@ -1182,15 +1233,26 @@ function invalidPackage(uri: StringConst) {
       path: uri
     },
     uses: objectConst(uri.sourceRef),
+    refs: {
+      types: packageRefs(),
+      documents: packageRefs(),
+      processes: packageRefs(),
+      roles: packageRefs(),
+      views: packageRefs(),
+      functions: packageRefs(),
+    },
     types: objectConst(uri.sourceRef),
     documents: objectConst(uri.sourceRef),
     processes: objectConst(uri.sourceRef),
     roles: objectConst(uri.sourceRef),
     views: objectConst(uri.sourceRef),
     functions: objectConst(uri.sourceRef),
-    pagelets: objectConst(uri.sourceRef),
     routes: objectConst(uri.sourceRef),
-    menu: arrayConst(uri.sourceRef),
   }
   return pkg
+  function packageRefs(): PackageRefs<any> {
+    return {
+      items: [],
+    }
+  }
 }

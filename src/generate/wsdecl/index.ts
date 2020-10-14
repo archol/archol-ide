@@ -1,5 +1,5 @@
 import { CodeBlockWriter } from 'ts-morph';
-import { Application, Package, Process, Workspace, Function, Task, View, Type, basicTypes, Document, Fields } from '../../load/types';
+import { Application, Package, Process, Workspace, Function, Task, View, Type, basicTypes, Document, Fields, SourceNodeWithName, SourceNode } from '../../load/types';
 
 export async function generateDeclaration(ws: Workspace) {
   const declFileName = ws.path + '/ws/decl.d.ts'
@@ -68,6 +68,8 @@ declare type ${appname}_Mappings = {
       app.allPackages.map((p) => genDeclPkg(p, w))
     })
   }
+
+
   function genDeclPkg(pkg: Package, w: CodeBlockWriter) {
     const pkgid = pkg.uri.id.str
     w.writeLine(`
@@ -76,8 +78,13 @@ declare interface ${pkgid}_DeclUses {
   uses (packages: AppCVV_PackageUses): ${pkgid}_DeclRoles
 }
 declare interface ${pkgid}_DeclRoles {
-  roles (roles: Roles): ${pkgid}_DeclProcesses
+  roles (roles: ${pkgid}_Decl2Roles): ${pkgid}_DeclProcesses
 }
+declare type ${pkgid}_Decl2Roles = {
+  [roleName: string]: Role | Array<${typePipes(pkg.refs.roles.items.filter((r) => r.ref.kind === 'Role').map((r) => r.path), 'public', quote)}>
+}
+type ${pkgid}_Roles = 'public' | 'anonymous' | 'authenticated' | ${pkgid}_Role | ${pkgid}_Role[]
+type ${pkgid}_Role = ${typePipes(pkg.refs.roles.items.map((r) => r.path), 'public', quote)}
 declare interface ${pkgid}_DeclProcesses {
   processes (processes: {${pkg.processes.props.map((p) => `${p.key.str}: ${pkgid}_process_${p.key.str}_Decl,`).join('\n')}
   }): ${pkgid}_DeclFunctions
@@ -118,10 +125,7 @@ declare interface ${pkgid}_Ref {
   },
 }
 
-type ${pkgid}_Roles = 'public' | 'anonymous' | 'authenticated' | ${pkgid}_Role | ${pkgid}_Role[]
-type ${pkgid}_Role = ${typePipes(pkg.roles.props.map((r) => r.key.str), 'public', quote)}
-
-type ${pkgid}_TypeName = ${typePipes(pkg.types.props.map((t) => t.key.str).concat(Object.keys(basicTypes)), 'string', quote)}
+type ${pkgid}_TypeName = ${typePipes(pkg.refs.types.items.map((t) => t.path).concat(Object.keys(basicTypes)), 'string', quote)}
 interface ${pkgid}_DeclFields {
   [fieldName:string]: {
      description: string
@@ -200,12 +204,16 @@ declare interface ${pkgid}_function_${funcName}_Decl {
   level: FunctionLevel
   input: ${pkgid}_DeclFields,
   output: ${pkgid}_DeclFields,
-  code (vars: { input: ${pkgid}_function_${funcName}_DeclRef, output: ${pkgid}_function_${funcName}_DeclRef }): void
+  code (vars: { input: ${pkgid}_function_${funcName}_InputRef, output: ${pkgid}_function_${funcName}_OutputRef }): void
 }
-declare interface ${pkgid}_function_${funcName}_Ref {
+declare type ${pkgid}_function_${funcName}_Ref = (input: ${pkgid}_function_${funcName}_InputRef, output: ${pkgid}_function_${funcName}_OutputRef) => Promise<void>
+declare interface ${pkgid}_function_${funcName}_Use {
+  function: ${typePipes(pkg.refs.functions.items.map(f => f.path), '', quote)}
+}
+declare interface ${pkgid}_function_${funcName}_InputRef {
   x
 }
-declare interface ${pkgid}_function_${funcName}_Use {
+declare interface ${pkgid}_function_${funcName}_OutputRef {
   x
 }
 `.trimStart())
@@ -246,8 +254,12 @@ declare interface ${pkgid}_document_${docName}_Decl {
   }
   primaryFields: ${pkgid}_DeclFields
   secondaryFields: ${pkgid}_DeclFields
-  indexes: { [name: string]: Itest_archol_com_hwDOCOLNAMEnomes[] }
-  actions: Itest_archol_com_hwDOCACTIONSnomes  
+  indexes: { [name: string]: ${pkgid}_document_${docName}_Fieldname[] }
+  actions: ${pkgid}_document_${docName}_DeclActions
+}
+declare type ${pkgid}_document_${docName}_Fieldname = ${typePipes(doc.refs.allFields.items.map((f) => f.path), '', quote)}
+declare interface ${pkgid}_document_${docName}_DeclActions {
+  x
 }
 declare interface ${pkgid}_document_${docName}_Ref {
   x
@@ -271,10 +283,6 @@ declare type I18N = string | {
 declare type Lang = 'pt' | 'en'
 
 declare interface BuilderConfig {  
-}
-
-declare type Roles = {
-  [roleName: string]: Role
 }
 
 declare interface Role {

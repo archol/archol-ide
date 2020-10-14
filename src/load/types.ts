@@ -44,6 +44,8 @@ export interface BooleanConst extends SourceNode<'BooleanConst'> {
 export interface ObjectConst<T extends SourceNode<any> = SourceNode<any>> extends SourceNode<'ObjectConst'> {
   props: Array<{ key: StringConst, val: T }>
   get(key: string | StringConst): T | undefined
+  keys(): string[]
+  map<U>(callbackfn: (value: T, key: StringConst) => U, thisArg?: any): U[];
 }
 
 export interface ArrayConst<T extends SourceNode<any> = SourceNode<any>> extends SourceNode<'ArrayConst'> {
@@ -123,15 +125,21 @@ export interface Package extends SourceNode<'Package'> {
   },
   redefines?: StringConst
   uses: PackageUses,
+  refs: {
+    types: PackageRefs<Type>,
+    documents: PackageRefs<Document>,
+    processes: PackageRefs<Process>,
+    roles: PackageRefs<Role>,
+    views: PackageRefs<View>,
+    functions: PackageRefs<Function>,
+  }
   types: Types,
   documents: Documents,
   processes: Processes,
   roles: Roles
   views: Views,
   functions: Functions,
-  pagelets: Pagelets
   routes: Routes
-  menu: Menu
 }
 
 export type Roles = ObjectConst<Role>
@@ -249,7 +257,7 @@ export interface Type extends SourceNodeMapped<'Type'> {
 
 export interface UseType extends SourceNode<'UseType'> {
   type: StringConst
-  ref(sourceRef: TsNode|null): Type
+  ref(sourceRef: TsNode | null): Type
 }
 
 export type Fields = ObjectConst<Field>
@@ -267,6 +275,10 @@ export interface Index extends SourceNode<'Index'> {
 
 export type Documents = ObjectConst<Document>
 
+export function isDocument(node: SourceNode<any>): node is Document {
+  return node.kind === 'Document'
+}
+
 export interface Document extends SourceNodeMapped<'Document'> {
   identification: StringConst<'Centralized' | 'ByPeer'>
   caption: I18N
@@ -276,6 +288,14 @@ export interface Document extends SourceNodeMapped<'Document'> {
   persistence: StringConst<'session' | 'persistent'>
   states: DocumentStates
   actions: DocActions
+  refs: {
+    allFields: PackageRefs<DocField>
+    primaryFields: PackageRefs<DocField>
+    secondaryFields: PackageRefs<DocField>
+    indexes: PackageRefs<DocIndex>
+    states: PackageRefs<DocumentState>
+    actions: PackageRefs<DocAction>
+  }
 }
 
 export type DocActions = ObjectConst<DocAction>
@@ -324,6 +344,11 @@ export interface Process extends SourceNodeMapped<'Process'> {
   vars: ProcessVars
   roles: UseRoles
   volatile: BooleanConst
+  // refs: {
+  //   tasks: PackageRefs<Tasks>
+  //   vars: PackageRefs<ProcessVars>
+  //   roles: PackageRefs<UseRoles>
+  //   }
 }
 
 export interface ProcessVars extends SourceNode<'ProcessVars'> {
@@ -496,6 +521,12 @@ export function objectConst<T extends SourceNode<any>>(sourceRef: SourceRef) {
       const f = props.filter((p) => p.key.str === key)[0]
       return f && f.val
     },
+    map(fn) {
+      return props.map((p) => fn(p.val, p.key))
+    },
+    keys() {
+      return props.map((p) => p.key.str)
+    },
     add(key, val) {
       props.push({ key, val })
     }
@@ -511,4 +542,13 @@ export function arrayConst<T extends SourceNode<any>>(sourceRef: SourceRef) {
     items,
   }
   return ret
+}
+
+export interface PackageRefs<T extends SourceNode<any>> {
+  items: Array<PackageRef<T>>
+}
+
+export interface PackageRef<T extends SourceNode<any>> {
+  path: string
+  ref: T
 }
