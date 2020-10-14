@@ -166,7 +166,7 @@ ${['input', 'output', 'local'].map((scope) => `
 declare interface ${pkgid}_process_${procName}_InstanceVars_${scope} {
   ${function () {
           const fields: Fields = (process.vars as any)[scope]
-          return fields.props.map((f) => f.key.str + ': ' + f.val.type.ref(f.key).base).join('\n')
+          return fields.props.map((f) => f.key.str + ': ' + f.val.type.ref(null).base.kind).join('\n')
         }()}
 }`).join('\n')}
 declare type ${pkgid}_process_${procName}_DeclTasks = {

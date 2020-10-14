@@ -50,7 +50,7 @@ export interface ArrayConst<T extends SourceNode<any> = SourceNode<any>> extends
   items: T[]
 }
 
-export type TsNode = ts.Node | ts.SourceFile | SourceRef | SourceNode<any>
+export type TsNode = ts.Node | ts.SourceFile | SourceRef | SourceNode<any> | Array<ts.Node | ts.SourceFile | SourceRef | SourceNode<any>>
 
 export interface Workspace extends SourceNode<'Workspace'> {
   path: string
@@ -61,15 +61,16 @@ export interface Workspace extends SourceNode<'Workspace'> {
   diagnostics: {
     [id: string]: {
       msg: string,
-      sourceRef: SourceRef
+      sourceRefs: SourceRef[]
       kind: 'warn' | 'error' | 'fatal'
       archol: Error
     }
   }
-  warn(errId: string, tsNode: TsNode | null, errMsg?: string): void
-  error(errId: string, tsNode: TsNode | null, errMsg?: string): void
-  fatal(errId: string, tsNode: TsNode | null, errMsg?: string): Error
+  warn(errId: string, tsNode: TsNode | TsNode[], errMsg?: string): void
+  error(errId: string, tsNode: TsNode | TsNode[], errMsg?: string): void
+  fatal(errId: string, tsNode: TsNode | TsNode[], errMsg?: string): Error
   getRef(tsNode: TsNode): SourceRef
+  getRefs(tsNode: TsNode | TsNode[]): SourceRef[]
 }
 
 export interface Application extends SourceNode<'Application'> {
@@ -152,6 +153,89 @@ export const basicTypes = {
   date: true
 }
 
+export const unkownErrorPos: SourceRef = {
+  file: 'unkown error position',
+  start: { pos: 0, row: 0, col: 0 },
+  end: { pos: 0, row: 0, col: 0 },
+}
+
+export const basicTypes2: {
+  [k in keyof typeof basicTypes]: BasicType
+} = {
+  string: {
+    kind: 'string',
+    sourceRef: unkownErrorPos,
+  },
+  number: {
+    kind: 'number',
+    sourceRef: unkownErrorPos,
+  },
+  boolean: {
+    kind: 'boolean',
+    sourceRef: unkownErrorPos,
+  },
+  date: {
+    kind: 'date',
+    sourceRef: unkownErrorPos,
+  },
+}
+export const basicTypes3: {
+  [k in keyof typeof basicTypes]: Type
+} = {
+  string: {
+    kind: 'Type',
+    sourceRef: unkownErrorPos,
+    base: basicTypes2.string,
+    nodeMapping: {
+      id: 'string'
+    },
+    name: {
+      kind: 'StringConst',
+      sourceRef: unkownErrorPos,
+      str: 'string'
+    }
+  },
+  number: {
+    kind: 'Type',
+    sourceRef: unkownErrorPos,
+    base: basicTypes2.number,
+    nodeMapping: {
+      id: 'number'
+    },
+    name: {
+      kind: 'StringConst',
+      sourceRef: unkownErrorPos,
+      str: 'number'
+    }
+  },
+  boolean: {
+    kind: 'Type',
+    sourceRef: unkownErrorPos,
+    base: basicTypes2.boolean,
+    nodeMapping: {
+      id: 'boolean'
+    },
+    name: {
+      kind: 'StringConst',
+      sourceRef: unkownErrorPos,
+      str: 'boolean'
+    }
+  },
+  date: {
+    kind: 'Type',
+    sourceRef: unkownErrorPos,
+    base: basicTypes2.date,
+    nodeMapping: {
+      id: 'date'
+    },
+    name: {
+      kind: 'StringConst',
+      sourceRef: unkownErrorPos,
+      str: 'date'
+    }
+  }
+}
+
 export interface BasicType extends SourceNode<keyof typeof basicTypes> {
 
 }
@@ -165,7 +249,7 @@ export interface Type extends SourceNodeMapped<'Type'> {
 
 export interface UseType extends SourceNode<'UseType'> {
   type: StringConst
-  ref(sourceRef: TsNode): Type
+  ref(sourceRef: TsNode|null): Type
 }
 
 export type Fields = ObjectConst<Field>

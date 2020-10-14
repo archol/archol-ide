@@ -1,22 +1,17 @@
 import { Node, Project, SourceFile } from 'ts-morph'
 import { loadApp } from './app'
-import { SourceRef, TsNode, Workspace } from './types'
+import { SourceRef, TsNode, Workspace, unkownErrorPos } from './types'
 
 export async function loadWorkspace(path: string): Promise<Workspace> {
   const ts = new Project({
     tsConfigFilePath: path + '/ws/tsconfig.json'
   })
-  const wsRef: SourceRef = {
-    file: path + '/ws/tsconfig.json',
-    start: { pos: 0, row: 0, col: 0 },
-    end: { pos: 0, row: 0, col: 0 },
-  }
   const ws: Workspace = {
     kind: "Workspace",
-    sourceRef: wsRef,
+    sourceRef: unkownErrorPos,
     defaultLang: {
       kind: 'StringConst',
-      sourceRef: wsRef,
+      sourceRef: unkownErrorPos,
       str: 'pt_BR'
     },
     path: path,
@@ -28,63 +23,67 @@ export async function loadWorkspace(path: string): Promise<Workspace> {
       return loadApp(ws, appName)
     },
     diagnostics: {},
-    warn(errId: string, tsNode: TsNode, errMsg?: string): void {
+    warn(errId: string, tsNode: TsNode | TsNode[], errMsg?: string): void {
       ws.diagnostics[errId] = {
         msg: errMsg || errId,
-        sourceRef: ws.getRef(tsNode) || wsRef,
+        sourceRefs: ws.getRefs(tsNode) || [unkownErrorPos],
         kind: 'warn',
         archol: new Error(errMsg || errId)
       }
     },
-    error(errId: string, tsNode: TsNode, errMsg?: string): void {
+    error(errId: string, tsNode: TsNode | TsNode[], errMsg?: string): void {
       ws.diagnostics[errId] = {
         msg: errMsg || errId,
-        sourceRef: ws.getRef(tsNode) || wsRef,
+        sourceRefs: ws.getRefs(tsNode) || [unkownErrorPos],
         kind: 'error',
         archol: new Error(errMsg || errId)
       }
     },
-    fatal(errId: string, tsNode: TsNode, errMsg?: string): Error {
+    fatal(errId: string, tsNode: TsNode | TsNode[], errMsg?: string): Error {
       ws.diagnostics[errId] = {
         msg: errMsg || errId,
-        sourceRef: ws.getRef(tsNode),
+        sourceRefs: ws.getRefs(tsNode),
         kind: 'fatal',
         archol: new Error(errMsg || errId)
       }
       return new Error(errMsg || errId)
     },
-    getRef(tsNode: any): SourceRef {
-      if (tsNode.file && tsNode.start && tsNode.end) return tsNode as any
-      if (tsNode.kind && tsNode.sourceRef) return tsNode.sourceRef
-      if (tsNode instanceof Node) {
-        const start = tsNode.getSourceFile().getLineAndColumnAtPos(tsNode.getStart())
-        const end = tsNode.getSourceFile().getLineAndColumnAtPos(tsNode.getEnd())
+    getRefs(tsNode: any): SourceRef[] {
+      if (Array.isArray(tsNode)) return tsNode.map(ws.getRef)
+      else return [ws.getRef(tsNode)]
+    },
+    getRef(tsNode2: any): SourceRef {
+      if (tsNode2.file && tsNode2.start && tsNode2.end) return tsNode2 as any
+      if (tsNode2.kind && tsNode2.sourceRef) return tsNode2.sourceRef
+      if (tsNode2 instanceof Node) {
+        const start = tsNode2.getSourceFile().getLineAndColumnAtPos(tsNode2.getStart())
+        const end = tsNode2.getSourceFile().getLineAndColumnAtPos(tsNode2.getEnd())
         return {
-          file: tsNode.getSourceFile().getFilePath(),
+          file: tsNode2.getSourceFile().getFilePath(),
           start: {
-            pos: tsNode.getStart(),
+            pos: tsNode2.getStart(),
             row: start.line,
             col: start.column,
           },
           end: {
-            pos: tsNode.getEnd(),
+            pos: tsNode2.getEnd(),
             row: end.line,
             col: end.column,
           },
         }
       }
-      if (tsNode instanceof SourceFile) {
-        const start = tsNode.getLineAndColumnAtPos(tsNode.getStart())
-        const end = tsNode.getLineAndColumnAtPos(tsNode.getEnd())
+      if (tsNode2 instanceof SourceFile) {
+        const start = tsNode2.getLineAndColumnAtPos(tsNode2.getStart())
+        const end = tsNode2.getLineAndColumnAtPos(tsNode2.getEnd())
         return {
-          file: tsNode.getFilePath(),
+          file: tsNode2.getFilePath(),
           start: {
-            pos: tsNode.getStart(),
+            pos: tsNode2.getStart(),
             row: start.line,
             col: start.column,
           },
           end: {
-            pos: tsNode.getEnd(),
+            pos: tsNode2.getEnd(),
             row: end.line,
             col: end.column,
           },

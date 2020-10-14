@@ -8,7 +8,7 @@ import {
   Task, UseTask, Roles, UseSysRole, UseLocRole, UseRoles, Fields, Field, UseType, BindVar, ProcessVars,
   UseView, UseFunction, BindVars, FunctionLevel, Widget, ViewAction, BasicType, basicTypes, DocFields, DocIndexes,
   DocumentStates, DocActions, DocAction, DocField, DocIndex, DocumentState, UseDocStates, Routes, Pagelets,
-  Pagelet, Menu, MenuItem, MenuItemSeparator, SourceNodeMapped, SourceNodeWithName, isPackage, RouteRedirect, RouteCode, RoleGroup, TsNode
+  Pagelet, Menu, MenuItem, MenuItemSeparator, SourceNodeMapped, SourceNodeWithName, isPackage, RouteRedirect, RouteCode, RoleGroup, TsNode, basicTypes3
 } from './types'
 
 export async function loadApp(ws: Workspace, appName: string): Promise<Application> {
@@ -620,6 +620,70 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
 
     return { uses }
 
+    function packageGetRef<KIND extends string, T extends SourceNodeMapped<KIND>>(opts: {
+      refId: StringConst,
+      kind: KIND,
+      where: keyof Package,
+      isInternal: (str: string) => T | false
+      invalid: (str: string) => Omit<Omit<T, 'sourceRef'>, 'kind'>
+    }): (sourceRefGet: TsNode) => T {
+      return (sourceRefGet: TsNode | null) => {
+        const internal = opts.isInternal(opts.refId.str)
+        if (internal) return internal as any
+
+        let tn = opts.refId.str
+        if (tn.includes('/')) {
+          const parts = tn.split('/')
+          if (parts.length === 2) {
+            const t = tryPkg(parts[0], parts[1])
+            if (t) return t
+          }
+        } else tn = pkgid.str + '.type.' + tn
+
+        const inv: T = {
+          ...opts.invalid(tn),
+          kind: opts.kind as any,
+          sourceRef: sourceRefGet
+        } as any
+        return inv
+        function tryPkg(pkgalias: string, typename: string): T | undefined {
+          let p: Package | undefined = pkg
+          if (pkgalias !== '.') {
+            const pa = pkg.uses.get(pkgalias)
+            p = pa && pa.ref(opts.refId)
+          }
+          if (!p) return
+          const pp = (p as any)[opts.where]
+          if (pp) return pp.get(typename)
+        }
+        //   return getMapped(sourceRef, tn, 'Type', def)
+        //   function def(base?: string): Type {
+        //     return {
+        //       kind: 'Type',
+        //       name: str,
+        //       nodeMapping: {
+        //         id: tn
+        //       },
+        //       sourceRef: ws.getRef(sourceRef),
+        //       base: (base || ('invalid_type_' + tn)) as any
+        //     }
+        //   }
+        // }
+        // sourceRef: TsNode, id: string, kind: KIND, def: () => T): T {
+        //   let r: any = mappingList[id]
+        //   if (!r) ws.error('nao existe ' + id, sourceRef)
+        //   else if (r.kind !== kind) ws.error(' esperado ' + kind + ' em' + id, sourceRef)
+        //   if (!r) {
+        //     r = def()
+        //     if (!r.kind) r.kind = kind
+        //     if (!r.sourceRef) r.kind = ws.getRef(sourceRef)
+        //   }
+        //   return r
+        // }
+
+      }
+    }
+
     function parseUseRoles(argUseRoles: ts.Node): UseRoles {
       if (argUseRoles instanceof ts.ArrayLiteralExpression) {
         const el = argUseRoles.getElements()
@@ -680,42 +744,21 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     }
     function parseUseType(argUseType: ts.Node): UseType {
       const str = parseStrArg(argUseType)
-      str.str = str.str.replace(/^\.\//g, pkgid + '/')
       const ret: UseType = {
         kind: 'UseType',
         sourceRef: str.sourceRef,
         type: str,
-        ref(sourceRef) {
-          let tn = str.str
-          const b = (basicTypes as any)[tn]
-          if (b) return def(tn)
-          if (tn.includes('.')) {
-            const parts = tn.split('.')
-            if (parts.length === 2) {
-              const [pkgalias, typename] = parts
-              if (pkgalias === '.') tn = pkgid.str + '.type.' + tn
-              else {
-                const u = pkg.uses.get(pkgalias)
-                if (u) {
-                  const t = u.ref(str).types.get(typename)
-                  if (t) return t
-                }
-              }
-            }
-          } else tn = pkgid.str + '.type.' + tn
-          return getMapped(sourceRef, tn, 'Type', def)
-          function def(base?: string): Type {
+        ref: packageGetRef({
+          kind: 'Type',
+          refId: str,
+          where: 'types',
+          isInternal: (s) => (basicTypes3 as any)[s],
+          invalid(s) {
             return {
-              kind: 'Type',
-              name: str,
-              nodeMapping: {
-                id: tn
-              },
-              sourceRef: ws.getRef(sourceRef),
-              base: (base || ('invalid_type_' + tn)) as any
+              base: 'invalid_' + s
             }
           }
-        }
+        })
       }
       return ret
     }
