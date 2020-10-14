@@ -8,13 +8,13 @@ import {
   Task, UseTask, Roles, UseSysRole, UseLocRole, UseRoles, Fields, Field, UseType, BindVar, ProcessVars,
   UseView, UseFunction, BindVars, FunctionLevel, Widget, ViewAction, BasicType, basicTypes, DocFields, DocIndexes,
   DocumentStates, DocActions, DocAction, DocField, DocIndex, DocumentState, UseDocStates, Routes, Pagelets,
-  Pagelet, Menu, MenuItem, MenuItemSeparator, SourceNodeMapped, SourceNodeWithName, isPackage
+  Pagelet, Menu, MenuItem, MenuItemSeparator, SourceNodeMapped, SourceNodeWithName, isPackage, RouteRedirect, RouteCode, RoleGroup
 } from './types'
 
 export async function loadApp(ws: Workspace, appName: string): Promise<Application> {
   const appsource = ws.ts.getSourceFiles().filter(s => s.getBaseName() === appName + '.app.ts')[0]
 
-  if (!appsource) ws.fatal('Aplicação não encontrada: ' + appName, ws)
+  if (!appsource) ws.fatal('Aplicação não encontrada: ' + appName + debugFiles(), ws)
   const mappingList: string[] = []
   const appPackagesDef: { [pkgFullUri: string]: DeferredPromise<Package> } = {}
   const appPackages: { [pkgFullUri: string]: Package } = {}
@@ -30,6 +30,10 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     }
   }
   throw ws.fatal(appsource.getFilePath() + ' comando deveria ser declareApplication ou declarePackage', appsource)
+
+  function debugFiles() {
+    return ' debugfiles=' + ws.ts.getSourceFiles().map(s => s.getFilePath().substr(ws.path.length + 4)).join()
+  }
 
   async function tsCallExpr<T>(expr1: ts.CallExpression, valid: string): Promise<T> {
     const fnexpr = expr1.getExpression()
@@ -90,6 +94,14 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       (arg instanceof ts.TaggedTemplateExpression)
   }
 
+  function isObjArg(arg: ts.Node) {
+    return (arg instanceof ts.ObjectLiteralExpression)
+  }
+
+  function isArrArg(arg: ts.Node) {
+    return (arg instanceof ts.ArrayLiteralExpression)
+  }
+
   function parseStrArg<T extends string = string>(arg: ts.Node): StringConst<T> {
     let ret: StringConst<T> = undefined as any
     if (arg instanceof ts.StringLiteral) ret = {
@@ -104,6 +116,10 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     }
     else ws.error(arg.getSourceFile().getFilePath() + ' ' + arg.getText() + ' string é esperada', arg)
     return ret
+  }
+
+  function parserForStrArg<T extends string>() {
+    return (arg: ts.Node) => parseStrArg<T>(arg)
   }
 
   function parseBasicType(arg: ts.Node): BasicType {
@@ -170,7 +186,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         params: ts.ParameterDeclaration[],
         retType: ts.Type,
         body: ts.Statement[]): void {
-        if (typedParams) ws.error('não suporta typedparams', argCode)
+        if (typedParams?.length) ws.error('não suporta typedparams ', argCode)
         if (validate) ws.fatal('TODO', argCode)
         ret = {
           kind: 'Code',
@@ -390,11 +406,12 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
   }
 
   function parsePackageUses(arg: ts.Node): PackageUses {
+    console.log('parsePackageUses', arg.getText())
     let ret = arrayConst<PackageUse>(ws.getRef(arg))
     parseObjArg(arg, {
       '*'(argUri, alias) {
         const uri = parseStrArg(argUri)
-        const pkg = loadPkg(uri)
+        loadPkg(uri)
         const pkguse: PackageUse = {
           kind: 'PackageUse',
           sourceRef: ws.getRef(argUri),
@@ -423,18 +440,26 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
   }
 
   function parseRoutes(argRoutes: ts.Node): Routes {
-    return parseColObjArg(argRoutes, (itmRoute) => {
-      const rprops = parseObjArg(itmRoute, {
-        path: parseStrArg,
-        code: parserForCode(),
-        redirect: parseStrArg,
-      })
-      const route: Route = {
-        kind: rprops.code ? 'RouteCode' : 'RouteRedirect',
-        sourceRef: ws.getRef(itmRoute),
-        ...rprops
-      } as any
-      return route
+    return parseColObjArg(argRoutes, (itmRoute, itmName) => {
+      if (isStrArg(itmRoute)) {
+        const redirect = parseStrArg(itmRoute)
+        const rr: RouteRedirect = {
+          kind: 'RouteRedirect',
+          sourceRef: redirect.sourceRef,
+          path: itmName,
+          redirect
+        }
+        return rr
+      } else {
+        const code = parserForCode()(itmRoute)
+        const rc: RouteCode = {
+          kind: 'RouteCode',
+          sourceRef: code.sourceRef,
+          path: itmName,
+          code
+        }
+        return rc
+      }
     })
   }
 
@@ -489,18 +514,20 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
   function parseRoles(parent: StringConst) {
     return (arg: ts.Node, sys: boolean): Roles => {
       const roles = parseColObjArg(arg, (itm, name) => {
-        const rprops = parseObjArg(itm, {
-          description: parseI18N,
-          icon: parseIcon,
-        })
-        const role: Role = {
-          kind: 'Role',
-          sourceRef: ws.getRef(itm),
-          nodeMapping: nodeMapping([parent, name], 'Role'),
-          name,
-          ...rprops
-        }
-        return role;
+        if (isStrArg(itm)) {
+          const rprops = parseObjArg(itm, {
+            description: parseI18N,
+            icon: parseIcon,
+          })
+          const role: Role = {
+            kind: 'Role',
+            sourceRef: ws.getRef(itm),
+            nodeMapping: nodeMapping([parent, name], 'Role'),
+            name,
+            ...rprops
+          }
+          return role;
+        } else return parserForArrArg(parseStrArg)(itm) as RoleGroup
       })
       sysRoles.forEach((dr) => {
         const er = roles.get(dr)
@@ -511,10 +538,10 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     }
   }
 
-  async function loadPkg(pkguri: StringConst): Promise<Package> {
+  async function loadPkg(pkguri: StringConst): Promise<void> {
 
     let pkgdecl = appPackagesDef[pkguri.str]
-    if (pkgdecl) return pkgdecl.promise
+    if (pkgdecl) return
 
     appPackagesDef[pkguri.str] = deferPromise()
     try {
@@ -522,7 +549,12 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       const expectedFile = ws.path + '/ws/' + pkguri.str + '.pkg.ts'
       const pkgsource = ws.ts.getSourceFiles().filter(s => s.getFilePath() === expectedFile)[0]
 
-      if (!pkgsource) ws.fatal('Pacote não encontrado: ' + appName, pkguri)
+      if (!pkgsource) {
+        ws.error('Pacote não encontrado: ' + pkguri.str + debugFiles(), pkguri)
+        appPackages[pkguri.str] = invalidPackage(pkguri)
+        appPackagesDef[pkguri.str].resolve(appPackages[pkguri.str])
+        return
+      }
 
       const stmts = pkgsource.getStatements();
       if (stmts.length != 1) ws.fatal(pkgsource.getFilePath() + ' só deveria ter uma declaração', pkgsource)
@@ -532,7 +564,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         if (expr1 instanceof ts.CallExpression) {
           const pkg = await tsCallExpr<Package>(expr1, 'declarePackage')
           appPackagesDef[pkguri.str].resolve(pkg)
-          return pkg
+          return
         }
       }
       throw ws.fatal(pkgsource.getFilePath() + ' comando deveria ser declareApplication ou declarePackage', pkgsource)
@@ -603,8 +635,8 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         if (sysRoles.includes(str.str)) {
           const rs: UseSysRole = {
             kind: 'UseSysRole',
-            sourceRef: ws.getRef(argUseRoles),
-            name: str,
+            sourceRef: str.sourceRef,
+            role: str,
             ref() {
               const l = appsysroles.get(str)
               if (!l) throw ws.error('Role não encontrado: ' + str.str, str)
@@ -615,12 +647,12 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         }
         const ret: UseLocRole = {
           kind: 'UseLocRole',
-          sourceRef: ws.getRef(argUseRoles),
+          sourceRef: str.sourceRef,
           roles: {
             kind: 'ArrayConst',
-            sourceRef: ws.getRef(argUseRoles),
+            sourceRef: str.sourceRef,
             items: [
-              parseStrArg(argUseRoles)
+              str
             ]
           },
           ref() {
@@ -637,7 +669,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       const ret: UseType = {
         kind: 'UseType',
         sourceRef: str.sourceRef,
-        typepath: str,
+        type: str,
         ref() {
           const t = pkg.types.get(str)
           if (!t) throw ws.fatal('Tipo inválido: ' + str.str, str.sourceRef)
@@ -649,6 +681,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     function parseFields(argf: ts.Node): Fields {
       return parseColObjArg(argf, (itm, name) => {
         const fprops = parseObjArg(itm, {
+          description: parseStrArg,
           type: parseUseType,
         })
         const field: Field = {
@@ -661,15 +694,16 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       })
     }
     async function uses(expr1Uses: ts.CallExpression) {
-      const args = expr1Uses.getArguments()
-      if (args.length !== 1) ws.error(expr1Uses.getSourceFile().getFilePath() + ' uses precisa de um parametro', expr1Uses)
-      pkg.uses = await packageUsesWaitter(parsePackageUses(args[0]))
+      console.log('pkg ', pkgid, expr1Uses.getText())
+      const argsUses = expr1Uses.getArguments()
+      if (argsUses.length !== 1) ws.error(expr1Uses.getSourceFile().getFilePath() + ' uses precisa de um parametro', expr1Uses)
+      pkg.uses = await packageUsesWaitter(parsePackageUses(argsUses[0]))
       return { roles }
     }
     function roles(expr1Roles: ts.CallExpression) {
       const args = expr1Roles.getArguments()
       if (args.length !== 1) ws.error(expr1Roles.getSourceFile().getFilePath() + ' roles precisa de um parametro', expr1Roles)
-      pkg.roles = parseRoles(pkgid)(args[0], true)
+      pkg.roles = parseRoles(pkgid)(args[0], false)
       return { processes }
     }
     function processes(expr1Process: ts.CallExpression) {
@@ -717,7 +751,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             return vars
           }
           function parseBindVars(argBindVars: ts.Node): BindVars {
-            return parserForArrArg((itmBindVar) => {
+            return parseColObjArg(argBindVars, (itmBindVar) => {
               const str = parseStrArg(itmBindVar)
               const b: BindVar = {
                 kind: 'BindVar',
@@ -728,7 +762,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
                 }
               }
               return b
-            })(argBindVars)
+            })
           }
           function parseTasks(argTasks: ts.Node) {
             return parseColObjArg(argTasks, (val, taskname) => {
@@ -750,14 +784,14 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             })
           }
           function parseUseTask(argUseTask: ts.Node): UseTask {
-            const name = parseStrArg(argUseTask)
+            const taskname = parseStrArg(argUseTask)
             const ret: UseTask = {
               kind: 'UseTask',
               sourceRef: ws.getRef(argUseTask),
-              name,
+              task: taskname,
               ref() {
-                const r = process.tasks.get(name)
-                if (!r) throw ws.error('Tarefa não encontrada: ' + name, name)
+                const r = process.tasks.get(taskname)
+                if (!r) throw ws.error('Tarefa não encontrada: ' + taskname, taskname)
                 return r
               }
             }
@@ -777,7 +811,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           }
           function parseUseView(argUseView: ts.Node): UseView {
             const puseview = parseObjArg(argUseView, {
-              name: parseStrArg,
+              view: parseStrArg,
               bind: parseBindVars
             })
             const r: UseView = {
@@ -785,8 +819,8 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
               sourceRef: ws.getRef(argUseView),
               ...puseview,
               ref() {
-                const v = pkg.views.get(puseview.name)
-                if (!v) throw ws.fatal('view não encontrada: ' + puseview.name.str, puseview.name)
+                const v = pkg.views.get(puseview.view)
+                if (!v) throw ws.fatal('view não encontrada: ' + puseview.view.str, puseview.view)
                 return v
               }
             }
@@ -794,7 +828,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           }
           function parseUseFunction(argUseFunction: ts.Node): UseFunction {
             const pusefunc = parseObjArg(argUseFunction, {
-              name: parseStrArg,
+              function: parseStrArg,
               input: parseBindVars,
               output: parseBindVars,
             })
@@ -803,8 +837,8 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
               sourceRef: ws.getRef(argUseFunction),
               ...pusefunc,
               ref() {
-                const f = pkg.functions.get(pusefunc.name)
-                if (!f) throw ws.fatal('view não encontrada: ' + pusefunc.name.str, pusefunc.name)
+                const f = pkg.functions.get(pusefunc.function)
+                if (!f) throw ws.fatal('function não encontrada: ' + pusefunc.function.str, pusefunc.function)
                 return f
               }
             }
@@ -878,7 +912,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         const wprops = parseObjArg(argWidget, {
           content: parserForArrArg(parseWidget),
           caption: parseI18N,
-          readonly: parseBolArg,
+          model: parserForStrArg<"show" | "edit">(),
           field: parseStrArg,
           type: parseUseType
         })
@@ -939,6 +973,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       pkg.documents = parseColObjArg(argsDoc[0], (itmDoc, docName) => {
         const dprops = parseObjArg(itmDoc, {
           caption: parseI18N,
+          identification: parserForStrArg<'Centralized' | 'ByPeer'>(),
           primaryFields: parseDocFields,
           secondaryFields: parseDocFields,
           indexes: parseDocIndexes,
@@ -977,15 +1012,13 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           return parseColObjArg(argIndexes, parseDocIndex)
         }
         function parseDocIndex(argIndex: ts.Node, indexname: StringConst): DocIndex {
-          const iprops = parseObjArg(argIndex, {
-            fields: parserForArrArg(parseStrArg)
-          })
+          const fields = parserForArrArg(parseStrArg)(argIndex)
           const index: DocIndex = {
             kind: 'DocIndex',
             sourceRef: ws.getRef(argIndex),
             name: indexname,
             nodeMapping: nodeMapping([pkgid, docName, indexname], 'DocIndex'),
-            ...iprops
+            fields
           }
           return index
         }
@@ -1055,3 +1088,26 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
   }
 }
 
+function invalidPackage(uri: StringConst) {
+  const pkg: Package = {
+    kind: 'Package',
+    sourceRef: uri.sourceRef,
+    uri: {
+      id: uri,
+      full: uri,
+      ns: uri,
+      path: uri
+    },
+    uses: arrayConst(uri.sourceRef),
+    types: objectConst(uri.sourceRef),
+    documents: objectConst(uri.sourceRef),
+    processes: objectConst(uri.sourceRef),
+    roles: objectConst(uri.sourceRef),
+    views: objectConst(uri.sourceRef),
+    functions: objectConst(uri.sourceRef),
+    pagelets: objectConst(uri.sourceRef),
+    routes: objectConst(uri.sourceRef),
+    menu: arrayConst(uri.sourceRef),
+  }
+  return pkg
+}

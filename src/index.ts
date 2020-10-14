@@ -17,9 +17,15 @@ const build = debounce(async function build() {
       generateApp(ws, app)
     ])
 
+    Object.keys(ws.diagnostics).forEach((m) => {
+      const d = ws.diagnostics[m]
+      console.log(d.kind, d.sourceRef.file + ':' + d.sourceRef.start.row + ':' + d.sourceRef.start.col, m)
+      console.log('  ' + (d.archol.stack || d.archol).toString())
+    }
+    )
     console.log('---')
   } catch (e) {
-    console.log('--- ERRO')
+    console.log('--- ERRO', e)
   }
 }, 700)
 

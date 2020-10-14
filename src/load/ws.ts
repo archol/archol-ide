@@ -9,7 +9,7 @@ export async function loadWorkspace(path: string): Promise<Workspace> {
   const wsRef: SourceRef = {
     file: path + '/ws/tsconfig.json',
     start: { pos: 0, row: 0, col: 0 },
-    end: { pos: 0, row: 0 },
+    end: { pos: 0, row: 0, col: 0 },
   }
   const ws: Workspace = {
     kind: "Workspace",
@@ -28,54 +28,67 @@ export async function loadWorkspace(path: string): Promise<Workspace> {
       return loadApp(ws, appName)
     },
     diagnostics: {},
-    warn(errId: string, tsNode: TsNode | null, errMsg?: string): void {
+    warn(errId: string, tsNode: TsNode, errMsg?: string): void {
       ws.diagnostics[errId] = {
         msg: errMsg || errId,
-        sourceRef: tsNode && ws.getRef(tsNode),
-        kind: 'warn'
+        sourceRef: ws.getRef(tsNode) || wsRef,
+        kind: 'warn',
+        archol: new Error(errMsg || errId)
       }
     },
-    error(errId: string, tsNode: TsNode | null, errMsg?: string): void {
+    error(errId: string, tsNode: TsNode, errMsg?: string): void {
       ws.diagnostics[errId] = {
         msg: errMsg || errId,
-        sourceRef: tsNode && ws.getRef(tsNode),
-        kind: 'error'
+        sourceRef: ws.getRef(tsNode) || wsRef,
+        kind: 'error',
+        archol: new Error(errMsg || errId)
       }
     },
-    fatal(errId: string, tsNode: TsNode | null, errMsg?: string): Error {
+    fatal(errId: string, tsNode: TsNode, errMsg?: string): Error {
       ws.diagnostics[errId] = {
         msg: errMsg || errId,
-        sourceRef: tsNode && ws.getRef(tsNode),
-        kind: 'fatal'
+        sourceRef: ws.getRef(tsNode),
+        kind: 'fatal',
+        archol: new Error(errMsg || errId)
       }
       return new Error(errMsg || errId)
     },
     getRef(tsNode: any): SourceRef {
-      if (Object.keys(tsNode).sort().join(',') === 'end,file,start') return tsNode
-      if (tsNode.sourceRef && Object.keys(tsNode.sourceRef).sort().join(',') === 'end,file,start') return tsNode.sourceRef
-      if (tsNode instanceof Node) return {
-        file: tsNode.getSourceFile().getFilePath(),
-        start: {
-          pos: tsNode.getStart(),
-          row: tsNode.getStartLineNumber(),
-          col: tsNode.getStartLinePos(),
-        },
-        end: {
-          pos: tsNode.getEnd(),
-          row: tsNode.getEndLineNumber(),
-        },
+      if (tsNode.file && tsNode.start && tsNode.end) return tsNode as any
+      if (tsNode.kind && tsNode.sourceRef) return tsNode.sourceRef
+      if (tsNode instanceof Node) {
+        const start = tsNode.getSourceFile().getLineAndColumnAtPos(tsNode.getStart())
+        const end = tsNode.getSourceFile().getLineAndColumnAtPos(tsNode.getEnd())
+        return {
+          file: tsNode.getSourceFile().getFilePath(),
+          start: {
+            pos: tsNode.getStart(),
+            row: start.line,
+            col: start.column,
+          },
+          end: {
+            pos: tsNode.getEnd(),
+            row: end.line,
+            col: end.column,
+          },
+        }
       }
-      if (tsNode instanceof SourceFile) return {
-        file: tsNode.getFilePath(),
-        start: {
-          pos: tsNode.getStart(),
-          row: tsNode.getStartLineNumber(),
-          col: tsNode.getStartLinePos(),
-        },
-        end: {
-          pos: tsNode.getEnd(),
-          row: tsNode.getEndLineNumber(),
-        },
+      if (tsNode instanceof SourceFile) {
+        const start = tsNode.getLineAndColumnAtPos(tsNode.getStart())
+        const end = tsNode.getLineAndColumnAtPos(tsNode.getEnd())
+        return {
+          file: tsNode.getFilePath(),
+          start: {
+            pos: tsNode.getStart(),
+            row: start.line,
+            col: start.column,
+          },
+          end: {
+            pos: tsNode.getEnd(),
+            row: end.line,
+            col: end.column,
+          },
+        }
       }
       throw new Error('invalid source node')
     }

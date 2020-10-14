@@ -26,6 +26,7 @@ export interface SourceRef {
   end: {
     pos: number,
     row: number
+    col: number,
   }
 }
 
@@ -61,8 +62,9 @@ export interface Workspace extends SourceNode<'Workspace'> {
   diagnostics: {
     [id: string]: {
       msg: string,
-      sourceRef: SourceRef | null
+      sourceRef: SourceRef
       kind: 'warn' | 'error' | 'fatal'
+      archol: Error
     }
   }
   warn(errId: string, tsNode: TsNode | null, errMsg?: string): void
@@ -133,11 +135,14 @@ export interface Package extends SourceNode<'Package'> {
 }
 
 export type Roles = ObjectConst<Role>
+export type Role = RoleDef | RoleGroup
 
-export interface Role extends SourceNodeMapped<'Role'> {
+export interface RoleDef extends SourceNodeMapped<'Role'> {
   description: I18N,
   icon: Icon
 }
+
+export type RoleGroup = ArrayConst<StringConst>
 
 export type Types = ObjectConst<Type>
 
@@ -160,14 +165,14 @@ export interface Type extends SourceNodeMapped<'Type'> {
 }
 
 export interface UseType extends SourceNode<'UseType'> {
-  typepath: StringConst
+  type: StringConst
   ref(): Type
 }
 
 export type Fields = ObjectConst<Field>
 
-export interface Field extends SourceNode<'Field'> {
-  name: StringConst
+export interface Field extends SourceNodeWithName<'Field'> {
+  description: StringConst
   type: UseType
 }
 
@@ -180,6 +185,7 @@ export interface Index extends SourceNode<'Index'> {
 export type Documents = ObjectConst<Document>
 
 export interface Document extends SourceNodeMapped<'Document'> {
+  identification: StringConst<'Centralized' | 'ByPeer'>
   caption: I18N
   primaryFields: DocFields
   secondaryFields: DocFields
@@ -252,12 +258,12 @@ export interface UseLocRole extends SourceNode<'UseLocRole'> {
 }
 
 export interface UseSysRole extends SourceNode<'UseSysRole'> {
-  name: StringConst
+  role: StringConst
   ref(): Role
 }
 
 export interface UseTask extends SourceNode<'UseTask'> {
-  name: StringConst
+  task: StringConst
   ref(): Task
 }
 
@@ -277,7 +283,7 @@ export interface UITask extends BaseTask<'UITask'> {
 }
 
 export interface UseView extends SourceNode<'UseView'> {
-  name: StringConst
+  view: StringConst
   bind: BindVars,
   ref(): View
 }
@@ -287,12 +293,13 @@ export interface SystemTask extends BaseTask<'SystemTask'> {
 }
 
 export interface UseFunction extends SourceNode<'UseFunction'> {
-  ref(): Function
+  function: StringConst
   input: BindVars,
   output: BindVars
+  ref(): Function
 }
 
-export type BindVars = ArrayConst<BindVar>
+export type BindVars = ObjectConst<BindVar>
 
 export interface BindVar extends SourceNode<'BindVar'> {
   fieldpath: StringConst
@@ -326,9 +333,9 @@ export interface WidgetContent extends SourceNode<'WidgetContent'> {
 
 export interface WidgetItem extends SourceNode<'WidgetItem'> {
   caption: I18N,
-  readonly: BooleanConst,
-  field?: StringConst,
-  type?: UseType
+  model: StringConst<"show" | "edit">,
+  field: StringConst,
+  type: UseType
 }
 
 export type Functions = ObjectConst<Function>
