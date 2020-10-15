@@ -1,5 +1,6 @@
 import { CodeBlockWriter } from 'ts-morph';
 import { Application, Package, Process, Workspace, Function, Task, View, Type, basicTypes, Document, Fields, SourceNodeWithName, SourceNode } from '../../load/types';
+import { quote, typePipeObj, typePipeStr } from '../generator';
 
 export async function generateDeclaration(ws: Workspace) {
   const declFileName = ws.path + '/ws/decl.d.ts'
@@ -61,11 +62,11 @@ declare interface ${appname}_Ref {
 ${app.uses.props.map((u) => `${u.key.str}: ${u.val.ref(u.val.uri.sourceRef).uri.id.str}_Ref,`).join('\n')}
 }
 
-declare type ${appname}_Mapping = ${typePipes(Object.keys(app.mappingList), 'NOTHING MAPPED', quote)}
+declare type ${appname}_Mapping = ${typePipeStr(Object.keys(app.mappingList))}
 declare type ${appname}_Mappings = {
   [uri in ${appname}_Mapping]?: string
 }`.trimStart())
-      app.allPackages.map((p) => genDeclPkg(p, w))
+      app.allPackages.forEach((p) => genDeclPkg(p, w))
     })
   }
 
@@ -81,10 +82,10 @@ declare interface ${pkgid}_DeclRoles {
   roles (roles: ${pkgid}_Decl2Roles): ${pkgid}_DeclProcesses
 }
 declare type ${pkgid}_Decl2Roles = {
-  [roleName: string]: Role | Array<${typePipes(pkg.refs.roles.items.filter((r) => r.ref.kind === 'Role').map((r) => r.path), 'public', quote)}>
+  [roleName: string]: Role | Array<${typePipeStr(pkg.refs.roles.items.filter((r) => r.ref.kind === 'Role').map((r) => r.path))}>
 }
 type ${pkgid}_Roles = 'public' | 'anonymous' | 'authenticated' | ${pkgid}_Role | ${pkgid}_Role[]
-type ${pkgid}_Role = ${typePipes(pkg.refs.roles.items.map((r) => r.path), 'public', quote)}
+type ${pkgid}_Role = ${typePipeStr(pkg.refs.roles.items.map((r) => r.path))}
 declare interface ${pkgid}_DeclProcesses {
   processes (processes: {${pkg.processes.props.map((p) => `${p.key.str}: ${pkgid}_process_${p.key.str}_Decl,`).join('\n')}
   }): ${pkgid}_DeclFunctions
@@ -125,7 +126,7 @@ declare interface ${pkgid}_Ref {
   },
 }
 
-type ${pkgid}_TypeName = ${typePipes(pkg.refs.types.items.map((t) => t.path).concat(Object.keys(basicTypes)), 'string', quote)}
+type ${pkgid}_TypeName = ${typePipeStr(pkg.refs.types.items.map((t) => t.path).concat(Object.keys(basicTypes)))}
 interface ${pkgid}_DeclFields {
   [fieldName:string]: {
      description: string
@@ -152,7 +153,7 @@ declare interface ${pkgid}_process_${procName}_Decl {
   vars: ${pkgid}_process_${procName}_DeclVars,
   tasks: ${pkgid}_process_${procName}_DeclTasks,
 }
-declare type ${pkgid}_process_${procName}_Tasknames = ${typePipes(process.tasks.props.map((t) => t.key.str), '', quote)}
+declare type ${pkgid}_process_${procName}_Tasknames = ${typePipeStr(process.tasks.props.map((t) => t.key.str))}
 declare interface ${pkgid}_process_${procName}_Ref {
   start(): ${pkgid}_process_${procName}_Instance;
 }
@@ -172,20 +173,28 @@ declare interface ${pkgid}_process_${procName}_InstanceVars {
 declare type ${pkgid}_process_${procName}_DeclTasks = {
   [task: string]: ${pkgid}_process_${procName}_DeclTask,
 }
-declare type ${pkgid}_process_${procName}_DeclTask = ${typePipes(pkg.functions.props.map(f => `{
-    useFunction: ${pkgid}_function_${f.key.str}_Use,
+declare type ${pkgid}_process_${procName}_DeclTask = ${typePipeObj(pkg.functions.props.map(f => `{
+    useFunction: {      
+      function: ${quote(f.key.str)},
+      input: {
+        first: ${pkgid}_process_${procName}_Scope
+        last: ${pkgid}_process_${procName}_Scope
+      },
+      output: {
+        full: ${pkgid}_process_${procName}_Scope
+      }    
+    },
     next: ${pkgid}_process_${procName}_NextTask,
 }`).concat(pkg.views.props.map(f => `{
-  useView: ${pkgid}_view_${f.key.str}_Use,
+  useView: ${pkgid}_view_${f.key.str}_Use<${pkgid}_process_${procName}_Scope>,
   next: ${pkgid}_process_${procName}_NextTask,
   roles: ${pkgid}_Roles,
-}`)), '{}')
+}`)))
         }
+declare type ${pkgid}_process_${procName}_Scope = ${typePipeStr(process.refs.vars.items.map(v => v.path))}
 declare type ${pkgid}_process_${procName}_NextTask = ${pkgid}_process_${procName}_Tasknames | ${pkgid}_process_${procName}_Tasknames[] | {
   [task in ${pkgid}_process_${procName}_Tasknames]?: (vars: ${pkgid}_process_${procName}_InstanceVars) => boolean
-}
-        
-        `.trimStart())
+}`.trimStart())
       genDeclPkgProcessFields()
       function genDeclPkgProcessFields() {
         ['input', 'output', 'local'].forEach((scope) => w.writeLine(`
@@ -207,14 +216,11 @@ declare interface ${pkgid}_function_${funcName}_Decl {
   code (vars: { input: ${pkgid}_function_${funcName}_InputRef, output: ${pkgid}_function_${funcName}_OutputRef }): void
 }
 declare type ${pkgid}_function_${funcName}_Ref = (input: ${pkgid}_function_${funcName}_InputRef, output: ${pkgid}_function_${funcName}_OutputRef) => Promise<void>
-declare interface ${pkgid}_function_${funcName}_Use {
-  function: ${typePipes(pkg.refs.functions.items.map(f => f.path), '', quote)}
-}
 declare interface ${pkgid}_function_${funcName}_InputRef {
-  x
+  ${func.input.props.map((f)=>`  ${f.key.str}:${f.val.type.ref(null).base.kind}`)}
 }
 declare interface ${pkgid}_function_${funcName}_OutputRef {
-  x
+  ${func.output.props.map((f)=>`  ${f.key.str}:${f.val.type.ref(null).base.kind}`)}
 }
 `.trimStart())
     }
@@ -238,8 +244,9 @@ declare interface ${pkgid}_view_${viewName}_DeclData {
 declare interface ${pkgid}_view_${viewName}_DeclBind<S> {
   firstName: S
 }
-declare interface ${pkgid}_view_${viewName}_Use {
-  x
+declare interface ${pkgid}_view_${viewName}_Use<S> {
+  view: ${quote(viewName)}
+  bind: ${pkgid}_view_${viewName}_DeclBind<S>
 }
 `.trimStart())
     }
@@ -257,15 +264,35 @@ declare interface ${pkgid}_document_${docName}_Decl {
   indexes: { [name: string]: ${pkgid}_document_${docName}_Fieldname[] }
   actions: ${pkgid}_document_${docName}_DeclActions
 }
-declare type ${pkgid}_document_${docName}_Fieldname = ${typePipes(doc.refs.allFields.items.map((f) => f.path), '', quote)}
+declare type ${pkgid}_document_${docName}_Fieldname = ${typePipeStr(doc.refs.allFields.items.map((f) => f.path))}
+declare type ${pkgid}_document_${docName}_ActionName = ${typePipeStr(doc.refs.actions.items.map((f) => f.path))}
 declare interface ${pkgid}_document_${docName}_DeclActions {
-  x
+  ${doc.refs.actions.items.map((a) =>
+        `${a.path}: {
+      from?: ${pkgid}_document_${docName}_ActionName | ${pkgid}_document_${docName}_ActionName[],
+      to: ${pkgid}_document_${docName}_ActionName | ${pkgid}_document_${docName}_ActionName[],
+      icon: Icon,
+      description: I18N,
+      run (this: ${pkgid}_document_${docName}_Data, fn: string): Promise<any>  
+    }
+    `)}      
+}
+declare interface ${pkgid}_document_${docName}_Data {
+  ${doc.refs.allFields.items.map((f) =>
+          `${f.path}:${f.ref.type.ref(null).base.kind}`
+        ).join('\n')}  
 }
 declare interface ${pkgid}_document_${docName}_Ref {
-  x
-}
+  ${doc.refs.actions.items.map((a) =>
+          `${a.path}: ${a.ref.run ?
+            '(' +
+            a.ref.run.params.map(p => p.getText()).join(', ') +
+            ') => ' +
+            a.ref.run.ret.getText()
+            : '() => Promise<void>'
+          }
+`).join('')}}
 `.trimStart())
-      //process.tasks.props.forEach
     }
   }
   function declareGlobals() {
@@ -329,9 +356,9 @@ declare type IPagelet = {
 
 declare interface Builders { "node-tsx-deepstream": BuilderConfig }
 
-declare type AllPackageUris = ${typePipes(AllPackageUris, '', quote)}
+declare type AllPackageUris = ${typePipeStr(AllPackageUris)}
 
-declare type TypeDecl = ${typePipes(Object.keys(basicTypes).map((b) => {
+declare type TypeDecl = ${typePipeObj(Object.keys(basicTypes).map((b) => {
         const js = b === 'date' ? 'Date' : b
         return `{
   base: ${quote(b)}
@@ -340,18 +367,9 @@ declare type TypeDecl = ${typePipes(Object.keys(basicTypes).map((b) => {
   parse?(this: void, str: string): ${js}
 }`.trim()
       }
-      ), '{}')}}
+      ))}
 
 `.trimStart())
     })
   }
-}
-
-function typePipes(s: string[], def: string, fn?: (s: string) => string) {
-  fn = fn || ((i) => i)
-  return s.length ? s.map(fn).join('|') : fn(def)
-}
-
-function quote(s: string) {
-  return '"' + s + '"'
 }

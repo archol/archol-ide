@@ -4,7 +4,7 @@ import * as ts from 'ts-morph'
 import { deferPromise, DeferredPromise, mapObjectToArray } from '../utils';
 import {
   Application, ArrayConst, BooleanConst, NumberConst, objectConst, ObjectConst, Package, Role,
-  SourceNode, StringConst, Workspace, sysRoles, isDocument,
+  SourceNode, StringConst, Workspace, sysRoles, isDocument, isProcess,
   Process, Function, View, Type, Document, RoleDef, Code, I18N, arrayConst, Icon, PackageUse, PackageUses,
   Task, UseTask, Roles, UseSysRole, UseLocRole, UseRoles, Fields, Field, UseType, BindVar, ProcessVars,
   UseView, UseFunction, BindVars, FunctionLevel, Widget, ViewAction, BasicType, basicTypes, DocFields, DocIndexes,
@@ -757,7 +757,9 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           isInternal: (s) => (basicTypes3 as any)[s],
           invalid(s) {
             return {
-              base: 'invalid_' + s
+              base: {
+                kind: 'invalid_' + s
+              }
             }
           }
         })
@@ -811,6 +813,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             kind: 'Process',
             sourceRef: ws.getRef(processName),
             name: processName,
+            refs: null as any,
             nodeMapping: nodeMapping([pkgid.str, 'process', processName.str], () => process),
             ...pprops
           }
@@ -1083,7 +1086,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         function parseDocField(argField: ts.Node, fieldname: StringConst): DocField {
           const fprops = parseObjArg(argField, {
             description: parseI18N,
-            type: parseStrArg,
+            type: parseUseType,
           })
           const field: DocField = {
             kind: 'DocField',
@@ -1198,18 +1201,21 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             ref: iref
           })
           if (isDocument(iref)) {
-            if (kindObj === 'documents') {
-              iref.refs = {
-                allFields: null as any,
-                primaryFields: createRefs<DocField>(iref, 'primaryFields'),
-                secondaryFields: createRefs<DocField>(iref, 'secondaryFields'),
-                indexes: createRefs<DocIndex>(iref, 'indexes'),
-                states: createRefs<DocumentState>(iref, 'states'),
-                actions: createRefs<DocAction>(iref, 'actions'),
-              }
-              iref.refs.allFields = {
-                items: iref.refs.primaryFields.items.concat(iref.refs.secondaryFields.items)
-              }
+            iref.refs = {
+              allFields: null as any,
+              primaryFields: createRefs<DocField>(iref, 'primaryFields'),
+              secondaryFields: createRefs<DocField>(iref, 'secondaryFields'),
+              indexes: createRefs<DocIndex>(iref, 'indexes'),
+              states: createRefs<DocumentState>(iref, 'states'),
+              actions: createRefs<DocAction>(iref, 'actions'),
+            }
+            iref.refs.allFields = {
+              items: iref.refs.primaryFields.items.concat(iref.refs.secondaryFields.items)
+            }
+          }
+          if (isProcess(iref)) {
+            iref.refs = {
+              vars: refVars(iref.vars)
             }
           }
         })
@@ -1218,6 +1224,22 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             listrefs(u.val.ref(sn.sourceRef), ppath + u.key.str + '/')
           )
       }
+    }
+    function refVars(vars: ProcessVars) {
+      const ret: PackageRefs<Field> = {
+        items: [],
+      };
+      ['input', 'local', 'output'].forEach((scope) => {
+        var fields: Fields = (vars as any)[scope];
+        fields.props.forEach((f) => {
+          const ipath = scope + '.' + f.key.str
+          const iref = f.val
+          ret.items.push({
+            path: ipath, ref: iref
+          })
+        })
+      })
+      return ret
     }
   }
 }

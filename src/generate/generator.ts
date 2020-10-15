@@ -1,0 +1,96 @@
+import * as ts from 'ts-morph';
+
+import { SourceNode, SourceRef, TsNode, Workspace } from '../load/types';
+
+export function generator(
+  ws: Workspace,
+  target: ts.SourceFile
+) {
+  type Code1Str = string | string[]
+  type Code1Fn = () => Code1Str
+  type Code1 = Code1Str | Code1Fn | Array<Code1Str | Code1Fn>
+  const _blocks: { [name: string]: { undef: boolean, used?: boolean, code1: Code1, code2: string } } = {}
+  const proxyHandler: ProxyHandler<any> = {
+    get(_target, id: string) {
+      if (id === 'I18N') console.log('get.b', id, _blocks[id])
+      if (_blocks[id]) _blocks[id].used = true
+      else _blocks[id] = { undef: true } as any
+      if (id === 'I18N') console.log('get.a', id, _blocks[id])
+      return id
+    }
+  }
+  const proxy: { [n: string]: string } = new Proxy<any>({}, proxyHandler);
+  const self = {
+    get: proxy,
+    flush() {
+      const text: string[] = []
+      runcode_fn()
+      const undef: string[] = []
+      const unused: string[] = []
+      Object.keys(_blocks).forEach((id) => {
+        const block = _blocks[id]
+        if (id === 'I18N') console.log('flush', id, block)
+        if (block.undef) undef.push(id)
+        else if (block.used) {
+          let code2 = block.code2
+          text.push(code2)
+        }
+        else unused.push(id)
+      })
+      if (undef.length)
+        console.log('Generator undef blocks: ' + undef.join())
+      if (unused.length)
+        console.log('Generator unused blocks: ' + unused.join())
+      target.addStatements((w) => w.write(text.join('\n')))
+      target.formatText({
+        indentSize: 2
+      })
+    },
+    blocks<T extends { [id: string]: [source: TsNode, code: Code1, forceUse?: boolean] }>(blocks: T): { [id in keyof T]: string } {
+      type RET = { [id in keyof T]: string }
+      (Object.keys(blocks) as any as Array<keyof T>).forEach((k) => {
+        const [sourceRef, code, forceUse] = blocks[k]
+        const id = defblock(k as any, sourceRef, code, forceUse)
+      })
+      return proxy as any
+    }
+  }
+  return self
+  function defblock(id: string, sourceRef: TsNode, code: Code1, forceUse?: boolean) {
+    if (_blocks[id] && _blocks[id].undef) throw ws.fatal('duplicated generator block ' + id, sourceRef)
+    _blocks[id] = { undef: false, used: forceUse, code1: code, code2: '' }
+  }
+  function runcode_fn() {
+    let loopcode = true
+    while (loopcode) {
+      loopcode = false
+      Object.keys(_blocks).forEach((id) => {
+        const block = _blocks[id]
+        if ((!block.undef) && block.used && (!block.code2)) {
+          block.code2 = resolveCode1(block.code1, () => loopcode = true)
+        }
+      })
+    }
+  }
+  function resolveCode1(code: Code1, setLoop: () => void): string {
+    if (typeof code === 'function') {
+      setLoop()
+      code = code()
+    }
+    if (Array.isArray(code)) code = (code as any).map((c:any) => resolveCode1(c, setLoop)).join('') as string
+    return code
+  }
+
+}
+
+export function typePipeStr(s: string[]) {
+  return s.length ? s.map(quote).join('|') : quote('')
+}
+
+export function typePipeObj(s: string[]) {
+  return s.length ? s.join('|') : '{}'
+}
+
+export function quote(s: string) {
+  return '"' + s + '"'
+}

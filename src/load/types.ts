@@ -312,7 +312,7 @@ export type DocFields = ObjectConst<DocField>
 
 export interface DocField extends SourceNodeMapped<'DocField'> {
   description: I18N
-  type: StringConst
+  type: UseType
 }
 
 export type DocIndexes = ObjectConst<DocIndex>
@@ -335,6 +335,10 @@ export interface UseDocStates extends SourceNode<'UseDocStates'> {
 
 export type Processes = ObjectConst<Process>
 
+export function isProcess(node: SourceNode<any>): node is Process {
+  return node.kind === 'Process'
+}
+
 export interface Process extends SourceNodeMapped<'Process'> {
   title: I18N
   caption: I18N
@@ -344,11 +348,9 @@ export interface Process extends SourceNodeMapped<'Process'> {
   vars: ProcessVars
   roles: UseRoles
   volatile: BooleanConst
-  // refs: {
-  //   tasks: PackageRefs<Tasks>
-  //   vars: PackageRefs<ProcessVars>
-  //   roles: PackageRefs<UseRoles>
-  //   }
+  refs: {
+    vars: PackageRefs<Field>
+  }
 }
 
 export interface ProcessVars extends SourceNode<'ProcessVars'> {
