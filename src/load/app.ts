@@ -4,12 +4,12 @@ import * as ts from 'ts-morph'
 import { deferPromise, DeferredPromise, mapObjectToArray } from '../utils';
 import {
   Application, ArrayConst, BooleanConst, NumberConst, objectConst, ObjectConst, Package, Role,
-  SourceNode, StringConst, Workspace, sysRoles, isDocument, isProcess,
+  SourceNode, StringConst, Workspace, sysRoles, isDocument, isProcess, isWidgetContent,
   Process, Function, View, Type, Document, RoleDef, Code, I18N, arrayConst, Icon, PackageUse, PackageUses,
   Task, UseTask, Roles, UseSysRole, UseLocRole, UseRoles, Fields, Field, UseType, BindVar, ProcessVars,
   UseView, UseFunction, BindVars, FunctionLevel, Widget, ViewAction, BasicType, basicTypes, DocFields, DocIndexes,
   DocumentStates, DocActions, DocAction, DocField, DocIndex, DocumentState, UseDocStates, Routes, Pagelets,
-  Pagelet, Menu, MenuItem, MenuItemSeparator, SourceNodeMapped, SourceNodeWithName, isPackage, RouteRedirect, RouteCode, RoleGroup, TsNode, basicTypes3, PackageRefs, PackageRef
+  Pagelet, Menu, MenuItem, MenuItemSeparator, SourceNodeMapped, SourceNodeWithName, isPackage, RouteRedirect, RouteCode, RoleGroup, TsNode, basicTypes3, PackageRefs, PackageRef, isView
 } from './types'
 
 export async function loadApp(ws: Workspace, appName: string): Promise<Application> {
@@ -769,7 +769,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     function parseFields(argf: ts.Node): Fields {
       return parseColObjArg(argf, (itm, name) => {
         const fprops = parseObjArg(itm, {
-          description: parseStrArg,
+          description: parseI18N,
           type: parseUseType,
         })
         const field: Field = {
@@ -990,6 +990,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           name: viewName,
           nodeMapping: nodeMapping([pkgid.str, 'view', viewName.str], () => view),
           allActions,
+          refs: null as any,
           ...vprops
         }
         return view
@@ -1215,7 +1216,12 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           }
           if (isProcess(iref)) {
             iref.refs = {
-              vars: refVars(iref.vars)
+              vars: refProcessVars(iref.vars)
+            }
+          }
+          if (isView(iref)) {
+            iref.refs = {
+              fields: refViewFields(iref)
             }
           }
         })
@@ -1225,7 +1231,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           )
       }
     }
-    function refVars(vars: ProcessVars) {
+    function refProcessVars(vars: ProcessVars) {
       const ret: PackageRefs<Field> = {
         items: [],
       };
@@ -1239,6 +1245,31 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           })
         })
       })
+      return ret
+    }
+    function refViewFields(view: View) {
+      const ret: PackageRefs<Field> = {
+        items: [],
+      };
+
+      view.content.items.forEach(add)
+      function add(w: Widget) {
+        if (isWidgetContent(w)) w.content.forEach(add)
+        else {
+          if (!ret.items.some((i) => i.path === w.field.str)) {
+            ret.items.push({
+              path: w.field.str, ref: {
+                kind: 'Field',
+                sourceRef: w.sourceRef,
+                name: w.field,
+                description: w.caption,
+                type: w.type
+              }
+            })
+          }
+        }
+      }
+
       return ret
     }
   }

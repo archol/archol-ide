@@ -185,8 +185,11 @@ declare type ${pkgid}_process_${procName}_DeclTask = ${typePipeObj(pkg.functions
       }    
     },
     next: ${pkgid}_process_${procName}_NextTask,
-}`).concat(pkg.views.props.map(f => `{
-  useView: ${pkgid}_view_${f.key.str}_Use<${pkgid}_process_${procName}_Scope>,
+}`).concat(pkg.views.props.map(view => `{
+  useView: {
+    view: ${quote(view.key.str)}
+    bind: ${pkgid}_view_${view.key.str}_DeclBind<${pkgid}_process_${procName}_Scope>
+  },
   next: ${pkgid}_process_${procName}_NextTask,
   roles: ${pkgid}_Roles,
 }`)))
@@ -217,10 +220,10 @@ declare interface ${pkgid}_function_${funcName}_Decl {
 }
 declare type ${pkgid}_function_${funcName}_Ref = (input: ${pkgid}_function_${funcName}_InputRef, output: ${pkgid}_function_${funcName}_OutputRef) => Promise<void>
 declare interface ${pkgid}_function_${funcName}_InputRef {
-  ${func.input.props.map((f)=>`  ${f.key.str}:${f.val.type.ref(null).base.kind}`)}
+  ${func.input.props.map((f) => `  ${f.key.str}:${f.val.type.ref(null).base.kind}`)}
 }
 declare interface ${pkgid}_function_${funcName}_OutputRef {
-  ${func.output.props.map((f)=>`  ${f.key.str}:${f.val.type.ref(null).base.kind}`)}
+  ${func.output.props.map((f) => `  ${f.key.str}:${f.val.type.ref(null).base.kind}`)}
 }
 `.trimStart())
     }
@@ -239,14 +242,10 @@ declare type ${pkgid}_view_${viewName}_DeclContent = Array<{
   type: ${pkgid}_TypeName
 }>
 declare interface ${pkgid}_view_${viewName}_DeclData {
-  firstName: string
+  ${view.refs.fields.items.map((f) => `${f.path}: ${f.ref.type.ref(null).base.kind}`)}
 }
 declare interface ${pkgid}_view_${viewName}_DeclBind<S> {
-  firstName: S
-}
-declare interface ${pkgid}_view_${viewName}_Use<S> {
-  view: ${quote(viewName)}
-  bind: ${pkgid}_view_${viewName}_DeclBind<S>
+  ${view.refs.fields.items.map((f) => `${f.path}: S`)}
 }
 `.trimStart())
     }

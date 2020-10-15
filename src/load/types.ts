@@ -263,7 +263,7 @@ export interface UseType extends SourceNode<'UseType'> {
 export type Fields = ObjectConst<Field>
 
 export interface Field extends SourceNodeWithName<'Field'> {
-  description: StringConst
+  description: I18N
   type: UseType
 }
 
@@ -418,12 +418,19 @@ export interface BindVar extends SourceNode<'BindVar'> {
 
 export type Views = ObjectConst<View>
 
+export function isView(node: SourceNode<any>): node is View {
+  return node.kind === 'View'
+}
+
 export interface View extends SourceNodeMapped<'View'> {
   content: ArrayConst<Widget>
   primaryAction?: ViewAction
   secondaryAction?: ViewAction
   othersActions?: ArrayConst<ViewAction>
   allActions?: ArrayConst<ViewAction>
+  refs: {
+    fields: PackageRefs<Field>
+  }
 }
 
 export interface ViewAction extends SourceNode<'ViewAction'> {
@@ -434,11 +441,15 @@ export interface ViewAction extends SourceNode<'ViewAction'> {
   isVisible: Code
 }
 
+export function isWidgetContent(node: SourceNode<any>): node is WidgetContent {
+  return node.kind === 'WidgetContent'
+}
+
 export type Widget = WidgetContent | WidgetItem
 
 export interface WidgetContent extends SourceNode<'WidgetContent'> {
   caption: I18N,
-  content?: Widget[]
+  content: Widget[]
 }
 
 export interface WidgetItem extends SourceNode<'WidgetItem'> {
