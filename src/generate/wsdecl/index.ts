@@ -35,7 +35,7 @@ declare function declareApplication (name: '${appname}', opts: {
   langs: Lang[],
   builders: Builders
   pagelets: {
-    [name: string]: IPagelet
+    [name: string]: Pagelet
   }
   routes: {
     [name: string]: ${appname}_Route 
@@ -340,7 +340,7 @@ declare type Menu = {
   icon: Icon
 }
 
-declare type IPagelet = {
+declare type Pagelet = {
   drawer?: true,
   left: number
 } | {
