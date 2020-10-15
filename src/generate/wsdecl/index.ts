@@ -84,8 +84,8 @@ declare interface ${pkgid}_DeclRoles {
 declare type ${pkgid}_Decl2Roles = {
   [roleName: string]: Role | Array<${typePipeStr(pkg.refs.roles.items.filter((r) => r.ref.kind === 'Role').map((r) => r.path))}>
 }
-type ${pkgid}_Roles = 'public' | 'anonymous' | 'authenticated' | ${pkgid}_Role | ${pkgid}_Role[]
-type ${pkgid}_Role = ${typePipeStr(pkg.refs.roles.items.map((r) => r.path))}
+type ${pkgid}_Roles = ${pkgid}_Role | ${pkgid}_Role[]
+type ${pkgid}_Role = 'public' | 'anonymous' | 'authenticated' | ${typePipeStr(pkg.refs.roles.items.map((r) => r.path))}
 declare interface ${pkgid}_DeclProcesses {
   processes (processes: {${pkg.processes.props.map((p) => `${p.key.str}: ${pkgid}_process_${p.key.str}_Decl,`).join('\n')}
   }): ${pkgid}_DeclFunctions
@@ -177,11 +177,10 @@ declare type ${pkgid}_process_${procName}_DeclTask = ${typePipeObj(pkg.functions
     useFunction: {      
       function: ${quote(f.key.str)},
       input: {
-        first: ${pkgid}_process_${procName}_Scope
-        last: ${pkgid}_process_${procName}_Scope
+        ${f.val.input.keys().map((k)=>`${k}: ${pkgid}_process_${procName}_Scope`)}
       },
       output: {
-        full: ${pkgid}_process_${procName}_Scope
+        ${f.val.output.keys().map((k)=>`${k}: ${pkgid}_process_${procName}_Scope`)}
       }    
     },
     next: ${pkgid}_process_${procName}_NextTask,
@@ -254,9 +253,9 @@ declare interface ${pkgid}_view_${viewName}_DeclBind<S> {
       w.writeLine(`
 declare interface ${pkgid}_document_${docName}_Decl {
   persistence: DocPersistence
+  identification: 'Centralized'|'ByPeer',
   states: {
-    partial: DocState
-    complete: DocState
+    ${doc.states.keys().map((k)=>`${k}: DocState`).join('\n')}    
   }
   primaryFields: ${pkgid}_DeclFields
   secondaryFields: ${pkgid}_DeclFields
@@ -264,15 +263,16 @@ declare interface ${pkgid}_document_${docName}_Decl {
   actions: ${pkgid}_document_${docName}_DeclActions
 }
 declare type ${pkgid}_document_${docName}_Fieldname = ${typePipeStr(doc.refs.allFields.items.map((f) => f.path))}
+declare type ${pkgid}_document_${docName}_StateName = ${typePipeStr(doc.refs.states.items.map((f) => f.path))}
 declare type ${pkgid}_document_${docName}_ActionName = ${typePipeStr(doc.refs.actions.items.map((f) => f.path))}
 declare interface ${pkgid}_document_${docName}_DeclActions {
   ${doc.refs.actions.items.map((a) =>
         `${a.path}: {
-      from?: ${pkgid}_document_${docName}_ActionName | ${pkgid}_document_${docName}_ActionName[],
-      to: ${pkgid}_document_${docName}_ActionName | ${pkgid}_document_${docName}_ActionName[],
+      from?: ${pkgid}_document_${docName}_StateName | ${pkgid}_document_${docName}_StateName[],
+      to: ${pkgid}_document_${docName}_StateName | ${pkgid}_document_${docName}_StateName[],
       icon: Icon,
       description: I18N,
-      run (this: ${pkgid}_document_${docName}_Data, fn: string): Promise<any>  
+      run?(this: ${pkgid}_document_${docName}_Data, ${a.ref.run?a.ref.run.params.map(p=>p.getText()).join():''}): ${a.ref.run?a.ref.run.ret.getText():'Promise<void>'}
     }
     `)}      
 }
