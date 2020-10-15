@@ -356,7 +356,7 @@ declare type IPagelet = {
   content: true,
 }
 
-declare interface Builders { "node-tsx-deepstream": BuilderConfig }
+declare interface Builders { "mui-deepstream": BuilderConfig }
 
 declare type AllPackageUris = ${typePipeStr(AllPackageUris)}
 
