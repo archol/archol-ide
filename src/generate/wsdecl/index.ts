@@ -129,6 +129,12 @@ declare interface ${pkgid}_Ref {
 type ${pkgid}_TypeName = ${typePipeStr(pkg.refs.types.items.map((t) => t.path).concat(Object.keys(basicTypes)))}
 interface ${pkgid}_DeclFields {
   [fieldName:string]: {
+     description?: string
+     type: ${pkgid}_TypeName
+  }
+}
+interface ${pkgid}_DeclDocFields {
+  [fieldName:string]: {
      description: string
      type: ${pkgid}_TypeName
   }
@@ -257,8 +263,8 @@ declare interface ${pkgid}_document_${docName}_Decl {
   states: {
     ${doc.states.keys().map((k)=>`${k}: DocState`).join('\n')}    
   }
-  primaryFields: ${pkgid}_DeclFields
-  secondaryFields: ${pkgid}_DeclFields
+  primaryFields: ${pkgid}_DeclDocFields
+  secondaryFields: ${pkgid}_DeclDocFields
   indexes: { [name: string]: ${pkgid}_document_${docName}_Fieldname[] }
   actions: ${pkgid}_document_${docName}_DeclActions
 }

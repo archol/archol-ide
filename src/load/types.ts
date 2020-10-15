@@ -263,7 +263,7 @@ export interface UseType extends SourceNode<'UseType'> {
 export type Fields = ObjectConst<Field>
 
 export interface Field extends SourceNodeWithName<'Field'> {
-  description: I18N
+  description?: I18N
   type: UseType
 }
 
