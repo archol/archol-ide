@@ -8,10 +8,7 @@ export async function generateDeclaration(ws: Workspace) {
   let declsource = sources.filter(s => s.getFilePath() === declFileName)[0]
 
   if (!declsource) declsource = ws.ts.createSourceFile(declFileName)
-  const AllPackageUris = sources
-    .map(s => s.getFilePath())
-    .filter(s => s.endsWith('.pkg.ts'))
-    .map((s) => s.replace(/\.pkg\.ts$/g, '').substr(ws.path.length + 4))
+  const AllPackageUris = ws.allPackages()
 
   declsource.removeText()
 

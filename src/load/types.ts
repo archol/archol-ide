@@ -73,6 +73,8 @@ export interface Workspace extends SourceNode<'Workspace'> {
   fatal(errId: string, tsNode: TsNode | TsNode[], errMsg?: string): Error
   getRef(tsNode: TsNode): SourceRef
   getRefs(tsNode: TsNode | TsNode[]): SourceRef[]
+  allApplications(): string[]
+  allPackages(): string[]
 }
 
 export interface Application extends SourceNode<'Application'> {

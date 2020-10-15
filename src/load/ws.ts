@@ -90,7 +90,19 @@ export async function loadWorkspace(path: string): Promise<Workspace> {
         }
       }
       throw new Error('invalid source node')
-    }
+    },
+    allApplications() {
+      return ws.ts.getSourceFiles()
+        .map(s => s.getFilePath())
+        .filter(s => s.endsWith('.pkg.ts'))
+        .map((s) => s.replace(/\.app\.ts$/g, '').substr(ws.path.length + 4))
+    },
+    allPackages() {
+      return ws.ts.getSourceFiles()
+        .map(s => s.getFilePath())
+        .filter(s => s.endsWith('.pkg.ts'))
+        .map((s) => s.replace(/\.pkg\.ts$/g, '').substr(ws.path.length + 4))
+    },
   }
   return ws
 }
