@@ -4,12 +4,12 @@ import * as ts from 'ts-morph'
 import { deferPromise, DeferredPromise, mapObjectToArray } from '../utils';
 import {
   Application, ArrayConst, BooleanConst, NumberConst, objectConst, ObjectConst, Package, Role,
-  SourceNode, StringConst, Workspace, sysRoles, isDocument, isProcess, isWidgetContent,
+  SourceNode, StringConst, Workspace, sysRoles, isDocument, isProcess, isWidgetContent, EnumType, UseType1,
   Process, Function, View, Type, Document, RoleDef, Code, I18N, arrayConst, Icon, PackageUse, PackageUses,
   Task, UseTask, Roles, UseSysRole, UseLocRole, UseRoles, Fields, Field, UseType, BindVar, ProcessVars,
-  UseView, UseFunction, BindVars, FunctionLevel, Widget, ViewAction, BasicType, basicTypes, DocFields, DocIndexes,
+  UseView, UseFunction, BindVars, FunctionLevel, Widget, ViewAction, BaseType, NormalType, normalTypes, DocFields, DocIndexes,
   DocumentStates, DocActions, DocAction, DocField, DocIndex, DocumentState, UseDocStates, Routes, Pagelets,
-  Pagelet, Menu, MenuItem, MenuItemSeparator, SourceNodeMapped, SourceNodeWithName, isPackage, RouteRedirect, RouteCode, RoleGroup, TsNode, basicTypes3, PackageRefs, PackageRef, isView
+  Pagelet, Menu, MenuItem, MenuItemSeparator, SourceNodeMapped, SourceNodeWithName, isPackage, RouteRedirect, RouteCode, RoleGroup, TsNode, basicTypes3, PackageRefs, PackageRef, isView, EnumOption, ComplexType, ArrayType, UseTypeAsArray, Types
 } from './types'
 
 export async function loadApp(ws: Workspace, appName: string): Promise<Application> {
@@ -124,16 +124,6 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
 
   function parserForStrArg<T extends string>() {
     return (arg: ts.Node) => parseStrArg<T>(arg)
-  }
-
-  function parseBasicType(arg: ts.Node): BasicType {
-    const str = parseStrArg(arg)
-    if (!Object.keys(basicTypes).includes(str.str)) ws.error('Invalid basic type ' + str.str, str)
-    const ret: BasicType = {
-      kind: str.str as any,
-      sourceRef: str.sourceRef
-    }
-    return ret
   }
 
   function parseNumArg(arg: ts.Node): NumberConst {
@@ -745,26 +735,64 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       }
     }
     function parseUseType(argUseType: ts.Node): UseType {
-      const str = parseStrArg(argUseType)
-      const ret: UseType = {
-        kind: 'UseType',
-        sourceRef: str.sourceRef,
-        type: str,
-        ref: packageGetRef({
-          kind: 'Type',
-          refId: str,
-          where: 'types',
-          isInternal: (s) => (basicTypes3 as any)[s],
-          invalid(s) {
-            return {
-              base: {
-                kind: 'invalid_' + s
+      const strTypeName = parseStrArg(argUseType)
+      return mountUseType(strTypeName)
+    }
+    function mountUseType(strTypeName: StringConst) {
+      if (strTypeName.str.endsWith('[]')) {
+        const itemTypeName: StringConst = {
+          kind: 'StringConst',
+          sourceRef: strTypeName.sourceRef,
+          str: strTypeName.str.substring(0, strTypeName.str.length - 2)
+        }
+        const itemType = mountUseType(itemTypeName)
+        const retTypeArr: UseTypeAsArray = {
+          kind: 'UseTypeAsArray',
+          sourceRef: itemType.sourceRef,
+          itemType,
+          base(sourceRef: TsNode | null): string {
+            return retTypeArr.itemType.base(sourceRef) + '[]'
+          },
+          ref: packageGetRef({
+            kind: 'Type',
+            refId: strTypeName,
+            where: 'types',
+            isInternal: (s) => (basicTypes3 as any)[s],
+            invalid(s) {
+              return {
+                base: {
+                  kind: 'invalid_' + s
+                }
               }
             }
-          }
-        })
+          })
+        }
+        return retTypeArr
+      } else {
+        const retType1: UseType1 = {
+          kind: 'UseType1',
+          sourceRef: strTypeName.sourceRef,
+          type: strTypeName,
+          base(sourceRef: TsNode | null): string {
+            const typeRef = retType1.ref(sourceRef)
+            return typeRef.base().base
+          },
+          ref: packageGetRef({
+            kind: 'Type',
+            refId: strTypeName,
+            where: 'types',
+            isInternal: (s) => (basicTypes3 as any)[s],
+            invalid(s) {
+              return {
+                base: {
+                  kind: 'invalid_' + s
+                }
+              }
+            }
+          })
+        }
+        return retType1
       }
-      return ret
     }
     function parseFields(argf: ts.Node): Fields {
       return parseColObjArg(argf, (itm, name) => {
@@ -1039,20 +1067,116 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       const argstype = expr1type.getArguments()
       if (argstype.length !== 1) ws.error(expr1type.getSourceFile().getFilePath() + ' types precisa de um parametro', expr1type)
       pkg.types = parseColObjArg(argstype[0], (itmType, typeName) => {
-        const tprops = parseObjArg(itmType, {
-          base: parseBasicType,
+        const typeProps = parseObjArg(itmType, {
+          base: parseStrArg,
           validate: parserForCode(),
           format: parserForCode(),
           parse: parserForCode(),
+          options: parseEnumOptions,
+          fields: parseFields,
+          itemType: parseUseType,
         })
-        const type: Type = {
-          kind: 'Type',
-          sourceRef: ws.getRef(itmType),
-          name: typeName,
-          nodeMapping: nodeMapping([pkgid.str, 'type', typeName.str], () => type),
-          ...tprops
+        const base = typeProps.base
+        delete (typeProps as any).base
+        if (typeProps.options) return asEnumType()
+        if (typeProps.fields) return asComplexType()
+        if (typeProps.itemType) return asArrayType()
+        return asNormalType()
+
+        function asNormalType(): NormalType {
+          let nbase = (basicTypes3 as any)[base.str]
+          if (!nbase) {
+            ws.fatal('invalid base type ' + base.str, typeName)
+            nbase = basicTypes3.string
+          }
+          const fbase=nbase.base
+          console.log(typeName.str, base.str, fbase)
+          const type: NormalType = {
+            kind: 'NormalType',
+            sourceRef: ws.getRef(itmType),
+            name: typeName,
+            nodeMapping: nodeMapping([pkgid.str, 'type', typeName.str], () => type),
+            ...typeProps,
+            base: fbase
+          }
+          return type
         }
-        return type
+        function asEnumType(): EnumType {
+          if (base.str !== 'enum') ws.fatal('esperando base enum', base)
+          const etype: EnumType = {
+            kind: 'EnumType',
+            sourceRef: ws.getRef(itmType),
+            name: typeName,
+            nodeMapping: nodeMapping([pkgid.str, 'type', typeName.str], () => etype),
+            ...typeProps,
+            base() {
+              return {
+                kind: 'BaseType',
+                sourceRef: typeName.sourceRef,
+                base: pkgid.str + '_enum_' + typeName.str as any,
+                enumOptions: typeProps.options,
+                complexFields: false, arrayType: false
+              }
+            }
+          }
+          return etype
+        }
+        function parseEnumOptions(argEnumOptions: ts.Node) {
+          return parseColObjArg(argEnumOptions, (itmOption, opName) => {
+            const props = parseObjArg(itmOption, {
+              value: parseStrArg,
+              description: parseI18N,
+              icon: parseIcon,
+            })
+            const otype: EnumOption = {
+              kind: 'EnumOption',
+              sourceRef: ws.getRef(itmOption),
+              name: opName,
+              ...props
+            }
+            return otype
+          })
+        }
+        function asComplexType(): ComplexType {
+          if (base.str !== 'complex') ws.fatal('esperando base complex', base)
+          const ctype: ComplexType = {
+            kind: 'ComplexType',
+            sourceRef: ws.getRef(itmType),
+            name: typeName,
+            nodeMapping: nodeMapping([pkgid.str, 'type', typeName.str], () => ctype),
+            ...typeProps,
+            base() {
+              return {
+                kind: 'BaseType',
+                sourceRef: typeName.sourceRef,
+                base: pkgid.str + '_complex_' + typeName.str as any,
+                complexFields: typeProps.fields,
+                enumOptions: false, arrayType: false
+              }
+            }
+          }
+          return ctype
+        }
+        function asArrayType(): ArrayType {
+          if (base.str !== 'array') ws.fatal('esperando base array', base)
+          const atype: ArrayType = {
+            kind: 'ArrayType',
+            sourceRef: ws.getRef(itmType),
+            name: typeName,
+            nodeMapping: nodeMapping([pkgid.str, 'type', typeName.str], () => atype),
+            ...typeProps,
+            base() {
+              return {
+                kind: 'BaseType',
+                sourceRef: typeName.sourceRef,
+                base: pkgid.str + '_array_' + typeName.str as any,
+                arrayType: typeProps.itemType,
+                enumOptions: false, complexFields: false
+              }
+            }
+          }
+          return atype
+        }
       })
       return { documents }
     }
@@ -1179,6 +1303,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
 
   function createPkgRefs(finishedPkg: Package) {
     finishedPkg.refs = {
+      baseTypes: refBaseTypes(finishedPkg.types),
       types: createRefs<Type>(finishedPkg, 'types', './'),
       documents: createRefs<Document>(finishedPkg, 'documents', './'),
       processes: createRefs<Process>(finishedPkg, 'processes', './'),
@@ -1230,6 +1355,23 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             listrefs(u.val.ref(sn.sourceRef), ppath + u.key.str + '/')
           )
       }
+    }
+    function refBaseTypes(types: Types) {
+      const did: { [name: string]: boolean } = {}
+      const ret: PackageRefs<BaseType<any>> = {
+        items: [],
+      };
+      types.props.forEach((t) => {
+        const base = t.val.base()
+        if (normalTypes[base.base]) return
+        if (did[base.base]) return
+        ret.items.push({
+          path: base.base,
+          ref: base
+        })
+        did[base.base] = true
+      })
+      return ret
     }
     function refProcessVars(vars: ProcessVars) {
       const ret: PackageRefs<Field> = {
@@ -1287,6 +1429,7 @@ function invalidPackage(uri: StringConst) {
     },
     uses: objectConst(uri.sourceRef),
     refs: {
+      baseTypes: packageRefs(),
       types: packageRefs(),
       documents: packageRefs(),
       processes: packageRefs(),

@@ -1,5 +1,5 @@
 import { CodeBlockWriter } from 'ts-morph';
-import { Application, Package, Process, Workspace, Function, Task, View, Type, basicTypes, Document, Fields, SourceNodeWithName, SourceNode } from '../../load/types';
+import { Application, Package, Process, Workspace, Function, Task, View, Type, Document, Fields, SourceNodeWithName, SourceNode } from '../../load/types';
 import { quote, typePipeObj, typePipeStr } from '../generator';
 
 export async function generateDeclaration(ws: Workspace) {

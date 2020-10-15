@@ -29,6 +29,12 @@ export interface SourceRef {
   }
 }
 
+export const unkownErrorPos: SourceRef = {
+  file: 'unkown error position',
+  start: { pos: 0, row: 0, col: 0 },
+  end: { pos: 0, row: 0, col: 0 },
+}
+
 export interface StringConst<T extends string = string> extends SourceNode<'StringConst'> {
   str: T
 }
@@ -128,6 +134,7 @@ export interface Package extends SourceNode<'Package'> {
   redefines?: StringConst
   uses: PackageUses,
   refs: {
+    baseTypes: PackageRefs<BaseType<any>>,
     types: PackageRefs<Type>,
     documents: PackageRefs<Document>,
     processes: PackageRefs<Process>,
@@ -156,46 +163,24 @@ export type RoleGroup = ArrayConst<StringConst>
 
 export type Types = ObjectConst<Type>
 
-export const basicTypes = {
+export const normalTypes = {
+  enum: false,
+  complex: false,
+  array: false,
   string: true,
   number: true,
   boolean: true,
   date: true
 }
 
-export const unkownErrorPos: SourceRef = {
-  file: 'unkown error position',
-  start: { pos: 0, row: 0, col: 0 },
-  end: { pos: 0, row: 0, col: 0 },
-}
-
-export const basicTypes2: {
-  [k in keyof typeof basicTypes]: BasicType
-} = {
-  string: {
-    kind: 'string',
-    sourceRef: unkownErrorPos,
-  },
-  number: {
-    kind: 'number',
-    sourceRef: unkownErrorPos,
-  },
-  boolean: {
-    kind: 'boolean',
-    sourceRef: unkownErrorPos,
-  },
-  date: {
-    kind: 'date',
-    sourceRef: unkownErrorPos,
-  },
-}
+export type BasicTypesOnly = Exclude<Exclude<Exclude<keyof typeof normalTypes, 'enum'>, 'complex'>, 'array'>
 export const basicTypes3: {
-  [k in keyof typeof basicTypes]: Type
+  [k in BasicTypesOnly]: NormalType
 } = {
   string: {
-    kind: 'Type',
+    kind: 'NormalType',
     sourceRef: unkownErrorPos,
-    base: basicTypes2.string,
+    base: () => ({ kind: 'BaseType', sourceRef: unkownErrorPos, base: 'string', enumOptions: false, complexFields: false, arrayType: false }),
     nodeMapping: {
       id: 'string'
     },
@@ -206,9 +191,9 @@ export const basicTypes3: {
     }
   },
   number: {
-    kind: 'Type',
+    kind: 'NormalType',
     sourceRef: unkownErrorPos,
-    base: basicTypes2.number,
+    base: () => ({ kind: 'BaseType', sourceRef: unkownErrorPos, base: 'number', enumOptions: false, complexFields: false, arrayType: false }),
     nodeMapping: {
       id: 'number'
     },
@@ -219,9 +204,9 @@ export const basicTypes3: {
     }
   },
   boolean: {
-    kind: 'Type',
+    kind: 'NormalType',
     sourceRef: unkownErrorPos,
-    base: basicTypes2.boolean,
+    base: () => ({ kind: 'BaseType', sourceRef: unkownErrorPos, base: 'boolean', enumOptions: false, complexFields: false, arrayType: false }),
     nodeMapping: {
       id: 'boolean'
     },
@@ -232,9 +217,9 @@ export const basicTypes3: {
     }
   },
   date: {
-    kind: 'Type',
+    kind: 'NormalType',
     sourceRef: unkownErrorPos,
-    base: basicTypes2.date,
+    base: () => ({ kind: 'BaseType', sourceRef: unkownErrorPos, base: 'date', enumOptions: false, complexFields: false, arrayType: false }),
     nodeMapping: {
       id: 'date'
     },
@@ -246,20 +231,49 @@ export const basicTypes3: {
   }
 }
 
-export interface BasicType extends SourceNode<keyof typeof basicTypes> {
-
+export interface BaseType<BASE extends keyof typeof normalTypes> extends SourceNode<'BaseType'> {
+  base: BASE
+  enumOptions: false | ObjectConst<EnumOption>
+  complexFields: false | Fields
+  arrayType: false | UseType
 }
 
-export interface Type extends SourceNodeMapped<'Type'> {
-  base: BasicType
+export type Type = NormalType | EnumType | ComplexType | ArrayType
+
+export interface TypeBase<KIND extends string, BASE extends keyof typeof normalTypes> extends SourceNodeMapped<KIND> {
   validate?: Code
   format?: Code
   parse?: Code
+  base: () => BaseType<BASE>
+}
+export interface NormalType extends TypeBase<'NormalType', BasicTypesOnly> {
+}
+export interface EnumType extends TypeBase<'EnumType', 'enum'> {
+  options: ObjectConst<EnumOption>
 }
 
-export interface UseType extends SourceNode<'UseType'> {
+export interface EnumOption extends SourceNodeWithName<'EnumOption'> {
+  value: StringConst
+  description: I18N
+  icon: Icon
+}
+export interface ComplexType extends TypeBase<'ComplexType', 'complex'> {
+  fields: Fields
+}
+export interface ArrayType extends TypeBase<'ArrayType', 'array'> {
+  itemType: UseType
+}
+
+export type UseType = UseType1 | UseTypeAsArray
+export interface UseType1 extends SourceNode<'UseType1'> {
   type: StringConst
   ref(sourceRef: TsNode | null): Type
+  base(sourceRef: TsNode | null): string
+}
+export interface UseTypeAsArray extends SourceNode<'UseTypeAsArray'> {
+  itemType: UseType
+  ref(sourceRef: TsNode | null): ArrayType
+  base(sourceRef: TsNode | null): string
 }
 
 export type Fields = ObjectConst<Field>

@@ -1,5 +1,5 @@
 import { CodeBlockWriter } from 'ts-morph';
-import { Application, Package, Process, Workspace, Function, Task, View, Type, basicTypes, Document, Fields, SourceNodeWithName, SourceNode } from '../../load/types';
+import { Application, Package, Process, Workspace, Function, normalTypes, View, Type, Document, Fields, SourceNodeWithName, SourceNode } from '../../load/types';
 import { quote, typePipeObj, typePipeStr } from '../generator';
 
 export async function generateDeclaration(ws: Workspace) {
@@ -96,7 +96,7 @@ declare interface ${pkgid}_DeclViews {
   }): ${pkgid}_DeclTypes
 }
 declare interface ${pkgid}_DeclTypes {
-  types (types: {${pkg.types.props.map((t) => `${t.key.str}: TypeDecl,`).join('\n')}
+  types (types: {${pkg.types.props.map((t) => `${t.key.str}: ${pkgid}_TypeDecl,`).join('\n')}
   }): ${pkgid}_DeclDocuments
 }
 declare interface ${pkgid}_DeclDocuments {
@@ -123,7 +123,60 @@ declare interface ${pkgid}_Ref {
   },
 }
 
-type ${pkgid}_TypeName = ${typePipeStr(pkg.refs.types.items.map((t) => t.path).concat(Object.keys(basicTypes)))}
+type ${pkgid}_TypeName = BasicTypes | ${typePipeStr(addArrayTypes(
+      pkg.refs.types.items.map((t) => t.path)
+        .concat(pkg.refs.baseTypes.items.map(t => t.path))
+    ))}
+
+${pkg.refs.baseTypes.items.map((b) => {
+      const t = b.ref
+      if (t.enumOptions) return `type ${b.path} = ${typePipeStr(t.enumOptions.props.map(p => p.key.str))}`
+      if (t.complexFields) return asComplex()
+      if (t.arrayType) return asArray()
+      return `type ${b.path} = '${b.path} invalid'`
+      function asComplex() {
+        return `type ${b.path} = '${b.path} invalid'`
+      }
+      function asArray() {
+        return `type ${b.path} = '${b.path} invalid'`
+      }
+    }).join('')
+      }
+
+declare type ${pkgid}_TypeDecl = ${typePipeObj(Object.keys(normalTypes).map((b) => {
+        if (b === 'enum') return `{
+          base: "enum"
+          options: {
+            [key:string]: {
+              value: string
+              description: I18N
+              icon: Icon
+            }
+          }
+        }`
+        if (b === 'complex') return `
+          {
+            base: "complex"
+            fields: {
+              [key:string]: ${pkgid}_TypeDecl
+            }
+          }`
+        if (b === 'array') return `
+          {
+            base: "array"
+            item: ${pkgid}_TypeDecl
+          }  
+          `
+        const js = b === 'date' ? 'Date' : b
+        return `{
+          base: ${quote(b)}
+          validate?(this: void, val: ${js}): string | false
+          format?(this: void, val: ${js}): string
+          parse?(this: void, str: string): ${js}
+          }`.trim()
+      }))
+      }
+
 interface ${pkgid}_DeclFields {
   [fieldName:string]: {
      description?: string
@@ -180,10 +233,10 @@ declare type ${pkgid}_process_${procName}_DeclTask = ${typePipeObj(pkg.functions
     useFunction: {      
       function: ${quote(f.key.str)},
       input: {
-        ${f.val.input.keys().map((k)=>`${k}: ${pkgid}_process_${procName}_Scope`)}
+        ${f.val.input.keys().map((k) => `${k}: ${pkgid}_process_${procName}_Scope`)}
       },
       output: {
-        ${f.val.output.keys().map((k)=>`${k}: ${pkgid}_process_${procName}_Scope`)}
+        ${f.val.output.keys().map((k) => `${k}: ${pkgid}_process_${procName}_Scope`)}
       }    
     },
     next: ${pkgid}_process_${procName}_NextTask,
@@ -206,7 +259,7 @@ declare type ${pkgid}_process_${procName}_NextTask = ${pkgid}_process_${procName
         declare interface ${pkgid}_process_${procName}_InstanceVars_${scope} {
           ${function () {
             const fields: Fields = (process.vars as any)[scope]
-            return fields.props.map((f) => f.key.str + ': ' + f.val.type.ref(null).base.kind).join('\n')
+            return fields.props.map((f) => f.key.str + ': ' + f.val.type.base(null)).join('\n')
           }()}
         }`.trimStart()))
       }
@@ -222,10 +275,10 @@ declare interface ${pkgid}_function_${funcName}_Decl {
 }
 declare type ${pkgid}_function_${funcName}_Ref = (input: ${pkgid}_function_${funcName}_InputRef, output: ${pkgid}_function_${funcName}_OutputRef) => Promise<void>
 declare interface ${pkgid}_function_${funcName}_InputRef {
-  ${func.input.props.map((f) => `  ${f.key.str}:${f.val.type.ref(null).base.kind}`)}
+  ${func.input.props.map((f) => `  ${f.key.str}:${f.val.type.base(null)}`)}
 }
 declare interface ${pkgid}_function_${funcName}_OutputRef {
-  ${func.output.props.map((f) => `  ${f.key.str}:${f.val.type.ref(null).base.kind}`)}
+  ${func.output.props.map((f) => `  ${f.key.str}:${f.val.type.base(null)}`)}
 }
 `.trimStart())
     }
@@ -244,7 +297,7 @@ declare type ${pkgid}_view_${viewName}_DeclContent = Array<{
   type: ${pkgid}_TypeName
 }>
 declare interface ${pkgid}_view_${viewName}_DeclData {
-  ${view.refs.fields.items.map((f) => `${f.path}: ${f.ref.type.ref(null).base.kind}`)}
+  ${view.refs.fields.items.map((f) => `${f.path}: ${f.ref.type.base(null)}`)}
 }
 declare interface ${pkgid}_view_${viewName}_DeclBind<S> {
   ${view.refs.fields.items.map((f) => `${f.path}: S`)}
@@ -258,7 +311,7 @@ declare interface ${pkgid}_document_${docName}_Decl {
   persistence: DocPersistence
   identification: 'Centralized'|'ByPeer',
   states: {
-    ${doc.states.keys().map((k)=>`${k}: DocState`).join('\n')}    
+    ${doc.states.keys().map((k) => `${k}: DocState`).join('\n')}    
   }
   primaryFields: ${pkgid}_DeclDocFields
   secondaryFields: ${pkgid}_DeclDocFields
@@ -275,20 +328,28 @@ declare interface ${pkgid}_document_${docName}_DeclActions {
       to: ${pkgid}_document_${docName}_StateName | ${pkgid}_document_${docName}_StateName[],
       icon: Icon,
       description: I18N,
-      run?(this: ${pkgid}_document_${docName}_Data, ${a.ref.run?a.ref.run.params.map(p=>p.getText()).join():''}): ${a.ref.run?a.ref.run.ret.getText():'Promise<void>'}
-    }
+      run?(data: ${pkgid}_document_${docName}_Data, ${a.ref.run ? a.ref.run.params.map((p, idx) => {
+          const ptxt = p.getText()
+          if (idx === 0) {
+            if (ptxt.includes(':')) ws.error('nao deve ter o tipo', p)
+            return null
+          }
+          return ptxt
+        }).filter((p) => p !== null).join() : ''}): ${a.ref.run ? a.ref.run.ret.getText() : 'Promise<void>'
+        }
+     }
     `)}      
 }
 declare interface ${pkgid}_document_${docName}_Data {
   ${doc.refs.allFields.items.map((f) =>
-          `${f.path}:${f.ref.type.ref(null).base.kind}`
+          `${f.path}:${f.ref.type.base(null)}`
         ).join('\n')}  
 }
 declare interface ${pkgid}_document_${docName}_Ref {
   ${doc.refs.actions.items.map((a) =>
           `${a.path}: ${a.ref.run ?
             '(' +
-            a.ref.run.params.map(p => p.getText()).join(', ') +
+            a.ref.run.params.slice(1).map(p => p.getText()).join(', ') +
             ') => ' +
             a.ref.run.ret.getText()
             : '() => Promise<void>'
@@ -325,7 +386,11 @@ declare interface IAction<T> {
   run: "back" | "next" | ((data: T) => Promise<void>)
 }
 
-declare type BasicTypes = "string" | "number" | "boolean" | "date"
+declare type BasicTypes = ${typePipeStr(addArrayTypes(
+        Object.keys(normalTypes)
+          .filter(n => (normalTypes as any)[n])
+      ))
+        }
 
 declare type DocPersistence = 'session' | 'persistent'
 declare interface DocState {
@@ -360,18 +425,11 @@ declare interface Builders { "mui-deepstream": BuilderConfig }
 
 declare type AllPackageUris = ${typePipeStr(AllPackageUris)}
 
-declare type TypeDecl = ${typePipeObj(Object.keys(basicTypes).map((b) => {
-        const js = b === 'date' ? 'Date' : b
-        return `{
-  base: ${quote(b)}
-  validate?(this: void, val: ${js}): string | false
-  format?(this: void, val: ${js}): string
-  parse?(this: void, str: string): ${js}
-}`.trim()
-      }
-      ))}
-
 `.trimStart())
     })
   }
+}
+
+function addArrayTypes(s: string[]) {
+  return s.concat(s.map(i => i + '[]'))
 }
