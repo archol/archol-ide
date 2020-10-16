@@ -1,15 +1,27 @@
 import * as ts from 'ts-morph'
 
-export interface SourceNode<KIND extends string> {
+export type SourceNodeKind = 'Application' | 'Package' | 'StringConst' | 'NumberConst' | 'BooleanConst' |
+  'ObjectConst' | 'ArrayConst' | 'Workspace' | 'Application' | 'Icon' | 'I18N' | 'PackageUse' | 'Package' | 'Role' |
+  'BaseType' | 'NormalType' | 'EnumType' | 'EnumOption' | 'ComplexType' | 'ArrayType' | 'UseType1' | 'UseTypeAsArray' |
+  'Field' | 'Index' | 'Document' | 'DocAction' | 'DocField' | 'DocIndex' | 'DocumentState' | 'UseDocStates' |
+  'Process' | 'ProcessVars' | 'UseLocRole' | 'UseSysRole' | 'UseTask' | 'UITask' | 'UseView' | 'SystemTask' |
+  'UseFunction' | 'BindVar' | 'View' | 'ViewAction' | 'WidgetContent' | 'WidgetItem' | 'FunctionLevel' |
+  'Function' | 'Code' | 'BuilderConfig' | 'Pagelet' | 'RouteCode' | 'RouteRedirect' | 'MenuItem' | 'MenuItemSeparator'
+
+export function isSourceNode(node: any): node is SourceNode<any> {
+  return typeof node === 'object' && typeof node.kind === 'string' && typeof node.sourceRef === 'object'
+}
+
+export interface SourceNode<KIND extends SourceNodeKind> {
   kind: KIND
   sourceRef: SourceRef
 }
 
-export interface SourceNodeWithName<KIND extends string> extends SourceNode<KIND> {
+export interface SourceNodeWithName<KIND extends SourceNodeKind> extends SourceNode<KIND> {
   name: StringConst
 }
 
-export interface SourceNodeMapped<KIND extends string> extends SourceNodeWithName<KIND> {
+export interface SourceNodeMapped<KIND extends SourceNodeKind> extends SourceNodeWithName<KIND> {
   nodeMapping: {
     id: string
   }
@@ -35,6 +47,10 @@ export const unkownErrorPos: SourceRef = {
   end: { pos: 0, row: 0, col: 0 },
 }
 
+export function isStringConst(node: any): node is StringConst {
+  return node && node.kind === 'StringConst'
+}
+
 export interface StringConst<T extends string = string> extends SourceNode<'StringConst'> {
   str: T
 }
@@ -47,11 +63,19 @@ export interface BooleanConst extends SourceNode<'BooleanConst'> {
   bool: Boolean
 }
 
+export function isObjectConst(node: any): node is ObjectConst {
+  return node && node.kind === 'ObjectConst'
+}
+
 export interface ObjectConst<T extends SourceNode<any> = SourceNode<any>> extends SourceNode<'ObjectConst'> {
   props: Array<{ key: StringConst, val: T }>
   get(key: string | StringConst): T | undefined
   keys(): string[]
   map<U>(callbackfn: (value: T, key: StringConst) => U, thisArg?: any): U[];
+}
+
+export function isArrayConst(node: any): node is ArrayConst {
+  return node && node.kind === 'ArrayConst'
 }
 
 export interface ArrayConst<T extends SourceNode<any> = SourceNode<any>> extends SourceNode<'ArrayConst'> {
@@ -120,8 +144,8 @@ export interface PackageUse extends SourceNode<'PackageUse'> {
   promise: Promise<Package>
 }
 
-export function isPackage(node: SourceNode<any>): node is Package {
-  return node.kind === 'Package'
+export function isPackage(node: any): node is Package {
+  return node && node.kind === 'Package'
 }
 
 export interface Package extends SourceNode<'Package'> {
@@ -240,7 +264,7 @@ export interface BaseType<BASE extends keyof typeof normalTypes> extends SourceN
 
 export type Type = NormalType | EnumType | ComplexType | ArrayType
 
-export interface TypeBase<KIND extends string, BASE extends keyof typeof normalTypes> extends SourceNodeMapped<KIND> {
+export interface TypeBase<KIND extends SourceNodeKind, BASE extends keyof typeof normalTypes> extends SourceNodeMapped<KIND> {
   validate?: Code
   format?: Code
   parse?: Code
@@ -291,8 +315,8 @@ export interface Index extends SourceNode<'Index'> {
 
 export type Documents = ObjectConst<Document>
 
-export function isDocument(node: SourceNode<any>): node is Document {
-  return node.kind === 'Document'
+export function isDocument(node: any): node is Document {
+  return node && node.kind === 'Document'
 }
 
 export interface Document extends SourceNodeMapped<'Document'> {
@@ -351,8 +375,8 @@ export interface UseDocStates extends SourceNode<'UseDocStates'> {
 
 export type Processes = ObjectConst<Process>
 
-export function isProcess(node: SourceNode<any>): node is Process {
-  return node.kind === 'Process'
+export function isProcess(node: any): node is Process {
+  return node && node.kind === 'Process'
 }
 
 export interface Process extends SourceNodeMapped<'Process'> {
@@ -397,7 +421,7 @@ export type Tasks = ObjectConst<Task>
 
 export type Task = UITask | SystemTask
 
-export interface BaseTask<KIND extends string> extends SourceNodeMapped<KIND> {
+export interface BaseTask<KIND extends SourceNodeKind> extends SourceNodeMapped<KIND> {
   pool?: StringConst,
   lane?: StringConst,
   roles: UseRoles,
@@ -434,8 +458,8 @@ export interface BindVar extends SourceNode<'BindVar'> {
 
 export type Views = ObjectConst<View>
 
-export function isView(node: SourceNode<any>): node is View {
-  return node.kind === 'View'
+export function isView(node: any): node is View {
+  return node && node.kind === 'View'
 }
 
 export interface View extends SourceNodeMapped<'View'> {
@@ -457,8 +481,8 @@ export interface ViewAction extends SourceNode<'ViewAction'> {
   isVisible: Code
 }
 
-export function isWidgetContent(node: SourceNode<any>): node is WidgetContent {
-  return node.kind === 'WidgetContent'
+export function isWidgetContent(node: any): node is WidgetContent {
+  return node && node.kind === 'WidgetContent'
 }
 
 export type Widget = WidgetContent | WidgetItem
@@ -581,3 +605,57 @@ export interface PackageRef<T extends SourceNode<any>> {
   path: string
   ref: T
 }
+export type SourceNodeType<KIND extends SourceNodeKind> = KIND extends 'Application' ? Application :
+  KIND extends 'Package' ? Package :
+  KIND extends 'StringConst' ? StringConst :
+  KIND extends 'NumberConst' ? NumberConst :
+  KIND extends 'BooleanConst' ? BooleanConst :
+  KIND extends 'ObjectConst' ? ObjectConst :
+  KIND extends 'ArrayConst' ? ArrayConst :
+  KIND extends 'Workspace' ? Workspace :
+  KIND extends 'Application' ? Application :
+  KIND extends 'Icon' ? Icon :
+  KIND extends 'I18N' ? I18N :
+  KIND extends 'PackageUse' ? PackageUse :
+  KIND extends 'Package' ? Package :
+  KIND extends 'Role' ? Role :
+  KIND extends 'BaseType' ? BaseType<any> :
+  KIND extends 'NormalType' ? NormalType :
+  KIND extends 'EnumType' ? EnumType :
+  KIND extends 'EnumOption' ? EnumOption :
+  KIND extends 'ComplexType' ? ComplexType :
+  KIND extends 'ArrayType' ? ArrayType :
+  KIND extends 'UseType1' ? UseType1 :
+  KIND extends 'UseTypeAsArray' ? UseTypeAsArray :
+  KIND extends 'Field' ? Field :
+  KIND extends 'Index' ? Index :
+  KIND extends 'Document' ? Document :
+  KIND extends 'DocAction' ? DocAction :
+  KIND extends 'DocField' ? DocField :
+  KIND extends 'DocIndex' ? DocIndex :
+  KIND extends 'DocumentState' ? DocumentState :
+  KIND extends 'UseDocStates' ? UseDocStates :
+  KIND extends 'Process' ? Process :
+  KIND extends 'ProcessVars' ? ProcessVars :
+  KIND extends 'UseLocRole' ? UseLocRole :
+  KIND extends 'UseSysRole' ? UseSysRole :
+  KIND extends 'UseTask' ? UseTask :
+  KIND extends 'UITask' ? UITask :
+  KIND extends 'UseView' ? UseView :
+  KIND extends 'SystemTask' ? SystemTask :
+  KIND extends 'UseFunction' ? UseFunction :
+  KIND extends 'BindVar' ? BindVar :
+  KIND extends 'View' ? View :
+  KIND extends 'ViewAction' ? ViewAction :
+  KIND extends 'WidgetContent' ? WidgetContent :
+  KIND extends 'WidgetItem' ? WidgetItem :
+  KIND extends 'FunctionLevel' ? FunctionLevel :
+  KIND extends 'Function' ? Function :
+  KIND extends 'Code' ? Code :
+  KIND extends 'BuilderConfig' ? BuilderConfig :
+  KIND extends 'Pagelet' ? Pagelet :
+  KIND extends 'RouteCode' ? RouteCode :
+  KIND extends 'RouteRedirect' ? RouteRedirect :
+  KIND extends 'MenuItem' ? MenuItem :
+  KIND extends 'MenuItemSeparator' ? MenuItemSeparator :
+  unknown

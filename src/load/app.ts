@@ -9,7 +9,7 @@ import {
   Task, UseTask, Roles, UseSysRole, UseLocRole, UseRoles, Fields, Field, UseType, BindVar, ProcessVars,
   UseView, UseFunction, BindVars, FunctionLevel, Widget, ViewAction, BaseType, NormalType, normalTypes, DocFields, DocIndexes,
   DocumentStates, DocActions, DocAction, DocField, DocIndex, DocumentState, UseDocStates, Routes, Pagelets,
-  Pagelet, Menu, MenuItem, MenuItemSeparator, SourceNodeMapped, SourceNodeWithName, isPackage, RouteRedirect, RouteCode, RoleGroup, TsNode, basicTypes3, PackageRefs, PackageRef, isView, EnumOption, ComplexType, ArrayType, UseTypeAsArray, Types
+  Pagelet, Menu, MenuItem, MenuItemSeparator, SourceNodeMapped, SourceNodeWithName, isPackage, RouteRedirect, RouteCode, RoleGroup, TsNode, basicTypes3, PackageRefs, PackageRef, isView, EnumOption, ComplexType, ArrayType, UseTypeAsArray, Types, SourceNodeKind
 } from './types'
 
 export async function loadApp(ws: Workspace, appName: string): Promise<Application> {
@@ -193,7 +193,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     }
   }
 
-  function getMapped<KIND extends string, T extends SourceNodeMapped<KIND>>(
+  function getMapped<KIND extends SourceNodeKind, T extends SourceNodeMapped<KIND>>(
     sourceRef: TsNode, id: string, kind: KIND, def: () => T): T {
     let r: any = mappingList[id]
     if (!r) ws.error('nao existe ' + id, sourceRef)
@@ -612,7 +612,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
 
     return { uses }
 
-    function packageGetRef<KIND extends string, T extends SourceNodeMapped<KIND>>(opts: {
+    function packageGetRef<KIND extends SourceNodeKind, T extends SourceNodeMapped<KIND>>(opts: {
       refId: StringConst,
       kind: KIND,
       where: keyof Package,
@@ -754,7 +754,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             return retTypeArr.itemType.base(sourceRef) + '[]'
           },
           ref: packageGetRef({
-            kind: 'Type',
+            kind: 'NormalType',
             refId: strTypeName,
             where: 'types',
             isInternal: (s) => (basicTypes3 as any)[s],
@@ -778,7 +778,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             return typeRef.base().base
           },
           ref: packageGetRef({
-            kind: 'Type',
+            kind: 'NormalType',
             refId: strTypeName,
             where: 'types',
             isInternal: (s) => (basicTypes3 as any)[s],
@@ -1090,7 +1090,6 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             nbase = basicTypes3.string
           }
           const fbase=nbase.base
-          console.log(typeName.str, base.str, fbase)
           const type: NormalType = {
             kind: 'NormalType',
             sourceRef: ws.getRef(itmType),

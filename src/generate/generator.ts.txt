@@ -12,10 +12,8 @@ export function generator(
   const _blocks: { [name: string]: { undef: boolean, used?: boolean, code1: Code1, code2: string } } = {}
   const proxyHandler: ProxyHandler<any> = {
     get(_target, id: string) {
-      if (id === 'I18N') console.log('get.b', id, _blocks[id])
       if (_blocks[id]) _blocks[id].used = true
       else _blocks[id] = { undef: true } as any
-      if (id === 'I18N') console.log('get.a', id, _blocks[id])
       return id
     }
   }
@@ -29,7 +27,6 @@ export function generator(
       const unused: string[] = []
       Object.keys(_blocks).forEach((id) => {
         const block = _blocks[id]
-        if (id === 'I18N') console.log('flush', id, block)
         if (block.undef) undef.push(id)
         else if (block.used) {
           let code2 = block.code2
@@ -80,17 +77,4 @@ export function generator(
     if (Array.isArray(code)) code = (code as any).map((c:any) => resolveCode1(c, setLoop)).join('') as string
     return code
   }
-
-}
-
-export function typePipeStr(s: string[]) {
-  return s.length ? s.map(quote).join('|') : quote('')
-}
-
-export function typePipeObj(s: string[]) {
-  return s.length ? s.join('|') : '{}'
-}
-
-export function quote(s: string) {
-  return '"' + s + '"'
 }

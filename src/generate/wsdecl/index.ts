@@ -1,6 +1,7 @@
 import { CodeBlockWriter } from 'ts-morph';
 import { Application, Package, Process, Workspace, Function, normalTypes, View, Type, Document, Fields, SourceNodeWithName, SourceNode } from '../../load/types';
-import { quote, typePipeObj, typePipeStr } from '../generator';
+import { quote, typePipeObj, typePipeStr } from '../lib/generator';
+import { materialUiIcons } from './materialuiicons';
 
 export async function generateDeclaration(ws: Workspace) {
   const declFileName = ws.path + '/ws/decl.d.ts'
@@ -363,7 +364,7 @@ declare interface ${pkgid}_document_${docName}_Ref {
       w.write(`
 /* eslint-disable */
 
-declare type Icon = string
+declare type Icon = ${typePipeStr(materialUiIcons)}
 declare type GUID = '$GUID'
 
 declare type I18N = string | {

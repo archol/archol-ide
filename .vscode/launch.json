@@ -13,7 +13,9 @@
       "runtimeArgs": [
         "--nolazy",
         "-r",
-        "ts-node/register",
+        "ts-node",
+        "-r",
+        "tsconfig-paths/register",
         "src/index.ts",
         "/home/thr0w/projects/appcvv",
         "AppCVV"
