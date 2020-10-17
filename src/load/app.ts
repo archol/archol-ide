@@ -9,7 +9,9 @@ import {
   Task, UseTask, Roles, UseSysRole, UseLocRole, UseRoles, Fields, Field, UseType, BindVar, ProcessVars,
   UseView, UseFunction, BindVars, FunctionLevel, Widget, ViewAction, BaseType, NormalType, normalTypes, DocFields, DocIndexes,
   DocumentStates, DocActions, DocAction, DocField, DocIndex, DocumentState, UseDocStates, Routes, Pagelets,
-  Pagelet, Menu, MenuItem, MenuItemSeparator, SourceNodeMapped, SourceNodeWithName, isPackage, RouteRedirect, RouteCode, RoleGroup, TsNode, basicTypes3, PackageRefs, PackageRef, isView, EnumOption, ComplexType, ArrayType, UseTypeAsArray, Types, SourceNodeKind
+  Pagelet, Menu, MenuItem, MenuItemSeparator, SourceNodeMapped, SourceNodeRefsKind, isPackage, RouteRedirect,
+  RouteCode, RoleGroup, TsNode, basicTypes3, PackageRefs, PackageRef, isView, EnumOption, ComplexType, ArrayType,
+  UseTypeAsArray, Types, SourceNodeKind, SourceNodeObjectKind, SourceNodeArrayKind, BuilderConfig, AppMappings
 } from './types'
 
 export async function loadApp(ws: Workspace, appName: string): Promise<Application> {
@@ -72,24 +74,6 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       return declarePackage(pkgns, pkgpath) as any
     }
     throw ws.fatal(expr1.getSourceFile().getFilePath() + ' declareApplication ou declarePackage era esperado', expr1)
-  }
-
-  function parseAnyArg(propValue: any): any {
-    let ret: any = undefined
-    if (propValue instanceof ts.ObjectLiteralExpression) {
-      ret = objectConst(ws.getRef(propValue))
-      parseObjArg(propValue, {
-        '*'(val, name) {
-          ret.add(name, parseAnyArg(val))
-          return name
-        }
-      })
-    } else if (propValue instanceof ts.ArrayLiteralExpression) ret = parserForArrArg(parseAnyArg)(propValue)
-    else if (isStrArg(propValue)) ret = parseNumArg(propValue)
-    else if (propValue instanceof ts.NumericLiteral) ret = parseNumArg(propValue)
-    else if (propValue instanceof ts.BooleanLiteral) ret = parseBolArg(propValue)
-    else ws.error(propValue.getText() + ': tipo de dado não tratado', propValue)
-    return ret
   }
 
   function isStrArg(arg: ts.Node) {
@@ -299,8 +283,11 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     }
   }
 
-  function parseColObjArg<T extends SourceNode<any>>(arg: ts.Node, fn: (itm: ts.Node, name: StringConst) => T): ObjectConst<T> {
-    const col = objectConst<T>(ws.getRef(arg))
+  function parseColObjArg<KIND extends SourceNodeObjectKind, T extends SourceNode<any>>(
+    kind: KIND,
+    arg: ts.Node, fn: (itm: ts.Node, name: StringConst) => T)
+    : ObjectConst<KIND, T> {
+    const col = objectConst<KIND, T>(kind, ws.getRef(arg))
     parseObjArg(arg, {
       '*'(val, name) {
         const t: T = fn(val, name)
@@ -311,11 +298,14 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     return col
   }
 
-  function parserForArrArg<T extends SourceNode<any>>(fn: (itm: ts.Node) => T): (arg: ts.Node) => ArrayConst<T> {
+  function parserForArrArg<KIND extends SourceNodeArrayKind, T extends SourceNode<any>>(
+    kind: KIND,
+    fn: (itm: ts.Node) => T)
+    : (arg: ts.Node) => ArrayConst<KIND, T> {
     return (arg: ts.Node) => {
-      let ret: ArrayConst<T> = undefined as any
+      let ret: ArrayConst<KIND, T> = undefined as any
       if (arg instanceof ts.ArrayLiteralExpression) {
-        ret = arrayConst(ws.getRef(arg))
+        ret = arrayConst(kind, ws.getRef(arg))
         ret.items = arg.getElements().map(fn)
       } else ws.error(arg.getSourceFile().getFilePath() + ' ' + arg.getText() + ' Array é esperado', arg)
       return ret
@@ -327,7 +317,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     const ret: I18N = {
       kind: "I18N",
       sourceRef: ws.getRef(arg),
-      msg: objectConst<StringConst>(ws.getRef(arg))
+      msg: objectConst<'I18NMsg', StringConst>('I18NMsg', ws.getRef(arg))
     }
     if (arg instanceof ts.ObjectLiteralExpression) {
       parseObjArg(arg, {
@@ -363,14 +353,14 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
   }
 
   async function declareApplication(name: StringConst, opts: ts.Node): Promise<Application> {
-    const appprops: Omit<Omit<Omit<Omit<Omit<Omit<Application, 'kind'>, 'sourceRef'>, 'name'>, 'getMapped'>, 'allPackages'>, 'mappingList'>
+    const appprops: Omit<Omit<Omit<Omit<Omit<Omit<Omit<Application, 'kind'>, 'sourceRef'>, 'name'>, 'getMapped'>, 'allPackages'>, 'mappingList'>, 'allroles'>
       = parseObjArg(opts, {
         description: parseI18N,
         icon: parseIcon,
         uses: parsePackageUses,
-        langs: parserForArrArg(parseStrArg),
-        builders: parseAnyArg,
-        mappings: parseAnyArg,
+        langs: parserForArrArg('AppLanguages', parseStrArg),
+        builders: parseAppBuilders,
+        mappings: parseAppMappings,
         pagelets: parsePagelets,
         routes: parseRoutes,
         menu: parseMenu,
@@ -416,8 +406,16 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     // }
   }
 
-  function parsePackageUses(arg: ts.Node): PackageUses {
-    return parseColObjArg(arg, (argUri, alias) => {
+  function parseAppBuilders(argBuilders: ts.Node): ObjectConst<'AppBuilders', BuilderConfig> {
+    return objectConst<'AppBuilders', BuilderConfig>('AppBuilders', ws.getRef(argBuilders))
+  }
+
+  function parseAppMappings(argBuilders: ts.Node): AppMappings {
+    return objectConst<'AppMappings', StringConst>('AppMappings', ws.getRef(argBuilders))
+  }
+
+  function parsePackageUses(argPkgUses: ts.Node): PackageUses {
+    return parseColObjArg('PackageUses', argPkgUses, (argUri, alias) => {
       const uri = parseStrArg(argUri)
       loadPkg(uri)
       const pkguse: PackageUse = {
@@ -445,7 +443,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
   }
 
   function parseRoutes(argRoutes: ts.Node): Routes {
-    return parseColObjArg(argRoutes, (itmRoute, itmName) => {
+    return parseColObjArg('Routes', argRoutes, (itmRoute, itmName) => {
       if (isStrArg(itmRoute)) {
         const redirect = parseStrArg(itmRoute)
         const rr: RouteRedirect = {
@@ -469,7 +467,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
   }
 
   function parsePagelets(argPagelets: ts.Node): Pagelets {
-    return parseColObjArg(argPagelets, (itmPagelet, pageletName) => {
+    return parseColObjArg('Pagelets', argPagelets, (itmPagelet, pageletName) => {
       const pprops = parseObjArg(itmPagelet, {
         left: parseNumArg,
         top: parseNumArg,
@@ -489,7 +487,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
   }
 
   function parseMenu(argMenu: ts.Node): Menu {
-    return parserForArrArg((itmMenu) => {
+    return parserForArrArg('Menu', (itmMenu) => {
       if (isStrArg(itmMenu)) {
         const str = parseStrArg(itmMenu)
         if (str.str !== '-') ws.error('menu invalido', itmMenu)
@@ -518,7 +516,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
 
   function parseRoles(parent: StringConst) {
     return (arg: ts.Node, sys: boolean): Roles => {
-      const roles = parseColObjArg(arg, (itm, name) => {
+      const roles = parseColObjArg('Roles', arg, (itm, name) => {
         if (isObjArg(itm)) {
           const rprops = parseObjArg(itm, {
             description: parseI18N,
@@ -532,7 +530,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             ...rprops
           }
           return role;
-        } else return parserForArrArg(parseStrArg)(itm) as RoleGroup
+        } else return parserForArrArg('RoleGroup', parseStrArg)(itm) as RoleGroup
       })
       sysRoles.forEach((dr) => {
         const er = roles.get(dr)
@@ -681,7 +679,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         const el = argUseRoles.getElements()
         if (el.length === 0) ws.error('need role', argUseRoles)
         if (el.length === 1) return r1(el[0])
-        const roles = parserForArrArg(parseStrArg)(argUseRoles)
+        const roles = parserForArrArg('UseLocRoleList', parseStrArg)(argUseRoles)
         roles.items.some((r) => {
           if (sysRoles.includes(r.str)) ws.error('Role de sistema não pode ser combinado com outros', r)
         })
@@ -719,7 +717,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           kind: 'UseLocRole',
           sourceRef: str.sourceRef,
           roles: {
-            kind: 'ArrayConst',
+            kind: 'UseLocRoleList',
             sourceRef: str.sourceRef,
             items: [
               str
@@ -795,7 +793,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       }
     }
     function parseFields(argf: ts.Node): Fields {
-      return parseColObjArg(argf, (itm, name) => {
+      return parseColObjArg('Fields', argf, (itm, name) => {
         const fprops = parseObjArg(itm, {
           description: parseI18N,
           type: parseUseType,
@@ -824,7 +822,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     function processes(expr1Process: ts.CallExpression) {
       const argsProc = expr1Process.getArguments()
       if (argsProc.length !== 1) ws.error(expr1Process.getSourceFile().getFilePath() + ' processes precisa de um parametro', expr1Process)
-      pkg.processes = objectConst(ws.getRef(argsProc[0]))
+      pkg.processes = objectConst('Processes', ws.getRef(argsProc[0]))
       parseObjArg(argsProc[0], {
         '*'(val, processName) {
           const pprops = parseObjArg(val, {
@@ -867,7 +865,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             return vars
           }
           function parseBindVars(argBindVars: ts.Node): BindVars {
-            return parseColObjArg(argBindVars, (itmBindVar) => {
+            return parseColObjArg('BindVars', argBindVars, (itmBindVar) => {
               const str = parseStrArg(itmBindVar)
               const b: BindVar = {
                 kind: 'BindVar',
@@ -881,7 +879,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             })
           }
           function parseTasks(argTasks: ts.Node) {
-            return parseColObjArg(argTasks, (val, taskname) => {
+            return parseColObjArg('Tasks', argTasks, (val, taskname) => {
               const tprops = parseObjArg(val, {
                 pool: parseStrArg,
                 lane: parseStrArg,
@@ -913,12 +911,13 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             }
             return ret
           }
-          function parseNextTask(argNextTask: ts.Node): UseTask | ArrayConst<UseTask> | ObjectConst<Code | UseTask> {
+          function parseNextTask(argNextTask: ts.Node)
+            : UseTask | ArrayConst<'UseTasknames', UseTask> | ObjectConst<'UseTaskForks', Code | UseTask> {
             if (argNextTask instanceof ts.ArrayLiteralExpression) {
-              return parserForArrArg(parseUseTask)(argNextTask)
+              return parserForArrArg('UseTasknames', parseUseTask)(argNextTask)
             }
             else if (argNextTask instanceof ts.ObjectLiteralExpression) {
-              return parseColObjArg(argNextTask, (itmNextTask) => {
+              return parseColObjArg('UseTaskForks', argNextTask, (itmNextTask) => {
                 if (itmNextTask instanceof ts.MethodDeclaration) return parserForCode()(itmNextTask)
                 else return parseUseTask(itmNextTask)
               })
@@ -967,7 +966,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     function functions(expr1Functions: ts.CallExpression) {
       const argsFunctions = expr1Functions.getArguments()
       if (argsFunctions.length !== 1) ws.error(expr1Functions.getSourceFile().getFilePath() + ' functions precisa de um parametro', expr1Functions)
-      pkg.functions = parseColObjArg(argsFunctions[0], (itmFunction, functionName) => {
+      pkg.functions = parseColObjArg('Functions', argsFunctions[0], (itmFunction, functionName) => {
         const fprops = parseObjArg(itmFunction, {
           level: parseFunctionLevel,
           input: parseFields,
@@ -999,14 +998,14 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     function views(expr1View: ts.CallExpression) {
       const argsview = expr1View.getArguments()
       if (argsview.length !== 1) ws.error(expr1View.getSourceFile().getFilePath() + ' views precisa de um parametro', expr1View)
-      pkg.views = parseColObjArg(argsview[0], (itmView, viewName) => {
+      pkg.views = parseColObjArg('Views', argsview[0], (itmView, viewName) => {
         const vprops = parseObjArg(itmView, {
-          content: parserForArrArg(parseWidget),
+          content: parserForArrArg('ViewContent', parseWidget),
           primaryAction: parseAction,
           secondaryAction: parseAction,
-          othersActions: parserForArrArg(parseAction)
+          othersActions: parserForArrArg('othersActions', parseAction)
         })
-        const allActions = arrayConst<ViewAction>(ws.getRef(itmView))
+        const allActions = arrayConst<'allActions', ViewAction>('allActions', ws.getRef(itmView))
         allActions.items.push(vprops.primaryAction)
         if (vprops.secondaryAction)
           allActions.items.push(vprops.secondaryAction)
@@ -1027,7 +1026,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       return { types }
       function parseWidget(argWidget: ts.Node): Widget {
         const wprops = parseObjArg(argWidget, {
-          content: parserForArrArg(parseWidget),
+          content: parserForArrArg('ViewContent', parseWidget),
           caption: parseI18N,
           model: parserForStrArg<"show" | "edit">(),
           field: parseStrArg,
@@ -1066,7 +1065,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     function types(expr1type: ts.CallExpression) {
       const argstype = expr1type.getArguments()
       if (argstype.length !== 1) ws.error(expr1type.getSourceFile().getFilePath() + ' types precisa de um parametro', expr1type)
-      pkg.types = parseColObjArg(argstype[0], (itmType, typeName) => {
+      pkg.types = parseColObjArg('Types', argstype[0], (itmType, typeName) => {
         const typeProps = parseObjArg(itmType, {
           base: parseStrArg,
           validate: parserForCode(),
@@ -1089,7 +1088,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             ws.fatal('invalid base type ' + base.str, typeName)
             nbase = basicTypes3.string
           }
-          const fbase=nbase.base
+          const fbase = nbase.base
           const type: NormalType = {
             kind: 'NormalType',
             sourceRef: ws.getRef(itmType),
@@ -1121,7 +1120,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           return etype
         }
         function parseEnumOptions(argEnumOptions: ts.Node) {
-          return parseColObjArg(argEnumOptions, (itmOption, opName) => {
+          return parseColObjArg('EnumOptions', argEnumOptions, (itmOption, opName) => {
             const props = parseObjArg(itmOption, {
               value: parseStrArg,
               description: parseI18N,
@@ -1182,7 +1181,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     function documents(expr1Doc: ts.CallExpression) {
       const argsDoc = expr1Doc.getArguments()
       if (argsDoc.length !== 1) ws.error(expr1Doc.getSourceFile().getFilePath() + ' documents precisa de um parametro', expr1Doc)
-      pkg.documents = parseColObjArg(argsDoc[0], (itmDoc, docName) => {
+      pkg.documents = parseColObjArg('Documents', argsDoc[0], (itmDoc, docName) => {
         const dprops = parseObjArg(itmDoc, {
           caption: parseI18N,
           identification: parserForStrArg<'Centralized' | 'ByPeer'>(),
@@ -1205,7 +1204,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         }
         return doc
         function parseDocFields(argFields: ts.Node): DocFields {
-          return parseColObjArg(argFields, parseDocField)
+          return parseColObjArg('DocFields', argFields, parseDocField)
         }
         function parseDocField(argField: ts.Node, fieldname: StringConst): DocField {
           const fprops = parseObjArg(argField, {
@@ -1222,10 +1221,10 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           return field
         }
         function parseDocIndexes(argIndexes: ts.Node): DocIndexes {
-          return parseColObjArg(argIndexes, parseDocIndex)
+          return parseColObjArg('DocIndexes', argIndexes, parseDocIndex)
         }
         function parseDocIndex(argIndex: ts.Node, indexname: StringConst): DocIndex {
-          const fields = parserForArrArg(parseStrArg)(argIndex)
+          const fields = parserForArrArg('DocIndexFields', parseStrArg)(argIndex)
           const index: DocIndex = {
             kind: 'DocIndex',
             sourceRef: ws.getRef(argIndex),
@@ -1236,7 +1235,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           return index
         }
         function parseDocumentStates(argStates: ts.Node): DocumentStates {
-          return parseColObjArg(argStates, parseDocumentState)
+          return parseColObjArg('DocumentStates', argStates, parseDocumentState)
         }
         function parseDocumentState(argState: ts.Node, statename: StringConst): DocumentState {
           const sprops = parseObjArg(argState, {
@@ -1253,7 +1252,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           return state
         }
         function parseDocActions(argActions: ts.Node): DocActions {
-          return parseColObjArg(argActions, parseDocAction)
+          return parseColObjArg('DocActions', argActions, parseDocAction)
         }
         function parseDocAction(argAction: ts.Node, actionname: StringConst): DocAction {
           const aprops = parseObjArg(argAction, {
@@ -1276,7 +1275,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           const useDocStates: UseDocStates = {
             kind: 'UseDocStates',
             sourceRef: ws.getRef(argUseDocStates),
-            states: arrayConst<StringConst>(ws.getRef(argUseDocStates)),
+            states: arrayConst<'UsedDocStates', StringConst>('UsedDocStates', ws.getRef(argUseDocStates)),
             ref() {
               return useDocStates.states.items.map((s) => {
                 const state = doc.states.get(s)
@@ -1286,7 +1285,8 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             }
           }
           if (isStrArg(argUseDocStates)) useDocStates.states.items.push(parseStrArg(argUseDocStates))
-          else parserForArrArg(parseStrArg)(argUseDocStates).items.forEach((i) => useDocStates.states.items.push(i))
+          else parserForArrArg('UsedDocStates', parseStrArg)(argUseDocStates)
+            .items.forEach((i) => useDocStates.states.items.push(i))
           return useDocStates
         }
       })
@@ -1303,21 +1303,23 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
   function createPkgRefs(finishedPkg: Package) {
     finishedPkg.refs = {
       baseTypes: refBaseTypes(finishedPkg.types),
-      types: createRefs<Type>(finishedPkg, 'types', './'),
-      documents: createRefs<Document>(finishedPkg, 'documents', './'),
-      processes: createRefs<Process>(finishedPkg, 'processes', './'),
-      roles: createRefs<Role>(finishedPkg, 'roles', './'),
-      views: createRefs<View>(finishedPkg, 'views', './'),
-      functions: createRefs<Function>(finishedPkg, 'functions', './'),
+      types: createRefs<'RefTypes', Type>('RefTypes', finishedPkg, 'types', './'),
+      documents: createRefs<'RefDocuments', Document>('RefDocuments', finishedPkg, 'documents', './'),
+      processes: createRefs<'RefProcesses', Process>('RefProcesses', finishedPkg, 'processes', './'),
+      roles: createRefs<'RefRoles', Role>('RefRoles', finishedPkg, 'roles', './'),
+      views: createRefs<'RefViews', View>('RefViews', finishedPkg, 'views', './'),
+      functions: createRefs<'RefFunctions', Function>('RefFunctions', finishedPkg, 'functions', './'),
     }
-    function createRefs<T extends SourceNode<any>>(n: SourceNode<any>, kindObj: string, root?: string): PackageRefs<T> {
+    function createRefs<KIND extends SourceNodeRefsKind, T extends SourceNode<any>>(
+      kind: KIND,
+      n: SourceNode<any>, kindObj: string, root?: string): PackageRefs<T> {
       const ret: PackageRefs<T> = {
         items: [],
       }
       listrefs(n, '')
       return ret
       function listrefs(sn: SourceNode<any>, ppath: string) {
-        const items: ObjectConst<T> = (sn as any)[kindObj]
+        const items: ObjectConst<KIND, T> = (sn as any)[kindObj]
         items.props.forEach((item) => {
           const ipath = (ppath ? ppath : root || '') + item.key.str
           const iref = item.val
@@ -1328,11 +1330,11 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           if (isDocument(iref)) {
             iref.refs = {
               allFields: null as any,
-              primaryFields: createRefs<DocField>(iref, 'primaryFields'),
-              secondaryFields: createRefs<DocField>(iref, 'secondaryFields'),
-              indexes: createRefs<DocIndex>(iref, 'indexes'),
-              states: createRefs<DocumentState>(iref, 'states'),
-              actions: createRefs<DocAction>(iref, 'actions'),
+              primaryFields: createRefs<'RefPrimaryFields', DocField>('RefPrimaryFields', iref, 'primaryFields'),
+              secondaryFields: createRefs<'RefSecondaryFields', DocField>('RefSecondaryFields', iref, 'secondaryFields'),
+              indexes: createRefs<'RefDocIndexes', DocIndex>('RefDocIndexes', iref, 'indexes'),
+              states: createRefs<'RefDocStates', DocumentState>('RefDocStates', iref, 'states'),
+              actions: createRefs<'RefDocAction', DocAction>('RefDocAction', iref, 'actions'),
             }
             iref.refs.allFields = {
               items: iref.refs.primaryFields.items.concat(iref.refs.secondaryFields.items)
@@ -1426,7 +1428,7 @@ function invalidPackage(uri: StringConst) {
       ns: uri,
       path: uri
     },
-    uses: objectConst(uri.sourceRef),
+    uses: objectConst('PackageUses', uri.sourceRef),
     refs: {
       baseTypes: packageRefs(),
       types: packageRefs(),
@@ -1436,13 +1438,13 @@ function invalidPackage(uri: StringConst) {
       views: packageRefs(),
       functions: packageRefs(),
     },
-    types: objectConst(uri.sourceRef),
-    documents: objectConst(uri.sourceRef),
-    processes: objectConst(uri.sourceRef),
-    roles: objectConst(uri.sourceRef),
-    views: objectConst(uri.sourceRef),
-    functions: objectConst(uri.sourceRef),
-    routes: objectConst(uri.sourceRef),
+    types: objectConst('Types', uri.sourceRef),
+    documents: objectConst('Documents', uri.sourceRef),
+    processes: objectConst('Processes', uri.sourceRef),
+    roles: objectConst('Roles', uri.sourceRef),
+    views: objectConst('Views', uri.sourceRef),
+    functions: objectConst('Functions', uri.sourceRef),
+    routes: objectConst('Routes', uri.sourceRef),
   }
   return pkg
   function packageRefs(): PackageRefs<any> {

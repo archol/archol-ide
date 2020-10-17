@@ -1,12 +1,28 @@
 import * as ts from 'ts-morph'
 
+export type SourceNodeArrayKind = 'AppLanguages' | 'RoleGroup' | 'DocIndexFields' |
+  'UsedDocStates' | 'UseLocRoleList' | 'UseTasknames' | 'ViewContent' | 'othersActions' | 'allActions' |
+  'Menu'
+
+export type SourceNodeRefsKind = 'RefTypes' | 'RefDocuments' | 'RefProcesses' | 'RefRoles' | 'RefViews' |
+  'RefFunctions' | 'RefPrimaryFields' | 'RefSecondaryFields' | 'RefDocIndexes' | 'RefDocStates' | 'RefDocAction'
+
+export type SourceNodeObjectKind = 'AppBuilders' | 'Pagelets' | 'AppMappings' |
+  'I18NMsg' | 'PackageUses' | 'Roles' | 'Types' | 'EnumOptions' | 'Fields' | 'Documents' |
+  'DocActions' | 'DocFields' | 'DocIndexes' | 'DocumentStates' | 'Processes' | 'Tasks' | 'UseTaskForks' |
+  'BindVars' | 'Views' | 'Functions' | 'Routes' |
+  SourceNodeRefsKind
+
 export type SourceNodeKind = 'Application' | 'Package' | 'StringConst' | 'NumberConst' | 'BooleanConst' |
-  'ObjectConst' | 'ArrayConst' | 'Workspace' | 'Application' | 'Icon' | 'I18N' | 'PackageUse' | 'Package' | 'Role' |
+  'Workspace' | 'Application' | 'Icon' | 'I18N' | 'PackageUse' | 'Package' | 'Role' |
   'BaseType' | 'NormalType' | 'EnumType' | 'EnumOption' | 'ComplexType' | 'ArrayType' | 'UseType1' | 'UseTypeAsArray' |
-  'Field' | 'Index' | 'Document' | 'DocAction' | 'DocField' | 'DocIndex' | 'DocumentState' | 'UseDocStates' |
+  'Field' | 'Document' | 'DocAction' | 'DocField' | 'DocIndex' | 'DocumentState' | 'UseDocStates' |
   'Process' | 'ProcessVars' | 'UseLocRole' | 'UseSysRole' | 'UseTask' | 'UITask' | 'UseView' | 'SystemTask' |
   'UseFunction' | 'BindVar' | 'View' | 'ViewAction' | 'WidgetContent' | 'WidgetItem' | 'FunctionLevel' |
-  'Function' | 'Code' | 'BuilderConfig' | 'Pagelet' | 'RouteCode' | 'RouteRedirect' | 'MenuItem' | 'MenuItemSeparator'
+  'Function' | 'Code' | 'BuilderConfig' | 'Pagelet' | 'RouteCode' | 'RouteRedirect' | 'MenuItem' | 'MenuItemSeparator' |
+  //
+  SourceNodeArrayKind | SourceNodeObjectKind
+
 
 export function isSourceNode(node: any): node is SourceNode<any> {
   return typeof node === 'object' && typeof node.kind === 'string' && typeof node.sourceRef === 'object'
@@ -63,22 +79,22 @@ export interface BooleanConst extends SourceNode<'BooleanConst'> {
   bool: Boolean
 }
 
-export function isObjectConst(node: any): node is ObjectConst {
-  return node && node.kind === 'ObjectConst'
+export function isObjectConst<KIND extends SourceNodeObjectKind>(node: any): node is ObjectConst<KIND> {
+  return node && typeof node.kind === 'string' && typeof node.props === 'object'
 }
 
-export interface ObjectConst<T extends SourceNode<any> = SourceNode<any>> extends SourceNode<'ObjectConst'> {
+export interface ObjectConst<KIND extends SourceNodeObjectKind, T extends SourceNode<any> = SourceNode<any>> extends SourceNode<KIND> {
   props: Array<{ key: StringConst, val: T }>
   get(key: string | StringConst): T | undefined
   keys(): string[]
   map<U>(callbackfn: (value: T, key: StringConst) => U, thisArg?: any): U[];
 }
 
-export function isArrayConst(node: any): node is ArrayConst {
-  return node && node.kind === 'ArrayConst'
+export function isArrayConst<KIND extends SourceNodeArrayKind>(node: any): node is ArrayConst<KIND> {
+  return node && typeof node.kind === 'string' && Array.isArray(node.items)
 }
 
-export interface ArrayConst<T extends SourceNode<any> = SourceNode<any>> extends SourceNode<'ArrayConst'> {
+export interface ArrayConst<KIND extends SourceNodeArrayKind, T extends SourceNode<any> = SourceNode<any>> extends SourceNode<KIND> {
   items: T[]
 }
 
@@ -113,29 +129,30 @@ export interface Application extends SourceNode<'Application'> {
   icon: Icon,
   uses: PackageUses,
   allPackages: Package[],
-  langs: ArrayConst<StringConst>
-  builders: ObjectConst<BuilderConfig>
-  pagelets: ObjectConst<Pagelet>
+  langs: ArrayConst<'AppLanguages', StringConst>
+  builders: ObjectConst<'AppBuilders', BuilderConfig>
+  pagelets: Pagelets
   menu: Menu
   routes: Routes
   mappings: AppMappings
   mappingList: { [id: string]: SourceNodeMapped<any> }
   sysroles: Roles,
+
   getMapped(uri: StringConst): StringConst
 }
 
-export type AppMappings = ObjectConst<StringConst>
+export type AppMappings = ObjectConst<'AppMappings', StringConst>
 
 export interface Icon extends SourceNode<'Icon'> {
   icon: string
 }
 
 export interface I18N extends SourceNode<'I18N'> {
-  msg: ObjectConst<StringConst>
+  msg: ObjectConst<'I18NMsg', StringConst>
   //TODO params: Fields
 }
 
-export type PackageUses = ObjectConst<PackageUse>
+export type PackageUses = ObjectConst<'PackageUses', PackageUse>
 
 export interface PackageUse extends SourceNode<'PackageUse'> {
   alias: StringConst
@@ -175,7 +192,7 @@ export interface Package extends SourceNode<'Package'> {
   routes: Routes
 }
 
-export type Roles = ObjectConst<Role>
+export type Roles = ObjectConst<'Roles', Role>
 export type Role = RoleDef | RoleGroup
 
 export interface RoleDef extends SourceNodeMapped<'Role'> {
@@ -183,9 +200,9 @@ export interface RoleDef extends SourceNodeMapped<'Role'> {
   icon: Icon
 }
 
-export type RoleGroup = ArrayConst<StringConst>
+export type RoleGroup = ArrayConst<'RoleGroup', StringConst>
 
-export type Types = ObjectConst<Type>
+export type Types = ObjectConst<'Types', Type>
 
 export const normalTypes = {
   enum: false,
@@ -257,7 +274,7 @@ export const basicTypes3: {
 
 export interface BaseType<BASE extends keyof typeof normalTypes> extends SourceNode<'BaseType'> {
   base: BASE
-  enumOptions: false | ObjectConst<EnumOption>
+  enumOptions: false | ObjectConst<'EnumOptions', EnumOption>
   complexFields: false | Fields
   arrayType: false | UseType
 }
@@ -273,7 +290,7 @@ export interface TypeBase<KIND extends SourceNodeKind, BASE extends keyof typeof
 export interface NormalType extends TypeBase<'NormalType', BasicTypesOnly> {
 }
 export interface EnumType extends TypeBase<'EnumType', 'enum'> {
-  options: ObjectConst<EnumOption>
+  options: ObjectConst<'EnumOptions', EnumOption>
 }
 
 export interface EnumOption extends SourceNodeWithName<'EnumOption'> {
@@ -300,20 +317,14 @@ export interface UseTypeAsArray extends SourceNode<'UseTypeAsArray'> {
   base(sourceRef: TsNode | null): string
 }
 
-export type Fields = ObjectConst<Field>
+export type Fields = ObjectConst<'Fields', Field>
 
 export interface Field extends SourceNodeWithName<'Field'> {
   description?: I18N
   type: UseType
 }
 
-export type Indexes = ObjectConst<Index>
-
-export interface Index extends SourceNode<'Index'> {
-  type: StringConst
-}
-
-export type Documents = ObjectConst<Document>
+export type Documents = ObjectConst<'Documents', Document>
 
 export function isDocument(node: any): node is Document {
   return node && node.kind === 'Document'
@@ -338,7 +349,7 @@ export interface Document extends SourceNodeMapped<'Document'> {
   }
 }
 
-export type DocActions = ObjectConst<DocAction>
+export type DocActions = ObjectConst<'DocActions', DocAction>
 
 export interface DocAction extends SourceNodeMapped<'DocAction'> {
   from: UseDocStates
@@ -348,20 +359,20 @@ export interface DocAction extends SourceNodeMapped<'DocAction'> {
   run?: Code
 }
 
-export type DocFields = ObjectConst<DocField>
+export type DocFields = ObjectConst<'DocFields', DocField>
 
 export interface DocField extends SourceNodeMapped<'DocField'> {
   description: I18N
   type: UseType
 }
 
-export type DocIndexes = ObjectConst<DocIndex>
+export type DocIndexes = ObjectConst<'DocIndexes', DocIndex>
 
 export interface DocIndex extends SourceNodeMapped<'DocIndex'> {
-  fields: ArrayConst<StringConst>
+  fields: ArrayConst<'DocIndexFields', StringConst>
 }
 
-export type DocumentStates = ObjectConst<DocumentState>
+export type DocumentStates = ObjectConst<'DocumentStates', DocumentState>
 
 export interface DocumentState extends SourceNodeMapped<'DocumentState'> {
   icon: Icon
@@ -369,11 +380,11 @@ export interface DocumentState extends SourceNodeMapped<'DocumentState'> {
 }
 
 export interface UseDocStates extends SourceNode<'UseDocStates'> {
-  states: ArrayConst<StringConst>
+  states: ArrayConst<'UsedDocStates', StringConst>
   ref(sourceRef: TsNode): DocumentState[]
 }
 
-export type Processes = ObjectConst<Process>
+export type Processes = ObjectConst<'Processes', Process>
 
 export function isProcess(node: any): node is Process {
   return node && node.kind === 'Process'
@@ -403,7 +414,7 @@ export interface ProcessVars extends SourceNode<'ProcessVars'> {
 export type UseRoles = UseLocRole | UseSysRole
 
 export interface UseLocRole extends SourceNode<'UseLocRole'> {
-  roles: ArrayConst<StringConst>
+  roles: ArrayConst<'UseLocRoleList', StringConst>
   ref(sourceRef: TsNode): Role[]
 }
 
@@ -417,7 +428,7 @@ export interface UseTask extends SourceNode<'UseTask'> {
   ref(sourceRef: TsNode): Task
 }
 
-export type Tasks = ObjectConst<Task>
+export type Tasks = ObjectConst<'Tasks', Task>
 
 export type Task = UITask | SystemTask
 
@@ -425,7 +436,7 @@ export interface BaseTask<KIND extends SourceNodeKind> extends SourceNodeMapped<
   pool?: StringConst,
   lane?: StringConst,
   roles: UseRoles,
-  next: UseTask | ArrayConst<UseTask> | ObjectConst<Code | UseTask>
+  next: UseTask | ArrayConst<'UseTasknames', UseTask> | ObjectConst<'UseTaskForks', Code | UseTask>
 }
 
 export interface UITask extends BaseTask<'UITask'> {
@@ -449,25 +460,25 @@ export interface UseFunction extends SourceNode<'UseFunction'> {
   ref(sourceRef: TsNode): Function
 }
 
-export type BindVars = ObjectConst<BindVar>
+export type BindVars = ObjectConst<'BindVars', BindVar>
 
 export interface BindVar extends SourceNode<'BindVar'> {
   fieldpath: StringConst
   ref(sourceRef: TsNode): Field
 }
 
-export type Views = ObjectConst<View>
+export type Views = ObjectConst<'Views', View>
 
 export function isView(node: any): node is View {
   return node && node.kind === 'View'
 }
 
 export interface View extends SourceNodeMapped<'View'> {
-  content: ArrayConst<Widget>
+  content: ArrayConst<'ViewContent', Widget>
   primaryAction?: ViewAction
   secondaryAction?: ViewAction
-  othersActions?: ArrayConst<ViewAction>
-  allActions?: ArrayConst<ViewAction>
+  othersActions?: ArrayConst<'othersActions', ViewAction>
+  allActions?: ArrayConst<'allActions', ViewAction>
   refs: {
     fields: PackageRefs<Field>
   }
@@ -499,7 +510,7 @@ export interface WidgetItem extends SourceNode<'WidgetItem'> {
   type: UseType
 }
 
-export type Functions = ObjectConst<Function>
+export type Functions = ObjectConst<'Functions', Function>
 
 export interface FunctionLevel extends SourceNode<'FunctionLevel'> {
   level: "cpu" | "io" | "net"
@@ -522,7 +533,7 @@ export interface BuilderConfig extends SourceNode<'BuilderConfig'> {
   rootDir: StringConst
 }
 
-export type Pagelets = ObjectConst<Pagelet>
+export type Pagelets = ObjectConst<'Pagelets', Pagelet>
 
 export interface Pagelet extends SourceNode<'Pagelet'> {
   name: StringConst,
@@ -534,7 +545,7 @@ export interface Pagelet extends SourceNode<'Pagelet'> {
   content?: BooleanConst,
 }
 
-export type Routes = ObjectConst<Route>
+export type Routes = ObjectConst<'Routes', Route>
 export type Route = RouteCode | RouteRedirect
 
 export interface RouteCode extends SourceNode<'RouteCode'> {
@@ -547,7 +558,7 @@ export interface RouteRedirect extends SourceNode<'RouteRedirect'> {
   redirect: StringConst
 }
 
-export type Menu = ArrayConst<MenuItem | MenuItemSeparator>
+export type Menu = ArrayConst<'Menu', MenuItem | MenuItemSeparator>
 
 export interface MenuItem extends SourceNode<'MenuItem'> {
   caption: I18N
@@ -560,13 +571,13 @@ export interface MenuItemSeparator extends SourceNode<'MenuItemSeparator'> {
 
 export const sysRoles: string[] = ['public', 'anonymous', 'authenticated']
 
-export function objectConst<T extends SourceNode<any>>(sourceRef: SourceRef) {
+export function objectConst<KIND extends SourceNodeObjectKind, T extends SourceNode<any>>(kind: KIND, sourceRef: SourceRef) {
   const props: Array<{ key: StringConst, val: T }> = []
-  const ret: ObjectConst<T>
+  const ret: ObjectConst<KIND, T>
     & {
       add(key: StringConst, val: T): void
     } = {
-    kind: 'ObjectConst',
+    kind,
     sourceRef,
     props,
     get(key: string | StringConst): T | undefined {
@@ -587,10 +598,10 @@ export function objectConst<T extends SourceNode<any>>(sourceRef: SourceRef) {
   return ret
 }
 
-export function arrayConst<T extends SourceNode<any>>(sourceRef: SourceRef) {
+export function arrayConst<KIND extends SourceNodeArrayKind, T extends SourceNode<any>>(kind: KIND, sourceRef: SourceRef) {
   const items: Array<T> = []
-  const ret: ArrayConst<T> = {
-    kind: 'ArrayConst',
+  const ret: ArrayConst<KIND, T> = {
+    kind,
     sourceRef,
     items,
   }
@@ -610,8 +621,6 @@ export type SourceNodeType<KIND extends SourceNodeKind> = KIND extends 'Applicat
   KIND extends 'StringConst' ? StringConst :
   KIND extends 'NumberConst' ? NumberConst :
   KIND extends 'BooleanConst' ? BooleanConst :
-  KIND extends 'ObjectConst' ? ObjectConst :
-  KIND extends 'ArrayConst' ? ArrayConst :
   KIND extends 'Workspace' ? Workspace :
   KIND extends 'Application' ? Application :
   KIND extends 'Icon' ? Icon :
@@ -628,7 +637,6 @@ export type SourceNodeType<KIND extends SourceNodeKind> = KIND extends 'Applicat
   KIND extends 'UseType1' ? UseType1 :
   KIND extends 'UseTypeAsArray' ? UseTypeAsArray :
   KIND extends 'Field' ? Field :
-  KIND extends 'Index' ? Index :
   KIND extends 'Document' ? Document :
   KIND extends 'DocAction' ? DocAction :
   KIND extends 'DocField' ? DocField :

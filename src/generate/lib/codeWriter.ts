@@ -12,7 +12,7 @@ export interface CodeWriter {
   statements(lines: CodePart[], block: boolean): CodeLines
   lines(lines: CodePart[], start: string, end: string, separator: string): CodeLines
   transverse(node: SourceNode<any>): CodePart
-  map(node: ObjectConst | ArrayConst): CodeLines
+  map(nodes: Array<ObjectConst<any> | ArrayConst<any>>): CodeLines
   code(node: Code, opts?: { after?: CodePart, forceRetType?: string }): CodeLines
   array(arr: CodePart[]): CodeLines
   object(obj: { [name: string]: CodePart }): CodeLines
@@ -57,12 +57,13 @@ export function codeWriter<OPTS>(transverse: GenNodes<OPTS>, info: GenInfo<OPTS>
     transverse(node) {
       return exec(node)
     },
-    map(node: ObjectConst | ArrayConst): CodeLines {
-      if (isObjectConst(node))
-        return w.lines(node.props.map((p) => exec(p.val)), '[', ']', ',')
-      if (isArrayConst(node))
-        return w.lines(node.items.map(exec), '[', ']', ',')
-      throw info.ws.ws.fatal('map só funciona em ObjectConst | ArrayConst', node)
+    map(nodes: Array<ObjectConst<any> | ArrayConst<any>>): CodeLines {
+      const lines = nodes.reduce<CodePart[]>((p, c) => {
+        if (isObjectConst(c))
+          return c.props.map((p) => exec(p.val))
+        return (c as any).items.map(exec)
+      }, [])
+      return w.lines(lines, '[', ']', ',')
     },
     code(node, opts): CodeLines {
       const body = w.statements(node.body.map(b => b.getText()), true)

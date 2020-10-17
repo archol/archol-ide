@@ -11,7 +11,7 @@ export const generateClientRoutes = generator({
         `import { Redirect } from 'react-router-dom'`,
         `import { AppRoute, AppContent } from '../lib'`,
         '',
-        ['export const routes: AppRoute[] = ', w.map(app.routes)],
+        ['export const routes: AppRoute[] = ', w.map([app.routes])],
       ], false)
     },
     RouteCode(w, route) {
