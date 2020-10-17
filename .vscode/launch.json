@@ -5,17 +5,30 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "DEV",
+      "type": "node",
+      "request": "launch",
+      "restart": true,
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "appcvv"
+      ]
+    },
+    {
       "name": "Debug",
       "type": "node",
       "request": "launch",
-      "args": [
-      ],
       "runtimeArgs": [
-        "--nolazy",
         "-r",
         "ts-node",
         "-r",
-        "tsconfig-paths/register",
+        "tsconfig-paths/register"
+      ],
+      "args": [
         "src/index.ts",
         "/home/thr0w/projects/appcvv",
         "AppCVV"

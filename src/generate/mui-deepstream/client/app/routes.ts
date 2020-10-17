@@ -6,24 +6,27 @@ export const generateClientRoutes = generator({
   opts: {},
   transverse: {
     Application(w, app) {
-      return w.lines([
+      return w.statements([
         `import React from 'react'`,
-        `import { AppRoute } from '../lib'`,
-        `import { Roles } from './roles'`,
+        `import { Redirect } from 'react-router-dom'`,
+        `import { AppRoute, AppContent } from '../lib'`,
         '',
-        'export const routes: AppRoute[] = ', w.map(app.routes),
-      ], "no")
+        ['export const routes: AppRoute[] = ', w.map(app.routes)],
+      ], false)
     },
     RouteCode(w, route) {
       return w.object({
         path: route.path,
-        code: route.code
+        component: w.code(route.code, { after: 'return <AppContent />', forceRetType: '' })
       })
     },
     RouteRedirect(w, route) {
       return w.object({
         path: route.path,
-        redirect: route.redirect
+        component: [
+          '()=>', w.statements([
+            ['return <Redirect to=', route.redirect, ' />']
+          ], true)]
       })
     }
   }

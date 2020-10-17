@@ -1,7 +1,7 @@
 import {
   ArrayConst, ObjectConst,
   SourceNode, SourceNodeKind, SourceNodeType, StringConst,
-  isArrayConst, isObjectConst, isSourceNode, isStringConst
+  isArrayConst, isObjectConst, isSourceNode, isStringConst, Code
 } from "load/types"
 import { mapObjectToArray } from 'utils'
 import { quote } from './generator'
@@ -9,25 +9,28 @@ import { GenWS } from './wsgen'
 
 export interface CodeWriter {
   add(p: CodeLines | CodePart): void
-  lines(lines: CodePart[], braces: Braces): CodeLines
+  statements(lines: CodePart[], block: boolean): CodeLines
+  lines(lines: CodePart[], start: string, end: string, separator: string): CodeLines
   transverse(node: SourceNode<any>): CodePart
-  resolve(code: CodePart): string
   map(node: ObjectConst | ArrayConst): CodeLines
+  code(node: Code, opts?: { after?: CodePart, forceRetType?: string }): CodeLines
   array(arr: CodePart[]): CodeLines
   object(obj: { [name: string]: CodePart }): CodeLines
   string(node: StringConst | string): string
+  resolveCode(code: CodePart): string
 }
 
 export type CodePart = string | string[] | CodeLines | SourceNode<any> | CodePart[] | (() => CodePart)
 
 export interface CodeLines {
   lines: CodePart[]
-  braces: Braces
+  start: string
+  end: string
+  separator: string
 }
-type Braces = 'no' | '[]' | '{}'
 
 export function isCodeLines(o: any): o is CodeLines {
-  return (o as any).lines && (o as any).braces
+  return (o as any).lines
 }
 
 export type GenInfo<OPTS> = { ws: GenWS, opts: OPTS }
@@ -43,55 +46,114 @@ export function codeWriter<OPTS>(transverse: GenNodes<OPTS>, info: GenInfo<OPTS>
   const parts: CodePart = []
   const w: CodeWriter = {
     add(p: any): void {
-      parts.push(resolveCode(p))
+      parts.push(p)
     },
-    lines(lines: CodePart[], braces: Braces): CodeLines {
-      return { lines, braces }
+    statements(statements: CodePart[], block: boolean): CodeLines {
+      return w.lines(statements, block ? '{' : '', block ? '}' : '', ';')
+    },
+    lines(lines: CodePart[], start: string, end: string, separator: string): CodeLines {
+      return { lines, start, end, separator }
     },
     transverse(node) {
       return exec(node)
     },
-    resolve: resolveCode,
     map(node: ObjectConst | ArrayConst): CodeLines {
       if (isObjectConst(node))
-        return w.lines(node.props.map((p) => exec(p.val)), '{}')
+        return w.lines(node.props.map((p) => exec(p.val)), '[', ']', ',')
       if (isArrayConst(node))
-        return w.lines(node.items.map(exec), '[]')
+        return w.lines(node.items.map(exec), '[', ']', ',')
       throw info.ws.ws.fatal('map só funciona em ObjectConst | ArrayConst', node)
     },
+    code(node, opts): CodeLines {
+      const body = w.statements(node.body.map(b => b.getText()), true)
+      let retType = node.ret.getText()
+      if (opts) {
+        if (opts.after) body.lines.push(opts.after)
+        if (typeof opts.forceRetType === 'string') retType = opts.forceRetType
+      }
+      return w.lines([
+        ['(', node.params.map(p => p.getText()).join(','), ')', retType ? ':' : '', retType, '=>', body]
+      ], '', '', '')
+    },
     array(arr: CodePart[]): CodeLines {
-      return w.lines(arr, '[]')
+      return w.lines(arr, '[', ']', ',')
     },
     object(obj: { [name: string]: CodePart }): CodeLines {
-      return w.lines(mapObjectToArray(obj, (val, key) => [w.string(key), ':', val]), '{}')
+      return w.lines(mapObjectToArray(obj, (val, key) => [w.string(key), ':', val]), '{', '}', ',')
     },
     string(node: StringConst | string | string[]): string {
       if (isStringConst(node)) return quote(node.str)
       if (Array.isArray(node)) return quote(node.join(''))
       return quote(node)
     },
+    resolveCode(code) {
+      return resolveCode(code, exec)
+    }
   }
   return w
-  function resolveCode(c: CodePart): string {
-    if (typeof c === 'function') return resolveCode(c())
-    else if (isCodeLines(c)) return resolveCode([
-      c.braces === 'no' ? '' : c.braces[0],
-      c.lines.map((i) => resolveCode(['\n', i])),
-      c.braces === 'no' ? '' : '\n' + c.braces[1] + '\n'])
-    else if (Array.isArray(c)) {
-      const r = (c as any).map((i: any) => {
-        return resolveCode(i)
-      })
-      return r.join('')
-    }
-    else if (isSourceNode(c)) return resolveCode(exec(c))
-    return c
-  }
   function exec(n: SourceNode<any>): CodePart {
     const w2 = codeWriter(transverse, info)
     const fn = (transverse as any)[n.kind]
     if (!fn) throw info.ws.ws.fatal('Gerador não suporta: ' + n.kind, n)
-    const r = fn(w2, n, info)
-    return resolveCode(r)
+    return fn(w2, n, info)
+  }
+}
+
+function resolveCode(code: CodePart, exec: (n: SourceNode<any>) => CodePart): string {
+  const txt: string[] = []
+  const identstack: string[] = []
+  let lineIsEmpty = true
+  let ident = ''
+  resolveCodeLines(code)
+  return txt.join('')
+
+  function write(s: string) {
+    if (s) {
+      if (lineIsEmpty) txt.push(ident)
+      txt.push(s)
+      lineIsEmpty = false
+    }
+  }
+  function writeln(s?: string) {
+    if (s) {
+      if (lineIsEmpty) txt.push(ident)
+      txt.push(s)
+    }
+    txt.push('\n')
+    lineIsEmpty = true
+  }
+  function incIdent() {
+    identstack.push(ident)
+    if (lineIsEmpty) ident = ident + '  '
+  }
+  function decIdent() {
+    ident = identstack.pop() || ''
+  }
+  function resolveCodeLines(c: CodePart) {
+    if (isCodeLines(c)) {
+      write(c.start)
+      c.lines.forEach((l, idx) => {
+        if (idx === 0 && c.start) writeln()
+        const o = txt.length
+        incIdent()
+        resolveCodePart(l)
+        decIdent()
+        if (c.separator && o < txt.length) write(c.separator)
+        writeln()
+      })
+      if (c.end) write(c.end)
+    } else resolveCodePart(c)
+  }
+
+  function resolveCodePart(c: CodePart) {
+    if (typeof c === 'function') resolveCodePart(c())
+    else if (isCodeLines(c)) resolveCodeLines(c)
+    else if (Array.isArray(c)) c.forEach(resolveCodePart)
+    else if (isSourceNode(c)) resolveCodePart(exec(c))
+    else if (typeof c === 'string') write(c)
+    else {
+      debugger
+      throw new Error('cant resolveCodePart ' + typeof c)
+    }
   }
 }

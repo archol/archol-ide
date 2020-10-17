@@ -12,6 +12,7 @@ export interface GenWS {
 
 export function genWS(ws: Workspace) {
   const prjs: { [name: string]: Project } = {}
+  const srcs: { [name: string]: boolean } = {}
   const w: GenWS = {
     ws,
     getProject(projectPath) {
@@ -22,13 +23,22 @@ export function genWS(ws: Workspace) {
       return p
     },
     getSourceFile(projectPath, filePath) {
-      const fn = join(ws.path, projectPath, filePath)
+      const fn = join(ws.path, projectPath, 'src', filePath)
       const prj = w.getProject(projectPath)
       const src = prj.getSourceFile(fn) || prj.createSourceFile(fn)
+      if (!srcs[fn]) {
+        src.removeText()
+        srcs[fn] = true
+      }
       return src
     },
     async saveAll() {
-      await Promise.all(mapObjectToArray(prjs, (p) => p.save()))
+      await Promise.all(mapObjectToArray(prjs, (p) => {
+        // p.getSourceFiles().forEach(src => src.formatText({
+        //   indentSize: 2
+        // }))
+        return p.save()
+      }))
     }
   }
   return w

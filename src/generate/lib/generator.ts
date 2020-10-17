@@ -30,7 +30,7 @@ export function generator<S extends GenNodes<OPTS>, OPTS extends object = {}>(
   return generate
   function generate(n: SourceNode<any>, ws: GenWS): void | string {
     const w1 = codeWriter(transverse, { ws, opts: opts as any })
-    const res = w1.resolve(w1.transverse(n))
+    const res = w1.resolveCode(w1.transverse(n))
     if (project && file) {
       const src = ws.getSourceFile(project, file)
       src.addStatements(res)
@@ -39,11 +39,7 @@ export function generator<S extends GenNodes<OPTS>, OPTS extends object = {}>(
   }
   function defTransverse() {
     if (!transverse.StringConst) transverse.StringConst = (w, n) => w.string(n)
-    if (!transverse.Code) transverse.Code = (w, n) => [
-      '(', n.params.map(p => p.getText()), '):', n.ret.getText(), '{',
-      n.body.map(b => b.getText()),
-      '}'
-    ]
+    if (!transverse.Code) transverse.Code = (w, n) => w.code(n)
   }
 }
 
