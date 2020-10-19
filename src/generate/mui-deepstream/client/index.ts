@@ -1,9 +1,13 @@
-import { GenWS } from 'generate/lib/wsgen';
+import { projectTransformer } from 'generate/lib/generator';
 import { Application } from '../../../load/types';
 import { generateClientRoles } from './app/roles';
-import {generateClientRoutes} from './app/routes'
+import { generateClientRoutes } from './app/routes'
 
-export function generateClient(w: GenWS, app: Application) {
-  generateClientRoutes(app, w)
-  generateClientRoles(app, w)
-}
+export const generateClientProject = projectTransformer({
+  projectPath: 'client',
+  transformations: {},
+  sources: [
+    generateClientRoutes,
+    generateClientRoles
+  ]
+})

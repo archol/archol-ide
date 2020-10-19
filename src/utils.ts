@@ -56,3 +56,23 @@ export function debounce<T extends Function>(fn: T, timeout: number) {
     }, timeout)
   }
 }
+
+export function mergeObjWith<T0, T1 extends Object>(a: T0, b: T1): T0 & T1;
+export function mergeObjWith<T0, T1 extends Object, T2 extends Object>(a: T0, b: T1, c: T2): T0 & T1 & T2;
+export function mergeObjWith<T0, T1 extends Object, T2 extends Object, T3 extends Object>(a: T0, b: T1, c: T2, d: T3): T0 & T1 & T2 & T3;
+export function mergeObjWith(...objs: any[]) {
+  let r: any = {}
+  for (let i = 0; i < objs.length; i++) {
+    if (typeof objs[i] === "function") {
+      r = objs[i]
+      objs.splice(i, 1)
+      break
+    }
+  }
+  objs.forEach((obj) => {
+    Object.getOwnPropertyNames(obj).forEach((prop) => {
+      r[prop] = obj[prop]
+    })
+  })
+  return r
+}

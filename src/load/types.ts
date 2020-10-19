@@ -14,7 +14,7 @@ export type SourceNodeObjectKind = 'AppBuilders' | 'Pagelets' | 'AppMappings' |
   SourceNodeRefsKind
 
 export type SourceNodeKind = 'Application' | 'Package' | 'StringConst' | 'NumberConst' | 'BooleanConst' |
-  'Workspace' | 'Application' | 'Icon' | 'I18N' | 'PackageUse' | 'Package' | 'Role' |
+  'Workspace' | 'Application' | 'Icon' | 'I18N' | 'PackageUse' | 'Package' | 'RoleDef' |
   'BaseType' | 'NormalType' | 'EnumType' | 'EnumOption' | 'ComplexType' | 'ArrayType' | 'UseType1' | 'UseTypeAsArray' |
   'Field' | 'Document' | 'DocAction' | 'DocField' | 'DocIndex' | 'DocumentState' | 'UseDocStates' |
   'Process' | 'ProcessVars' | 'UseLocRole' | 'UseSysRole' | 'UseTask' | 'UITask' | 'UseView' | 'SystemTask' |
@@ -195,7 +195,7 @@ export interface Package extends SourceNode<'Package'> {
 export type Roles = ObjectConst<'Roles', Role>
 export type Role = RoleDef | RoleGroup
 
-export interface RoleDef extends SourceNodeMapped<'Role'> {
+export interface RoleDef extends SourceNodeMapped<'RoleDef'> {
   description: I18N,
   icon: Icon
 }
@@ -523,6 +523,10 @@ export interface Function extends SourceNodeMapped<'Function'> {
   code: Code
 }
 
+export function isCode(node: any): node is Code {
+  return node && node.kind === 'Code'
+}
+
 export interface Code extends SourceNode<'Code'> {
   params: ts.ParameterDeclaration[],
   ret: ts.Type,
@@ -627,6 +631,7 @@ export type SourceNodeType<KIND extends SourceNodeKind> = KIND extends 'Applicat
   KIND extends 'I18N' ? I18N :
   KIND extends 'PackageUse' ? PackageUse :
   KIND extends 'Package' ? Package :
+  KIND extends 'Roles' ? Roles :
   KIND extends 'Role' ? Role :
   KIND extends 'BaseType' ? BaseType<any> :
   KIND extends 'NormalType' ? NormalType :
@@ -666,4 +671,6 @@ export type SourceNodeType<KIND extends SourceNodeKind> = KIND extends 'Applicat
   KIND extends 'RouteRedirect' ? RouteRedirect :
   KIND extends 'MenuItem' ? MenuItem :
   KIND extends 'MenuItemSeparator' ? MenuItemSeparator :
+  KIND extends 'RoleDef' ? RoleDef :
+  KIND extends 'RoleGroup' ? RoleGroup :
   unknown

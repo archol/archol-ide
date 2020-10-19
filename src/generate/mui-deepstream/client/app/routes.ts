@@ -1,10 +1,8 @@
-import { generator } from 'generate/lib/generator'
+import { sourceTransformer } from 'generate/lib/generator'
 
-export const generateClientRoutes = generator({
-  project: 'client',
-  file: 'app/routes.tsx',
-  opts: {},
-  transverse: {
+export const generateClientRoutes = sourceTransformer({
+  filePath: 'app/routes.tsx',
+  transformations: {
     Application(w, app) {
       return w.statements([
         `import React from 'react'`,

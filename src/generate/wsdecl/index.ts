@@ -80,7 +80,7 @@ declare interface ${pkgid}_DeclRoles {
   roles (roles: ${pkgid}_Decl2Roles): ${pkgid}_DeclProcesses
 }
 declare type ${pkgid}_Decl2Roles = {
-  [roleName: string]: Role | Array<${typePipeStr(pkg.refs.roles.items.filter((r) => r.ref.kind === 'Role').map((r) => r.path))}>
+  [roleName: string]: Role | Array<${typePipeStr(pkg.refs.roles.items.filter((r) => r.ref.kind === 'RoleDef').map((r) => r.path))}>
 }
 type ${pkgid}_Roles = ${pkgid}_Role | ${pkgid}_Role[]
 type ${pkgid}_Role = 'public' | 'anonymous' | 'authenticated' | ${typePipeStr(pkg.refs.roles.items.map((r) => r.path))}

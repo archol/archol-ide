@@ -1,9 +1,16 @@
-import { genWS } from 'generate/lib/wsgen';
 import { Application, Workspace } from 'load/types';
-import { generateClient } from './client';
+import { generateApplication } from 'generate/lib/generator';
+import { generateClientProject } from './client';
 
-export async function generateMuiDeepStream(ws: Workspace, app: Application) {
-  const w = genWS(ws)
-  generateClient(w, app)
-  await w.saveAll()
+export function generateMuiDeepStream(ws: Workspace, app: Application) {
+  generateApplication({
+    ws,
+    app,
+    projects: [
+      generateClientProject
+    ],
+    transformations: {
+
+    }
+  })
 }

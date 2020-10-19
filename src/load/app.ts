@@ -523,7 +523,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             icon: parseIcon,
           })
           const role: RoleDef = {
-            kind: 'Role',
+            kind: 'RoleDef',
             sourceRef: ws.getRef(itm),
             nodeMapping: nodeMapping([parent.str, 'role', name.str], () => role),
             name,
