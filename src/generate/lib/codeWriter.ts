@@ -4,7 +4,7 @@ import {
   isObjectConst, isSourceNode, isStringConst, Code, isCode, isArrayConst, SourceNodeObjectKind, Workspace
 } from "load/types"
 import { mapObjectToArray } from 'utils'
-import { quote, NodeTransformer, isNodeTransformer, NodeTransformerFactory, isNodeTransformerFactory } from './generator'
+import { quote, NodeTransformer, isNodeTransformer, NodeTransformerFactory, isNodeTransformerFactory, GenNodes, GenInfo, GenFunc } from './generator'
 
 export interface CodeWriter {
   add(p: CodeLines | CodePart): void
@@ -35,17 +35,6 @@ export interface CodeLines {
 export function isCodeLines(o: any): o is CodeLines {
   return (o as any).lines
 }
-
-export type GenNodes = {
-  [name in SourceNodeKind]?: GenFunc<name>
-}
-
-export interface GenInfo {
-  ws: Workspace
-}
-
-export type GenFunc<name extends SourceNodeKind> =
-  (writer: CodeWriter, node: SourceNodeType<name>, info: GenInfo) => CodePart
 
 export function codeWriter(transforms: GenNodes[], info: GenInfo): CodeWriter {
   const parts: CodePart = []

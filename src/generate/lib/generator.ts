@@ -1,8 +1,8 @@
 import ts, { CodeBlockWriter, Project, SourceFile } from 'ts-morph'
-import { Application, ArrayConst, isArrayConst, isCode, isObjectConst, isStringConst, ObjectConst, SourceNode, SourceNodeKind, SourceNodeType, StringConst, Workspace } from 'load/types'
-import { CodePart, codeWriter, GenFunc, GenInfo, GenNodes } from './codeWriter'
+import { Application, ArrayConst, isArrayConst, isCode, isObjectConst, isStringConst, ObjectConst, SourceNode, SourceNodeKind, SourceNodeType, SourceRef, StringConst, TsNode, Workspace } from 'load/types'
+import { CodePart, CodeWriter, codeWriter } from './codeWriter'
 import { join } from 'path'
-import { mapObjectToArray, mergeObjWith } from 'utils'
+import { mapObject, mapObjectToArray, mergeObjWith } from 'utils'
 
 export interface ProjectTransformer<PT extends GenNodes> {
   projectPath: string,
@@ -53,12 +53,30 @@ export function nodeTransformer<NT extends GenNodes>(transforms: NT): NodeTransf
 }
 
 export function isNodeTransformerFactory(obj: any): obj is NodeTransformerFactory<any> {
-  return (obj as any).transformerFactory 
+  return (obj as any).transformerFactory
 }
 
 export function isNodeTransformer(obj: any): obj is NodeTransformer<any> {
   return (obj as any).transformNode
 }
+
+export type GenNodes = {
+  [name in SourceNodeKind]?: GenFunc<name>
+}
+
+export interface GenInfo {
+  ws: Workspace
+  prj: {}
+  src: {
+    importDefault(identifier: string, module: string, sourceRef: TsNode): void
+  }
+  node: {
+
+  }
+}
+
+export type GenFunc<name extends SourceNodeKind> =
+  (writer: CodeWriter, node: SourceNodeType<name>, info: GenInfo) => CodePart
 
 export async function generateApplication<SW extends GenNodes>(
   { ws, app, transformations, projects }:
@@ -71,12 +89,7 @@ export async function generateApplication<SW extends GenNodes>(
   const prjs: { [name: string]: Project } = {}
   const srcs: { [name: string]: boolean } = {}
   projects.forEach((prj) => {
-    prj.sources.forEach((src) => {
-      const srcfile = openSourceFile(prj.projectPath, src.filePath)
-      const w = codeWriter([src.transformations, prj.transformations, transformations], { ws })
-      const res = w.resolveCode(w.transverse(app))
-      srcfile.addStatements(res)
-    })
+    prj.sources.forEach((src) => transformFile(prj, src))
   })
   return saveAll()
 
@@ -104,6 +117,31 @@ export async function generateApplication<SW extends GenNodes>(
       }))
       return p.save()
     }))
+  }
+  function transformFile(prj: ProjectTransformer<any>, src: SourceTransformer<any>) {
+    const srcImportDefs: {
+      [id: string]: string
+    } = {}
+    const srcfile = openSourceFile(prj.projectPath, src.filePath)
+    const w = codeWriter([src.transformations, prj.transformations, transformations], {
+      ws,
+      prj: {},
+      src: { importDefault },
+      node: {}
+    })
+    const rest=w.transverse(app)
+    const res = w.resolveCode(rest)
+    mapObjectToArray(srcImportDefs, (val) => {
+      srcfile.addStatements(val)
+    })
+    srcfile.addStatements(res)
+    function importDefault(id: string, module: string, sourceRef: TsNode): void {
+      if (srcImportDefs[id]) {
+        if (srcImportDefs[id] !== module)
+          throw ws.fatal('import ' + id + ' usando em ' + srcImportDefs[id] + ' ' + module, sourceRef)
+      }
+      srcImportDefs[id] = module
+    }
   }
 }
 
