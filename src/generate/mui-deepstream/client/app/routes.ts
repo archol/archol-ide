@@ -15,7 +15,7 @@ export const generateClientRoutes = sourceTransformer({
     RouteCode(w, route) {
       return w.object({
         path: route.path,
-        component: w.code(route.code, { after: 'return <AppContent />', forceRetType: '' })
+        component: w.code(route.code, { after: ['return <AppContent />'], forceRetType: '' })
       })
     },
     RouteRedirect(w, route) {

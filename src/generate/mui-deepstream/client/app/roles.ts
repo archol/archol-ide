@@ -11,21 +11,9 @@ export const generateClientRoles = sourceTransformer({
         `import { AppRoles } from '../lib'`,
         '',
         genSysRoles(app.sysroles),
-        //['export const roles = ', w.map([app.sysroles, app.uses])],
+        genPkgRoles(app.uses),
       ], false)
     },
-    // RoleDef(w, role) {
-    //   return w.object({
-    //     path: route.path,
-    //     component: w.code(route.code, { after: 'return <AppContent />', forceRetType: '' })
-    //   })
-    // },
-    // RoleGroup(w, role) {
-    //   return w.object({
-    //     path: route.path,
-    //     component: w.code(route.code, { after: 'return <AppContent />', forceRetType: '' })
-    //   })
-    // }    
   }
 })
 
@@ -33,7 +21,7 @@ const genSysRoles = nodeTransformer({
   Roles(w, roles) {
     return w.lines([
       [
-        'export const sysroles=',
+        'const sysroles=',
         w.mapObj(roles)
       ]
     ], '', '', '')
@@ -44,4 +32,46 @@ const genSysRoles = nodeTransformer({
       icon: genIcon,
     }, role)
   }
+})
+
+const genPkgRoles = nodeTransformer({
+  PackageUses(w, pkgs) {
+    return w.lines([
+      [
+        [
+          'const pkgroles=',
+          w.mapObj(pkgs, (val, key) => val)
+        ]
+      ]
+    ], '', '', '')
+  },
+  PackageUse(w, pkg) {
+    return pkg.ref(pkg)
+  },
+  Package(w, pkg) {
+    return pkg.roles
+  },
+  Roles(w, roles) {
+    return w.lines([
+        w.mapObj(roles)
+    ], '', '', '')
+  },
+  RoleDef(w, role) {
+    return w.object({
+      description: genI18N,
+      icon: genIcon,
+    }, role)
+  },
+  // RoleDef(w, role) {
+  //   return w.object({
+  //     path: route.path,
+  //     component: w.code(route.code, { after: 'return <AppContent />', forceRetType: '' })
+  //   })
+  // },
+  // RoleGroup(w, role) {
+  //   return w.object({
+  //     path: route.path,
+  //     component: w.code(route.code, { after: 'return <AppContent />', forceRetType: '' })
+  //   })
+  // }      
 })

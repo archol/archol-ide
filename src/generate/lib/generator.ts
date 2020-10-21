@@ -1,6 +1,6 @@
 import ts, { CodeBlockWriter, Project, SourceFile } from 'ts-morph'
 import { Application, ArrayConst, isArrayConst, isCode, isObjectConst, isStringConst, ObjectConst, SourceNode, SourceNodeKind, SourceNodeType, SourceRef, StringConst, TsNode, Workspace } from 'load/types'
-import { CodePart, CodeWriter, codeWriter } from './codeWriter'
+import { CodePartL, CodeWriter, codeWriter } from './codeWriter'
 import { join } from 'path'
 import { mapObject, mapObjectToArray, mergeObjWith } from 'utils'
 
@@ -33,7 +33,7 @@ export type NodeTransformerFactory<NT extends GenNodes> = (
 
 export interface NodeTransformer<NT extends GenNodes> {
   transformNode: true
-  transform(parent: GenNodes[], info: GenInfo): CodePart
+  transform(parent: GenNodes[], info: GenInfo): CodePartL
 }
 
 export function nodeTransformer<NT extends GenNodes>(transforms: NT): NodeTransformerFactory<NT> {
@@ -41,9 +41,9 @@ export function nodeTransformer<NT extends GenNodes>(transforms: NT): NodeTransf
     (node: SourceNode<any>) => {
       const r: NodeTransformer<NT> = {
         transformNode: true,
-        transform(parent: GenNodes[], info: GenInfo): CodePart {
+        transform(parent: GenNodes[], info: GenInfo): CodePartL {
           const w2 = codeWriter([transforms, ...parent], info)
-          return w2.transverse(node)
+          return w2.transform(node)
         }
       }
       return r
@@ -76,7 +76,7 @@ export interface GenInfo {
 }
 
 export type GenFunc<name extends SourceNodeKind> =
-  (writer: CodeWriter, node: SourceNodeType<name>, info: GenInfo) => CodePart
+  (writer: CodeWriter, node: SourceNodeType<name>, info: GenInfo) => CodePartL
 
 export async function generateApplication<SW extends GenNodes>(
   { ws, app, transformations, projects }:
@@ -129,7 +129,7 @@ export async function generateApplication<SW extends GenNodes>(
       src: { importDefault },
       node: {}
     })
-    const rest=w.transverse(app)
+    const rest=w.transform(app)
     const res = w.resolveCode(rest)
     mapObjectToArray(srcImportDefs, (val) => {
       srcfile.addStatements(val)

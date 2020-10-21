@@ -629,6 +629,7 @@ export type SourceNodeType<KIND extends SourceNodeKind> = KIND extends 'Applicat
   KIND extends 'Application' ? Application :
   KIND extends 'Icon' ? Icon :
   KIND extends 'I18N' ? I18N :
+  KIND extends 'PackageUses' ? PackageUses :
   KIND extends 'PackageUse' ? PackageUse :
   KIND extends 'Package' ? Package :
   KIND extends 'Roles' ? Roles :

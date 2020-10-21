@@ -4,55 +4,64 @@ import {
   isObjectConst, isSourceNode, isStringConst, Code, isCode, isArrayConst, SourceNodeObjectKind, Workspace
 } from "load/types"
 import { mapObjectToArray } from 'utils'
-import { quote, NodeTransformer, isNodeTransformer, NodeTransformerFactory, isNodeTransformerFactory, GenNodes, GenInfo, GenFunc } from './generator'
+import {
+  quote, NodeTransformer, isNodeTransformer, NodeTransformerFactory, isNodeTransformerFactory,
+  GenNodes, GenInfo, GenFunc
+} from './generator'
 
 export interface CodeWriter {
-  add(p: CodeLines | CodePart): void
-  statements(lines: CodePart[], block: boolean): CodeLines
-  lines(lines: CodePart[], start: string, end: string, separator: string): CodeLines
-  transverse(node: SourceNode<any>): CodePart
+  statements(lines: CodePartL[], block: boolean): CodeLines
+  lines(lines: CodePartL[], start: string, end: string, separator: string): CodeLines
+  transform(node: SourceNode<any>): CodePartR[]
   map(nodes: Array<ObjectConst<any> | ArrayConst<any>>): CodeLines
   mapObj<kind extends SourceNodeObjectKind>(
     obj: ObjectConst<kind>,
-    fn?: (val: SourceNodeType<kind>, name: StringConst) => CodePart): CodeLines
-  code(node: Code, opts?: { after?: CodePart, forceRetType?: string }): CodeLines
-  array(arr: CodePart[]): CodeLines
-  object(obj: { [name: string]: CodePart }): CodeLines
-  object(obj: { [name: string]: CodePart | NodeTransformerFactory<any> }, objNode: SourceNode<any>): CodeLines
+    fn?: (val: SourceNodeType<kind>, name: StringConst) => CodePartL): CodeLines
+  code(node: Code, opts?: { after?: CodePartL[], forceRetType?: string }): CodeLines
+  array(arr: CodePartL[]): CodeLines
+  object(obj: { [name: string]: CodePartL }): CodeLines
+  object(obj: { [name: string]: CodePartL | NodeTransformerFactory<any> }, objNode: SourceNode<any>): CodeLines
   string(node: StringConst | string): string
-  resolveCode(code: CodePart): string
+  resolveCode(code: CodePartR[]): string
 }
 
-export type CodePart = string | string[] | CodeLines | SourceNode<any> | CodePart[] | (() => CodePart) | NodeTransformer<any>
+export type CodePartR = string | string[] | CodeLines
+export type CodePartL = string | string[] | CodeLines | SourceNode<any> | CodePartL[] | (() => CodePartL) | NodeTransformer<any>
+
+export interface CodeLine {
+  $parts$: CodePartR[]
+}
 
 export interface CodeLines {
-  lines: CodePart[]
+  $lines$: CodeLine[]
   start: string
   end: string
   separator: string
 }
 
 export function isCodeLines(o: any): o is CodeLines {
-  return (o as any).lines
+  return o && (o as any).$lines$
+}
+
+export function isCodeLine(o: any): o is CodeLine {
+  return o && (o as any).$parts$
 }
 
 export function codeWriter(transforms: GenNodes[], info: GenInfo): CodeWriter {
-  const parts: CodePart = []
   const wSelf: CodeWriter = {
-    add(p: any): void {
-      parts.push(p)
-    },
-    statements(statements: CodePart[], block: boolean): CodeLines {
+    statements(statements: CodePartL[], block: boolean): CodeLines {
       return wSelf.lines(statements, block ? '{' : '', block ? '}' : '', ';')
     },
-    lines(lines: CodePart[], start: string, end: string, separator: string): CodeLines {
-      return { lines, start, end, separator }
+    lines(lines: CodePartL[], start: string, end: string, separator: string): CodeLines {
+      // console.log(JSON.stringify({ antes: resolveCode(lines as any, transformNode), depis: resolveCode(mapPart(lines), transformNode) }))
+      // console.log(JSON.stringify({ $lines$: lines, depis: mapPartL2R(lines) }))
+      return { $lines$: flatLines(lines), start, end, separator }
     },
-    transverse(node) {
-      return transformNode(node)
+    transform(node) {
+      return flatPartL(transformNode(node))
     },
     map(nodes: Array<ObjectConst<any> | ArrayConst<any>>): CodeLines {
-      const lines = nodes.reduce<CodePart[]>((p, c) => {
+      const lines = nodes.reduce<CodePartR[]>((p, c) => {
         if (isObjectConst(c))
           return c.props.map((p) => transformNode(p.val))
         return (c as any).items.map(transformNode)
@@ -61,24 +70,26 @@ export function codeWriter(transforms: GenNodes[], info: GenInfo): CodeWriter {
     },
     mapObj<kind extends SourceNodeObjectKind>(
       obj: ObjectConst<kind>,
-      fn?: (val: SourceNodeType<kind>, name: StringConst) => CodePart): CodeLines {
-      return wSelf.lines(obj.props.map((i) => [wSelf.string(i.key), ':', (fn || transformNode)(i.val as any, i.key)]), '{', '}', ',')
+      fn?: (val: SourceNodeType<kind>, name: StringConst) => CodePartL): CodeLines {
+      return wSelf.lines(obj.props.map((i) => [
+        [wSelf.string(i.key), ':', (fn || transformNode)(i.val as any, i.key)]
+      ]), '{', '}', ',')
     },
     code(node, opts): CodeLines {
       const body = wSelf.statements(node.body.map(b => b.getText()), true)
       let retType = node.ret.getText()
       if (opts) {
-        if (opts.after) body.lines.push(opts.after)
+        if (opts.after) body.$lines$.push(...(flatLines(opts.after)))
         if (typeof opts.forceRetType === 'string') retType = opts.forceRetType
       }
       return wSelf.lines([
         ['(', node.params.map(p => p.getText()).join(','), ')', retType ? ':' : '', retType, '=>', body]
       ], '', '', '')
     },
-    array(arr: CodePart[]): CodeLines {
+    array(arr: CodePartL[]): CodeLines {
       return wSelf.lines(arr, '[', ']', ',')
     },
-    object(obj: { [name: string]: CodePart | NodeTransformerFactory<any> }, node?: SourceNode<any>): CodeLines {
+    object(obj: { [name: string]: CodePartL | NodeTransformerFactory<any> }, node?: SourceNode<any>): CodeLines {
       return wSelf.lines(mapObjectToArray(obj, (val, key) => {
         if (isNodeTransformerFactory(val)) {
           if (node) {
@@ -101,7 +112,7 @@ export function codeWriter(transforms: GenNodes[], info: GenInfo): CodeWriter {
   }
   return wSelf
 
-  function transformNode(n: SourceNode<any>): CodePart {
+  function transformNode(n: SourceNode<any>): CodePartL {
     const w2 = codeWriter(transforms, info)
     for (const t of transforms) {
       const fn: GenFunc<any> = (t as any)[n.kind]
@@ -114,10 +125,40 @@ export function codeWriter(transforms: GenNodes[], info: GenInfo): CodeWriter {
     if (isCode(n)) return wSelf.code(n)
     if (isArrayConst(n)) return wSelf.map([n])
     if (isObjectConst(n)) return wSelf.map([n])
-    throw info.ws.fatal('Gerador não suporta: ' + n.kind, n)
+    throw info.ws.fatal('Gerador não suporta: ' + n.kind + ' / ' + transforms.map((t) => Object.keys(t).join()).join('|'), n)
   }
 
-  function resolveCode(code: CodePart, resolveNode: (n: SourceNode<any>) => CodePart,): string {
+  function flatLines(lines: CodePartL[]): CodeLine[] {
+    return lines.map(l=>({
+      $parts$: flatPartL(l)
+    }))
+  }
+
+  function flatPartL(p1: CodePartL): CodePartR[] {
+    const fres: CodePartR[] = []
+    flat(p1)
+    return fres
+    function flat(p: CodePartL) {
+      if (isCodeLines(p)) fres.push(p)
+      // fres.push({
+      //   ...p,
+      //   $lines$: flatLines(p.$lines$),
+      // })
+      else if (typeof p === 'string') fres.push(p)
+      else if (Array.isArray(p)) return p.forEach(flat)
+      else if (isSourceNode(p)) flat(transformNode(p))
+      else if (isNodeTransformer(p)) {
+        flat(p.transform(transforms, info))
+      }
+      else if (typeof p === 'function') flat(p())
+      else {
+        debugger
+        throw new Error('cant flat ' + JSON.stringify(p))
+      }
+    }
+  }
+
+  function resolveCode(code: CodePartR[], resolveNode: (n: SourceNode<any>) => CodePartL): string {
     const txt: string[] = []
     const identstack: string[] = []
     let lineIsEmpty = true
@@ -147,14 +188,14 @@ export function codeWriter(transforms: GenNodes[], info: GenInfo): CodeWriter {
     function decIdent() {
       ident = identstack.pop() || ''
     }
-    function resolveCodeLines(c: CodePart) {
+    function resolveCodeLines(c: CodePartL) {
       if (isCodeLines(c)) {
         write(c.start)
-        c.lines.forEach((l, idx) => {
+        c.$lines$.forEach((l, idx) => {
           if (idx === 0 && c.start) writeln()
           const o = txt.length
           incIdent()
-          resolveCodePart(l)
+          resolveCodePart(l.$parts$)
           decIdent()
           if (c.separator && o < txt.length) write(c.separator)
           writeln()
@@ -163,7 +204,7 @@ export function codeWriter(transforms: GenNodes[], info: GenInfo): CodeWriter {
       } else resolveCodePart(c)
     }
 
-    function resolveCodePart(c: CodePart) {
+    function resolveCodePart(c: CodePartL) {
       if (typeof c === 'string') write(c)
       else if (isCodeLines(c)) resolveCodeLines(c)
       else if (Array.isArray(c)) c.forEach(resolveCodePart)
