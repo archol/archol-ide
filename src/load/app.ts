@@ -3,15 +3,15 @@ import { join } from 'path';
 import * as ts from 'ts-morph'
 import { deferPromise, DeferredPromise, mapObjectToArray } from '../utils';
 import {
-  Application, ArrayConst, BooleanConst, NumberConst, objectConst, ObjectConst, Package, Role,
+  Application, ArrayConst, BooleanConst, NumberConst, objectConst, ObjectConst, Package, RoleRef,
   SourceNode, StringConst, Workspace, sysRoles, isDocument, isProcess, isWidgetContent, EnumType, UseType1,
   Process, Function, View, Type, Document, RoleDef, Code, I18N, arrayConst, Icon, PackageUse, PackageUses,
-  Task, UseTask, Roles, UseSysRole, UseLocRole, UseRoles, Fields, Field, UseType, BindVar, ProcessVars,
+  Task, UseTask,  UseSysRole, UseLocRole, UseRoles, Fields, Field, UseType, BindVar, ProcessVars,
   UseView, UseFunction, BindVars, FunctionLevel, Widget, ViewAction, BaseType, NormalType, normalTypes, DocFields, DocIndexes,
   DocumentStates, DocActions, DocAction, DocField, DocIndex, DocumentState, UseDocStates, Routes, Pagelets,
   Pagelet, Menu, MenuItem, MenuItemSeparator, SourceNodeMapped, SourceNodeRefsKind, isPackage, RouteRedirect,
   RouteCode, RoleGroup, TsNode, basicTypes3, PackageRefs, PackageRef, isView, EnumOption, ComplexType, ArrayType,
-  UseTypeAsArray, Types, SourceNodeKind, SourceNodeObjectKind, SourceNodeArrayKind, BuilderConfig, AppMappings
+  UseTypeAsArray, Types, SourceNodeKind, SourceNodeObjectKind, SourceNodeArrayKind, BuilderConfig, AppMappings, RoleDefs, RoleGroups
 } from './types'
 
 export async function loadApp(ws: Workspace, appName: string): Promise<Application> {
@@ -22,7 +22,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
   const mappingPending: Array<Promise<any>> = []
   const appPackagesDef: { [pkgFullUri: string]: DeferredPromise<Package> } = {}
   const appPackages: { [pkgFullUri: string]: Package } = {}
-  let appsysroles: Roles
+  let appsysroles: RoleDefs
 
   const stmts = appsource.getStatements();
   if (stmts.length != 1) ws.fatal(appsource.getFilePath() + ' só deveria ter uma declaração', appsource)
@@ -276,7 +276,8 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       fn = (props as any)[fn ? propName.str : '*']
       if (!fn) ws.fatal('Não é possível interpretar a propriedade: ' + propName.str, propNode);
       try {
-        (ret as any)[propName.str] = fn(propValue, propName);
+        const fnres = fn(propValue, propName);
+        if (fnres !== undefined) (ret as any)[propName.str] = fnres
       } catch (e) {
         if (!fn) ws.fatal('Erro interpretar a propriedade: ' + propName.str + ' ' + e.message, propNode);
       }
@@ -285,14 +286,20 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
 
   function parseColObjArg<KIND extends SourceNodeObjectKind, T extends SourceNode<any>>(
     kind: KIND,
-    arg: ts.Node, fn: (itm: ts.Node, name: StringConst) => T)
+    arg: ts.Node,
+    fn: (itm: ts.Node, name: StringConst) => T,
+    filter?: (itm: ts.Node, name: StringConst) => boolean)
     : ObjectConst<KIND, T> {
     const col = objectConst<KIND, T>(kind, ws.getRef(arg))
     parseObjArg(arg, {
       '*'(val, name) {
-        const t: T = fn(val, name)
-        col.add(name, t)
-        return t
+        const filtered = (!filter) || filter(val, name)
+        if (filtered) {
+          const t: T = fn(val, name)
+          col.add(name, t)
+          return t
+        }
+        return undefined as any
       }
     })
     return col
@@ -365,7 +372,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         routes: parseRoutes,
         menu: parseMenu,
         sysroles(val) {
-          return parseRoles(name)(val, true)
+          return parseRoleDefs(name)(val, true)
         }
       })
     appsysroles = appprops.sysroles
@@ -514,30 +521,49 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     })(argMenu)
   }
 
-  function parseRoles(parent: StringConst) {
-    return (arg: ts.Node, sys: boolean): Roles => {
-      const roles = parseColObjArg('Roles', arg, (itm, name) => {
-        if (isObjArg(itm)) {
-          const rprops = parseObjArg(itm, {
-            description: parseI18N,
-            icon: parseIcon,
-          })
-          const role: RoleDef = {
-            kind: 'RoleDef',
-            sourceRef: ws.getRef(itm),
-            nodeMapping: nodeMapping([parent.str, 'role', name.str], () => role),
-            name,
-            ...rprops
-          }
-          return role;
-        } else return parserForArrArg('RoleGroup', parseStrArg)(itm) as RoleGroup
-      })
+  function parseRoleDefs(parent: StringConst) {
+    return (argRoles: ts.Node, sys: boolean): RoleDefs => {
+      const roleDefs = parseColObjArg('RoleDefs', argRoles, (itm, name) => {
+        const rprops = parseObjArg(itm, {
+          description: parseI18N,
+          icon: parseIcon,
+        })
+        const role: RoleDef = {
+          kind: 'RoleDef',
+          sourceRef: ws.getRef(itm),
+          nodeMapping: nodeMapping([parent.str, 'role', name.str], () => role),
+          name,
+          ...rprops
+        }
+        return role;
+      }, (itm) => isObjArg(itm))
+      if (sys) {
+        const roleGroups = parseColObjArg('RoleGroups', argRoles, (itm, name) => {
+          return parserForArrArg('RoleGroup', parseStrArg)(itm) as RoleGroup
+        }, (itm) => !isObjArg(itm))
+        if (roleGroups.props.length) ws.error('Role sys não suporta groups', argRoles)
+      }
       sysRoles.forEach((dr) => {
-        const er = roles.get(dr)
-        if (er && (!sys)) ws.error('Role ' + dr + ' yet exists', er)
-        if ((!er) && sys) ws.error('Role ' + dr + ' não é de sistema', roles)
+        const erdef = roleDefs.get(dr)
+        if (erdef && (!sys)) ws.error('Role ' + dr + ' yet exists', erdef)
+        if ((!erdef) && sys) ws.error('Role ' + dr + ' não é de sistema', roleDefs)
       })
-      return roles
+      return roleDefs
+    }
+  }
+
+  function parseRolesGroup(parent: StringConst) {
+    return (argRoles: ts.Node, sys: boolean): RoleGroups => {
+      const roleGroups = parseColObjArg('RoleGroups', argRoles, (itm, name) => {
+        return parserForArrArg('RoleGroup', parseStrArg)(itm) as RoleGroup
+      }, (itm) => !isObjArg(itm))
+
+      sysRoles.forEach((dr) => {
+        const ergroup = roleGroups.get(dr) || roleGroups.get(dr)
+        if (ergroup && (!sys)) ws.error('Role ' + dr + ' yet exists', ergroup)
+        if ((!ergroup) && sys) ws.error('Role ' + dr + ' não é de sistema', roleGroups)
+      })
+      return roleGroups
     }
   }
 
@@ -689,9 +715,11 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           roles,
           ref() {
             return roles.items.map((r) => {
-              const l = pkg.roles.get(r)
-              if (!l) throw ws.error('Role não encontrado: ' + r.str, r)
-              return l
+              const l = pkg.roleDefs.get(r)
+              if (l) return l
+              const l2 = pkg.roleGroups.get(r)
+              if (l2) return l2
+              throw ws.error('Role não encontrado: ' + r.str, r)
             })
           }
         }
@@ -724,9 +752,11 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             ]
           },
           ref() {
-            const l = pkg.roles.get(str)
-            if (!l) throw ws.error('Role não encontrado: ' + str.str, str)
-            return [l]
+            const l = pkg.roleDefs.get(str)
+            if (l) return [l]
+            const l2 = pkg.roleGroups.get(str)
+            if (l2) return [l2]
+            throw ws.error('Role não encontrado: ' + str.str, str)
           }
         }
         return ret
@@ -816,7 +846,8 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     function roles(expr1Roles: ts.CallExpression) {
       const args = expr1Roles.getArguments()
       if (args.length !== 1) ws.error(expr1Roles.getSourceFile().getFilePath() + ' roles precisa de um parametro', expr1Roles)
-      pkg.roles = parseRoles(pkgid)(args[0], false)
+      pkg.roleDefs = parseRoleDefs(pkgid)(args[0], false)
+      pkg.roleGroups = parseRolesGroup(pkgid)(args[0], false)
       return { processes }
     }
     function processes(expr1Process: ts.CallExpression) {
@@ -1306,7 +1337,8 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       types: createRefs<'RefTypes', Type>('RefTypes', finishedPkg, 'types', './'),
       documents: createRefs<'RefDocuments', Document>('RefDocuments', finishedPkg, 'documents', './'),
       processes: createRefs<'RefProcesses', Process>('RefProcesses', finishedPkg, 'processes', './'),
-      roles: createRefs<'RefRoles', Role>('RefRoles', finishedPkg, 'roles', './'),
+      roleDefs: createRefs<'RefRoles', RoleDefs>('RefRoles', finishedPkg, 'roleDefs', './'),
+      roleGroups: createRefs<'RefRoles', RoleGroups>('RefRoles', finishedPkg, 'roleGroups', './'),
       views: createRefs<'RefViews', View>('RefViews', finishedPkg, 'views', './'),
       functions: createRefs<'RefFunctions', Function>('RefFunctions', finishedPkg, 'functions', './'),
     }
@@ -1434,14 +1466,16 @@ function invalidPackage(uri: StringConst) {
       types: packageRefs(),
       documents: packageRefs(),
       processes: packageRefs(),
-      roles: packageRefs(),
+      roleDefs: packageRefs(),
+      roleGroups: packageRefs(),
       views: packageRefs(),
       functions: packageRefs(),
     },
     types: objectConst('Types', uri.sourceRef),
     documents: objectConst('Documents', uri.sourceRef),
     processes: objectConst('Processes', uri.sourceRef),
-    roles: objectConst('Roles', uri.sourceRef),
+    roleDefs: objectConst('RoleDefs', uri.sourceRef),
+    roleGroups: objectConst('RoleGroups', uri.sourceRef),
     views: objectConst('Views', uri.sourceRef),
     functions: objectConst('Functions', uri.sourceRef),
     routes: objectConst('Routes', uri.sourceRef),

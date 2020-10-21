@@ -80,10 +80,16 @@ declare interface ${pkgid}_DeclRoles {
   roles (roles: ${pkgid}_Decl2Roles): ${pkgid}_DeclProcesses
 }
 declare type ${pkgid}_Decl2Roles = {
-  [roleName: string]: Role | Array<${typePipeStr(pkg.refs.roles.items.filter((r) => r.ref.kind === 'RoleDef').map((r) => r.path))}>
+  [roleName: string]: Role | Array<${typePipeStr(
+      pkg.refs.roleDefs.items
+        .map((r) => r.path))}>
 }
 type ${pkgid}_Roles = ${pkgid}_Role | ${pkgid}_Role[]
-type ${pkgid}_Role = 'public' | 'anonymous' | 'authenticated' | ${typePipeStr(pkg.refs.roles.items.map((r) => r.path))}
+type ${pkgid}_Role = 'public' | 'anonymous' | 'authenticated' | ${typePipeStr(
+          pkg.refs.roleDefs.items.map((r) => r.path)
+            .concat(pkg.refs.roleGroups.items.map((r) => r.path))
+        )
+      }
 declare interface ${pkgid}_DeclProcesses {
   processes (processes: {${pkg.processes.props.map((p) => `${p.key.str}: ${pkgid}_process_${p.key.str}_Decl,`).join('\n')}
   }): ${pkgid}_DeclFunctions
@@ -125,23 +131,23 @@ declare interface ${pkgid}_Ref {
 }
 
 type ${pkgid}_TypeName = BasicTypes | ${typePipeStr(addArrayTypes(
-      pkg.refs.types.items.map((t) => t.path)
-        .concat(pkg.refs.baseTypes.items.map(t => t.path))
-    ))}
+        pkg.refs.types.items.map((t) => t.path)
+          .concat(pkg.refs.baseTypes.items.map(t => t.path))
+      ))}
 
 ${pkg.refs.baseTypes.items.map((b) => {
-      const t = b.ref
-      if (t.enumOptions) return `type ${b.path} = ${typePipeStr(t.enumOptions.props.map(p => p.key.str))}`
-      if (t.complexFields) return asComplex()
-      if (t.arrayType) return asArray()
-      return `type ${b.path} = '${b.path} invalid'`
-      function asComplex() {
+        const t = b.ref
+        if (t.enumOptions) return `type ${b.path} = ${typePipeStr(t.enumOptions.props.map(p => p.key.str))}`
+        if (t.complexFields) return asComplex()
+        if (t.arrayType) return asArray()
         return `type ${b.path} = '${b.path} invalid'`
-      }
-      function asArray() {
-        return `type ${b.path} = '${b.path} invalid'`
-      }
-    }).join('')
+        function asComplex() {
+          return `type ${b.path} = '${b.path} invalid'`
+        }
+        function asArray() {
+          return `type ${b.path} = '${b.path} invalid'`
+        }
+      }).join('')
       }
 
 declare type ${pkgid}_TypeDecl = ${typePipeObj(Object.keys(normalTypes).map((b) => {

@@ -8,7 +8,7 @@ export type SourceNodeRefsKind = 'RefTypes' | 'RefDocuments' | 'RefProcesses' | 
   'RefFunctions' | 'RefPrimaryFields' | 'RefSecondaryFields' | 'RefDocIndexes' | 'RefDocStates' | 'RefDocAction'
 
 export type SourceNodeObjectKind = 'AppBuilders' | 'Pagelets' | 'AppMappings' |
-  'I18NMsg' | 'PackageUses' | 'Roles' | 'Types' | 'EnumOptions' | 'Fields' | 'Documents' |
+  'I18NMsg' | 'PackageUses' | 'RoleDefs' | 'RoleGroups' | 'Types' | 'EnumOptions' | 'Fields' | 'Documents' |
   'DocActions' | 'DocFields' | 'DocIndexes' | 'DocumentStates' | 'Processes' | 'Tasks' | 'UseTaskForks' |
   'BindVars' | 'Views' | 'Functions' | 'Routes' |
   SourceNodeRefsKind
@@ -136,7 +136,7 @@ export interface Application extends SourceNode<'Application'> {
   routes: Routes
   mappings: AppMappings
   mappingList: { [id: string]: SourceNodeMapped<any> }
-  sysroles: Roles,
+  sysroles: RoleDefs,
 
   getMapped(uri: StringConst): StringConst
 }
@@ -179,28 +179,31 @@ export interface Package extends SourceNode<'Package'> {
     types: PackageRefs<Type>,
     documents: PackageRefs<Document>,
     processes: PackageRefs<Process>,
-    roles: PackageRefs<Role>,
+    roleDefs: PackageRefs<RoleDefs>,
+    roleGroups: PackageRefs<RoleGroups>,
     views: PackageRefs<View>,
     functions: PackageRefs<Function>,
   }
   types: Types,
   documents: Documents,
   processes: Processes,
-  roles: Roles
+  roleDefs: RoleDefs
+  roleGroups: RoleGroups
   views: Views,
   functions: Functions,
   routes: Routes
 }
 
-export type Roles = ObjectConst<'Roles', Role>
-export type Role = RoleDef | RoleGroup
+export type RoleDefs = ObjectConst<'RoleDefs', RoleDef>
+export type RoleGroups = ObjectConst<'RoleGroups', RoleGroup>
 
 export interface RoleDef extends SourceNodeMapped<'RoleDef'> {
   description: I18N,
   icon: Icon
 }
-
 export type RoleGroup = ArrayConst<'RoleGroup', StringConst>
+
+export type RoleRef = RoleDef | RoleGroup
 
 export type Types = ObjectConst<'Types', Type>
 
@@ -415,12 +418,12 @@ export type UseRoles = UseLocRole | UseSysRole
 
 export interface UseLocRole extends SourceNode<'UseLocRole'> {
   roles: ArrayConst<'UseLocRoleList', StringConst>
-  ref(sourceRef: TsNode): Role[]
+  ref(sourceRef: TsNode): RoleRef[]
 }
 
 export interface UseSysRole extends SourceNode<'UseSysRole'> {
   role: StringConst
-  ref(sourceRef: TsNode): Role
+  ref(sourceRef: TsNode): RoleRef
 }
 
 export interface UseTask extends SourceNode<'UseTask'> {
@@ -632,8 +635,10 @@ export type SourceNodeType<KIND extends SourceNodeKind> = KIND extends 'Applicat
   KIND extends 'PackageUses' ? PackageUses :
   KIND extends 'PackageUse' ? PackageUse :
   KIND extends 'Package' ? Package :
-  KIND extends 'Roles' ? Roles :
-  KIND extends 'Role' ? Role :
+  KIND extends 'RoleDefs' ? RoleDefs :
+  KIND extends 'RoleGroups' ? RoleGroups :
+  KIND extends 'RoleDef' ? RoleDef :
+  KIND extends 'RoleGroup' ? RoleGroup :
   KIND extends 'BaseType' ? BaseType<any> :
   KIND extends 'NormalType' ? NormalType :
   KIND extends 'EnumType' ? EnumType :

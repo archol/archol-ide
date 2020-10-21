@@ -11,17 +11,19 @@ export const generateClientRoles = sourceTransformer({
         `import { AppRoles } from '../lib'`,
         '',
         genSysRoles(app.sysroles),
-        genPkgRoles(app.uses),
+        genPkgRolesDefs(app.uses),
+        // genPkgRolesGroups(app.uses),
+        // genPkgRolesMerge(app.uses),
       ], false)
     },
   }
 })
 
 const genSysRoles = nodeTransformer({
-  Roles(w, roles) {
+  RoleDefs(w, roles) {
     return w.lines([
       [
-        'const sysroles=',
+        'const sysroles: AppRoles =',
         w.mapObj(roles)
       ]
     ], '', '', '')
@@ -34,12 +36,12 @@ const genSysRoles = nodeTransformer({
   }
 })
 
-const genPkgRoles = nodeTransformer({
+const genPkgRolesDefs = nodeTransformer({
   PackageUses(w, pkgs) {
     return w.lines([
       [
         [
-          'const pkgroles=',
+          'const pkgrolesdefs: {[app: string]:AppRoles}=',
           w.mapObj(pkgs, (val, key) => val)
         ]
       ]
@@ -49,11 +51,11 @@ const genPkgRoles = nodeTransformer({
     return pkg.ref(pkg)
   },
   Package(w, pkg) {
-    return pkg.roles
+    return pkg.roleDefs
   },
-  Roles(w, roles) {
+  RoleDefs(w, roles) {
     return w.lines([
-        w.mapObj(roles)
+      w.mapObj(roles, undefined)
     ], '', '', '')
   },
   RoleDef(w, role) {

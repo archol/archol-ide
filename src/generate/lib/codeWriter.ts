@@ -16,7 +16,9 @@ export interface CodeWriter {
   map(nodes: Array<ObjectConst<any> | ArrayConst<any>>): CodeLines
   mapObj<kind extends SourceNodeObjectKind>(
     obj: ObjectConst<kind>,
-    fn?: (val: SourceNodeType<kind>, name: StringConst) => CodePartL): CodeLines
+    fn?: (val: SourceNodeType<kind>, name: StringConst) => CodePartL,
+    filter?: (val: SourceNodeType<kind>, name: StringConst) => boolean,
+  ): CodeLines
   code(node: Code, opts?: { after?: CodePartL[], forceRetType?: string }): CodeLines
   array(arr: CodePartL[]): CodeLines
   object(obj: { [name: string]: CodePartL }): CodeLines
@@ -70,10 +72,14 @@ export function codeWriter(transforms: GenNodes[], info: GenInfo): CodeWriter {
     },
     mapObj<kind extends SourceNodeObjectKind>(
       obj: ObjectConst<kind>,
-      fn?: (val: SourceNodeType<kind>, name: StringConst) => CodePartL): CodeLines {
-      return wSelf.lines(obj.props.map((i) => [
-        [wSelf.string(i.key), ':', (fn || transformNode)(i.val as any, i.key)]
-      ]), '{', '}', ',')
+      fn?: (val: SourceNodeType<kind>, name: StringConst) => CodePartL,
+      filter?: (val: SourceNodeType<kind>, name: StringConst) => boolean
+    ): CodeLines {
+      return wSelf.lines(obj.props
+        .filter((i) => filter ? filter(i.val as any, i.key) : true)
+        .map((i) => [
+          [wSelf.string(i.key), ':', (fn || transformNode)(i.val as any, i.key)]
+        ]), '{', '}', ',')
     },
     code(node, opts): CodeLines {
       const body = wSelf.statements(node.body.map(b => b.getText()), true)
@@ -129,7 +135,7 @@ export function codeWriter(transforms: GenNodes[], info: GenInfo): CodeWriter {
   }
 
   function flatLines(lines: CodePartL[]): CodeLine[] {
-    return lines.map(l=>({
+    return lines.map(l => ({
       $parts$: flatPartL(l)
     }))
   }
