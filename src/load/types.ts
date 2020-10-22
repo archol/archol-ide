@@ -147,7 +147,7 @@ export interface Application extends SourceNode<'Application'> {
   mappingList: { [id: string]: SourceNodeMapped<any> }
   sysroles: RoleDefs,
 
-  getMapped(uri: StringConst): StringConst
+  getMapped(uri: StringConst): StringConst  
 }
 
 export type AppMappings = ObjectConst<'AppMappings', StringConst>
@@ -581,6 +581,7 @@ export type Menu = ArrayConst<'Menu', MenuItem | MenuItemSeparator>
 export interface MenuItem extends SourceNode<'MenuItem'> {
   caption: I18N
   icon: Icon
+  roles: UseRoles
   run: StringConst | Code
 }
 

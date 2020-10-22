@@ -133,25 +133,28 @@ export function codeWriter(transforms: GenNodes[], info: GenInfo): CodeWriter {
   return wSelf
 
   function transformNode(n: SourceNode<any>): CodePartR[] {
-    const w2 = codeWriter(transforms, info)
-    for (const t of transforms) {
-      try {
-        info.stack.items.push(n)
+    try {
+      info.stack.items.push(n)
+      const w2 = codeWriter(transforms, info)
+      for (const t of transforms) {
         const fn: GenFunc<any> = (t as any)[n.kind]
         if (fn) return flatPartL(fn(w2, n, info))
       }
-      finally {
-        info.stack.items.pop()
-      }
+      return flatPartL(defaultTransformer(n))
     }
-    return flatPartL(defaultTransformer(n))
+    finally {
+      info.stack.items.pop()
+    }
   }
   function defaultTransformer(n: SourceNode<any>) {
     if (isStringConst(n)) return wSelf.string(n)
     if (isCode(n)) return wSelf.code(n)
     if (isArrayConst(n)) return wSelf.map([n])
     if (isObjectConst(n)) return wSelf.map([n])
-    throw info.ws.fatal('Gerador não suporta: ' + n.kind + ' / ' + transforms.map((t) => Object.keys(t).join()).join('|'), n)
+    throw info.ws.fatal('Gerador não suporta: ' + n.kind +
+      ' / ' + transforms.map((t) => Object.keys(t).join()).join('|') +
+      ' stack=' + info.stack.items.map(i => (i as any).kind).join(',')
+      , n)
   }
 
   function flatLines(lines: CodePartL[]): CodeLine[] {

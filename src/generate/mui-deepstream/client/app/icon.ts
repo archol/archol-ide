@@ -7,7 +7,7 @@ export const genIcon = nodeTransformer({
     if (!src) throw info.ws.fatal('info precisa ter src', icon)
     const name = icon.icon.substr(4)
     const id = 'Icon' + name
-    src.require(id, 'import ' + id + ' from "@material-ui/icons/' + name + '"', icon)
+    src.requireDefault(id, '@material-ui/icons/' + name, icon)
     return id
   }
 })

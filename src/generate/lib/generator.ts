@@ -69,6 +69,7 @@ export interface GenInfo {
   prj: {}
   src: {
     require(identifier: string, module: string, sourceRef: TsNode): void
+    requireDefault(identifier: string, module: string, sourceRef: TsNode): void
   }
   node: {
 
@@ -126,29 +127,41 @@ export async function generateApplication<SW extends GenNodes>(
     }))
   }
   function transformFile(prj: ProjectTransformer<any>, src: SourceTransformer<any>) {
-    const srcImportDefs: {
-      [id: string]: string
+    const srcRequires: {
+      [module: string]: {
+        def?: string
+        ids: string[]
+      }
     } = {}
     const srcfile = openSourceFile(prj.projectPath, src.filePath)
     const w = codeWriter([src.transformations, prj.transformations, transformations], {
       ws,
       prj: {},
-      src: { require: importDefault },
+      src: { requireDefault, require },
       node: {},
       stack: createStack()
     })
     const rest = w.transform(app)
     const res = w.resolveCode(rest)
-    mapObjectToArray(srcImportDefs, (val) => {
-      srcfile.addStatements(val)
+    mapObjectToArray(srcRequires, (val, key) => {
+      const preq: string[] = [];
+      if (val.def) preq.push(val.def)
+      if (val.ids.length) preq.push('{ ' + val.ids.join(', ') + ' }')
+      srcfile.addStatements('import ' + preq.join(', ') + ' from "' + key + '"')
     })
     srcfile.addStatements(res)
-    function importDefault(id: string, module: string, sourceRef: TsNode): void {
-      if (srcImportDefs[id]) {
-        if (srcImportDefs[id] !== module)
-          throw ws.fatal('import ' + id + ' usando em ' + srcImportDefs[id] + ' ' + module, sourceRef)
+    function initReq() {
+      return {
+        ids: []
       }
-      srcImportDefs[id] = module
+    }
+    function require(id: string, module: string): void {
+      const req = srcRequires[module] || (srcRequires[module] = initReq())
+      if (!req.ids.includes(id)) req.ids.push(id)
+    }
+    function requireDefault(id: string, module: string): void {
+      const req = srcRequires[module] || (srcRequires[module] = initReq())
+      req.def = id
     }
   }
   function createStack(): GenFuncStack {

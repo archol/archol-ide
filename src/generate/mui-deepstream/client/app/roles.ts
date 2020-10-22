@@ -1,3 +1,4 @@
+import { info } from 'console'
 import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
 import { genI18N } from './i18n'
 import { genIcon } from './icon'
@@ -5,10 +6,10 @@ import { genIcon } from './icon'
 export const generateClientRoles = sourceTransformer({
   filePath: 'app/roles.tsx',
   transformations: {
-    Application(w, app, { ws }) {
-      return w.statements([
-        `import { AppRole, AppRoles } from '../lib'`,
-        '',
+    Application(w, app, { ws, src }) {
+      src.require('AppRole', 'lib', app)
+      src.require('AppRoles', 'lib', app)
+      return w.statements([        
         genSysRoles(app.sysroles),
         genPkgRolesDefs(app.uses),
         genPkgRoles(app.uses),
@@ -21,7 +22,13 @@ export const generateClientRoles = sourceTransformer({
 export const genUseRoles = nodeTransformer({
   UseLocRoles(w, roles, info) {
     return 'TODO'
-  }
+  },
+  UseSysRoles() {
+    return 'TODO'
+  },
+  UseSysRole() {
+    return 'TODO'
+  },
 })
 
 const genSysRoles = nodeTransformer({

@@ -3,12 +3,11 @@ import { sourceTransformer } from 'generate/lib/generator'
 export const generateClientRoutes = sourceTransformer({
   filePath: 'app/routes.tsx',
   transformations: {
-    Application(w, app) {
+    Application(w, app, {src}) {
+      src.requireDefault('React', 'react', app)
+      src.require('AppRoute', 'lib', app)
+
       return w.statements([
-        `import React from 'react'`,
-        `import { Redirect } from 'react-router-dom'`,
-        `import { AppRoute, AppContent } from '../lib'`,
-        '',
         ['export const routes: AppRoute[] = ', w.map([app.routes])],
       ], false)
     },

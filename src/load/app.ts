@@ -523,6 +523,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       const pprops = parseObjArg(itmMenu, {
         caption: parseI18N,
         icon: parseIcon,
+        roles: parseUseRolesApp,
         run(val): StringConst | Code {
           if (isStrArg(val)) return parseStrArg(val)
           return parserForCode()(val)
@@ -559,6 +560,69 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         if ((!erdef) && sys) ws.error('Role ' + dr + ' não é de sistema', roleDefs)
       })
       return roleDefs
+    }
+  }
+
+  function parseUseRolesApp(argUseRoles: ts.Node): UseRoles {
+    if (argUseRoles instanceof ts.ArrayLiteralExpression) {
+      const el = argUseRoles.getElements()
+      if (el.length === 0) ws.error('need role', argUseRoles)
+      if (el.length === 1) return r1(el[0])
+      const roles = parserForArrArg('UseLocRoleList', parseStrArg)(argUseRoles)
+      roles.items.some((r) => {
+        if (sysRoles.includes(r.str)) ws.error('Role de sistema não pode ser combinado com outros', r)
+      })
+      const ret: UseLocRoles = {
+        kind: 'UseLocRoles',
+        sourceRef: ws.getRef(argUseRoles),
+        roles,
+        ref() {
+          return roles.items.map((r) => {
+            // const l = pkg.refs.roleDefs.find(r.str)
+            // if (l) return l.ref
+            // const l2 = pkg.refs.roleGroups.find(r.str)
+            // if (l2) return l2.ref
+            throw ws.error('Role não encontrado: ' + r.str, r)
+          })
+        }
+      }
+      return ret
+    }
+    return r1(argUseRoles)
+    function r1(arg1: ts.Node): any {
+      const str = parseStrArg(arg1)
+      if (sysRoles.includes(str.str)) {
+        const rs: UseSysRole = {
+          kind: 'UseSysRole',
+          sourceRef: str.sourceRef,
+          role: str,
+          ref() {
+            const l = appsysroles.get(str)
+            if (!l) throw ws.error('Role não encontrado: ' + str.str, str)
+            return l
+          }
+        }
+        return rs
+      }
+      const ret: UseLocRoles = {
+        kind: 'UseLocRoles',
+        sourceRef: str.sourceRef,
+        roles: {
+          kind: 'UseLocRoleList',
+          sourceRef: str.sourceRef,
+          items: [
+            str
+          ]
+        },
+        ref() {
+          // const l = pkg.roleDefs.get(str)
+          // if (l) return [l]
+          // const l2 = pkg.roleGroups.get(str)
+          // if (l2) return [l2]
+          throw ws.error('Role não encontrado: ' + str.str, str)
+        }
+      }
+      return ret
     }
   }
 

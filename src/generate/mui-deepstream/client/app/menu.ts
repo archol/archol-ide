@@ -8,10 +8,10 @@ import { genUseRoles } from './roles'
 export const generateClientMenu = sourceTransformer({
   filePath: 'app/menu.tsx',
   transformations: {
-    Application(w, app) {
+    Application(w, app, {src}) {
+      src.require('AppMenuItem', 'lib', app)
+
       return w.statements([
-        `import { AppMenuItem } from '../lib'`,
-        '',
         ['export const menu: AppMenuItem[] = ', app.menu],
       ], false)
     },
@@ -24,7 +24,6 @@ export const generateClientMenu = sourceTransformer({
     //   })
     // }
     MenuItem(w, menuitem, info) {
-      debugger
       return w.object({
         caption: genI18N,
         icon: genIcon,

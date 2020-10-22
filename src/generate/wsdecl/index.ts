@@ -60,11 +60,22 @@ declare type Menu = {
   caption: I18N
   icon: Icon
   run: string | ((app: ${appname}_Ref) => void)
+  roles: ${appname}_Roles
 }
 
 declare interface ${appname}_Ref {
 ${app.uses.props.map((u) => `${u.key.str}: ${u.val.ref(u.val.uri.sourceRef).uri.id.str}_Ref,`).join('\n')}
 }
+
+declare type ${appname}_Roles = 'public' | 'anonymous' | 'authenticated' | Array<${typePipeStr(
+        app.uses.props.reduce<string[]>((ret, u) => {
+          const alias = u.key.str
+          const pkg = u.val.ref(u.val.uri.sourceRef)
+          return ret.concat(
+            pkg.roleDefs
+            .map(r => alias + '/' + r.name.str)
+            .concat(pkg.roleGroups.map(r => alias + '/' + r.name.str)))
+        }, []))}>
 
 declare type ${appname}_Mapping = ${typePipeStr(Object.keys(app.mappingList))}
 declare type ${appname}_Mappings = {
