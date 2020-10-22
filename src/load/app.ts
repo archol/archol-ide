@@ -3,10 +3,10 @@ import { join } from 'path';
 import * as ts from 'ts-morph'
 import { deferPromise, DeferredPromise, mapObjectToArray } from '../utils';
 import {
-  Application, ArrayConst, BooleanConst, NumberConst, objectConst, ObjectConst, Package, RoleRef,
+  Application, ArrayConst, BooleanConst, NumberConst, objectConst, ObjectConst, Package,
   SourceNode, StringConst, Workspace, sysRoles, isDocument, isProcess, isWidgetContent, EnumType, UseType1,
   Process, Function, View, Type, Document, RoleDef, Code, I18N, arrayConst, Icon, PackageUse, PackageUses,
-  Task, UseTask,  UseSysRole, UseLocRole, UseRoles, Fields, Field, UseType, BindVar, ProcessVars,
+  Task, UseTask, UseSysRole, UseLocRoles, UseRoles, Fields, Field, UseType, BindVar, ProcessVars,
   UseView, UseFunction, BindVars, FunctionLevel, Widget, ViewAction, BaseType, NormalType, normalTypes, DocFields, DocIndexes,
   DocumentStates, DocActions, DocAction, DocField, DocIndex, DocumentState, UseDocStates, Routes, Pagelets,
   Pagelet, Menu, MenuItem, MenuItemSeparator, SourceNodeMapped, SourceNodeRefsKind, isPackage, RouteRedirect,
@@ -537,33 +537,12 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         }
         return role;
       }, (itm) => isObjArg(itm))
-      if (sys) {
-        const roleGroups = parseColObjArg('RoleGroups', argRoles, (itm, name) => {
-          return parserForArrArg('RoleGroup', parseStrArg)(itm) as RoleGroup
-        }, (itm) => !isObjArg(itm))
-        if (roleGroups.props.length) ws.error('Role sys não suporta groups', argRoles)
-      }
       sysRoles.forEach((dr) => {
         const erdef = roleDefs.get(dr)
         if (erdef && (!sys)) ws.error('Role ' + dr + ' yet exists', erdef)
         if ((!erdef) && sys) ws.error('Role ' + dr + ' não é de sistema', roleDefs)
       })
       return roleDefs
-    }
-  }
-
-  function parseRolesGroup(parent: StringConst) {
-    return (argRoles: ts.Node, sys: boolean): RoleGroups => {
-      const roleGroups = parseColObjArg('RoleGroups', argRoles, (itm, name) => {
-        return parserForArrArg('RoleGroup', parseStrArg)(itm) as RoleGroup
-      }, (itm) => !isObjArg(itm))
-
-      sysRoles.forEach((dr) => {
-        const ergroup = roleGroups.get(dr) || roleGroups.get(dr)
-        if (ergroup && (!sys)) ws.error('Role ' + dr + ' yet exists', ergroup)
-        if ((!ergroup) && sys) ws.error('Role ' + dr + ' não é de sistema', roleGroups)
-      })
-      return roleGroups
     }
   }
 
@@ -700,6 +679,30 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       }
     }
 
+    function parseRolesGroup(parent: StringConst) {
+      return (argRoles: ts.Node, sys: boolean): RoleGroups => {
+        const roleGroups = parseColObjArg('RoleGroups', argRoles, (itm, name) => {
+
+          const roles = parseUseRoles(itm)
+          const role: RoleGroup = {
+            kind: 'RoleGroup',
+            sourceRef: ws.getRef(itm),
+            nodeMapping: nodeMapping([parent.str, 'role', name.str], () => role),
+            name,
+            roles
+          }
+          return role;
+        }, (itm) => !isObjArg(itm))
+
+        sysRoles.forEach((dr) => {
+          const ergroup = roleGroups.get(dr)
+          if (ergroup && (!sys)) ws.error('Role ' + dr + ' yet exists', ergroup)
+          if ((!ergroup) && sys) ws.error('Role ' + dr + ' não é de sistema', roleGroups)
+        })
+        return roleGroups
+      }
+    }
+
     function parseUseRoles(argUseRoles: ts.Node): UseRoles {
       if (argUseRoles instanceof ts.ArrayLiteralExpression) {
         const el = argUseRoles.getElements()
@@ -709,16 +712,16 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         roles.items.some((r) => {
           if (sysRoles.includes(r.str)) ws.error('Role de sistema não pode ser combinado com outros', r)
         })
-        const ret: UseLocRole = {
-          kind: 'UseLocRole',
+        const ret: UseLocRoles = {
+          kind: 'UseLocRoles',
           sourceRef: ws.getRef(argUseRoles),
           roles,
           ref() {
             return roles.items.map((r) => {
-              const l = pkg.roleDefs.get(r)
-              if (l) return l
-              const l2 = pkg.roleGroups.get(r)
-              if (l2) return l2
+              const l = pkg.refs.roleDefs.find(r.str)
+              if (l) return l.ref
+              const l2 = pkg.refs.roleGroups.find(r.str)
+              if (l2) return l2.ref
               throw ws.error('Role não encontrado: ' + r.str, r)
             })
           }
@@ -741,8 +744,8 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           }
           return rs
         }
-        const ret: UseLocRole = {
-          kind: 'UseLocRole',
+        const ret: UseLocRoles = {
+          kind: 'UseLocRoles',
           sourceRef: str.sourceRef,
           roles: {
             kind: 'UseLocRoleList',
@@ -1337,17 +1340,15 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       types: createRefs<'RefTypes', Type>('RefTypes', finishedPkg, 'types', './'),
       documents: createRefs<'RefDocuments', Document>('RefDocuments', finishedPkg, 'documents', './'),
       processes: createRefs<'RefProcesses', Process>('RefProcesses', finishedPkg, 'processes', './'),
-      roleDefs: createRefs<'RefRoles', RoleDefs>('RefRoles', finishedPkg, 'roleDefs', './'),
-      roleGroups: createRefs<'RefRoles', RoleGroups>('RefRoles', finishedPkg, 'roleGroups', './'),
+      roleDefs: createRefs<'RefRoles', RoleDef>('RefRoles', finishedPkg, 'roleDefs', './'),
+      roleGroups: createRefs<'RefRoles', RoleGroup>('RefRoles', finishedPkg, 'roleGroups', './'),
       views: createRefs<'RefViews', View>('RefViews', finishedPkg, 'views', './'),
       functions: createRefs<'RefFunctions', Function>('RefFunctions', finishedPkg, 'functions', './'),
     }
     function createRefs<KIND extends SourceNodeRefsKind, T extends SourceNode<any>>(
       kind: KIND,
       n: SourceNode<any>, kindObj: string, root?: string): PackageRefs<T> {
-      const ret: PackageRefs<T> = {
-        items: [],
-      }
+      const ret = packageRefs<T>([])
       listrefs(n, '')
       return ret
       function listrefs(sn: SourceNode<any>, ppath: string) {
@@ -1368,9 +1369,9 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
               states: createRefs<'RefDocStates', DocumentState>('RefDocStates', iref, 'states'),
               actions: createRefs<'RefDocAction', DocAction>('RefDocAction', iref, 'actions'),
             }
-            iref.refs.allFields = {
-              items: iref.refs.primaryFields.items.concat(iref.refs.secondaryFields.items)
-            }
+            iref.refs.allFields = packageRefs(
+              iref.refs.primaryFields.items.concat(iref.refs.secondaryFields.items)
+            )
           }
           if (isProcess(iref)) {
             iref.refs = {
@@ -1391,9 +1392,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     }
     function refBaseTypes(types: Types) {
       const did: { [name: string]: boolean } = {}
-      const ret: PackageRefs<BaseType<any>> = {
-        items: [],
-      };
+      const ret = packageRefs<BaseType<any>>([])
       types.props.forEach((t) => {
         const base = t.val.base()
         if (normalTypes[base.base]) return
@@ -1407,9 +1406,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       return ret
     }
     function refProcessVars(vars: ProcessVars) {
-      const ret: PackageRefs<Field> = {
-        items: [],
-      };
+      const ret = packageRefs<Field>([]);
       ['input', 'local', 'output'].forEach((scope) => {
         var fields: Fields = (vars as any)[scope];
         fields.props.forEach((f) => {
@@ -1423,9 +1420,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       return ret
     }
     function refViewFields(view: View) {
-      const ret: PackageRefs<Field> = {
-        items: [],
-      };
+      const ret = packageRefs<Field>([])
 
       view.content.items.forEach(add)
       function add(w: Widget) {
@@ -1462,14 +1457,14 @@ function invalidPackage(uri: StringConst) {
     },
     uses: objectConst('PackageUses', uri.sourceRef),
     refs: {
-      baseTypes: packageRefs(),
-      types: packageRefs(),
-      documents: packageRefs(),
-      processes: packageRefs(),
-      roleDefs: packageRefs(),
-      roleGroups: packageRefs(),
-      views: packageRefs(),
-      functions: packageRefs(),
+      baseTypes: packageRefs([]),
+      types: packageRefs([]),
+      documents: packageRefs([]),
+      processes: packageRefs([]),
+      roleDefs: packageRefs([]),
+      roleGroups: packageRefs([]),
+      views: packageRefs([]),
+      functions: packageRefs([]),
     },
     types: objectConst('Types', uri.sourceRef),
     documents: objectConst('Documents', uri.sourceRef),
@@ -1481,9 +1476,14 @@ function invalidPackage(uri: StringConst) {
     routes: objectConst('Routes', uri.sourceRef),
   }
   return pkg
-  function packageRefs(): PackageRefs<any> {
-    return {
-      items: [],
-    }
+}
+
+function packageRefs<T extends SourceNode<any>>(items: Array<PackageRef<T>>): PackageRefs<T> {
+  const ret: PackageRefs<T> = {
+    items: items.slice(0),
+    find(path) {
+      return ret.items.filter( (i)=>i.path===path)[0]
+    },
   }
+  return ret
 }

@@ -17,7 +17,7 @@ export type SourceNodeKind = 'Application' | 'Package' | 'StringConst' | 'Number
   'Workspace' | 'Application' | 'Icon' | 'I18N' | 'PackageUse' | 'Package' | 'RoleDef' |
   'BaseType' | 'NormalType' | 'EnumType' | 'EnumOption' | 'ComplexType' | 'ArrayType' | 'UseType1' | 'UseTypeAsArray' |
   'Field' | 'Document' | 'DocAction' | 'DocField' | 'DocIndex' | 'DocumentState' | 'UseDocStates' |
-  'Process' | 'ProcessVars' | 'UseLocRole' | 'UseSysRole' | 'UseTask' | 'UITask' | 'UseView' | 'SystemTask' |
+  'Process' | 'ProcessVars' | 'UseLocRoles' | 'UseSysRole' | 'UseTask' | 'UITask' | 'UseView' | 'SystemTask' |
   'UseFunction' | 'BindVar' | 'View' | 'ViewAction' | 'WidgetContent' | 'WidgetItem' | 'FunctionLevel' |
   'Function' | 'Code' | 'BuilderConfig' | 'Pagelet' | 'RouteCode' | 'RouteRedirect' | 'MenuItem' | 'MenuItemSeparator' |
   //
@@ -83,8 +83,17 @@ export function isObjectConst<KIND extends SourceNodeObjectKind>(node: any): nod
   return node && typeof node.kind === 'string' && typeof node.props === 'object'
 }
 
+export function isObjectConstProp<KIND extends SourceNodeObjectKind, T extends SourceNode<any> = SourceNode<any>>(obj: any): obj is ObjectConstProp<KIND, T> {
+  return obj && obj.key && obj.val
+}
+
+export interface ObjectConstProp<KIND extends SourceNodeObjectKind, T extends SourceNode<any> = SourceNode<any>> {
+  key: StringConst,
+  val: T
+}
+
 export interface ObjectConst<KIND extends SourceNodeObjectKind, T extends SourceNode<any> = SourceNode<any>> extends SourceNode<KIND> {
-  props: Array<{ key: StringConst, val: T }>
+  props: Array<ObjectConstProp<KIND, T>>
   get(key: string | StringConst): T | undefined
   keys(): string[]
   map<U>(callbackfn: (value: T, key: StringConst) => U, thisArg?: any): U[];
@@ -179,8 +188,8 @@ export interface Package extends SourceNode<'Package'> {
     types: PackageRefs<Type>,
     documents: PackageRefs<Document>,
     processes: PackageRefs<Process>,
-    roleDefs: PackageRefs<RoleDefs>,
-    roleGroups: PackageRefs<RoleGroups>,
+    roleDefs: PackageRefs<RoleDef>,
+    roleGroups: PackageRefs<RoleGroup>,
     views: PackageRefs<View>,
     functions: PackageRefs<Function>,
   }
@@ -195,15 +204,16 @@ export interface Package extends SourceNode<'Package'> {
 }
 
 export type RoleDefs = ObjectConst<'RoleDefs', RoleDef>
-export type RoleGroups = ObjectConst<'RoleGroups', RoleGroup>
 
 export interface RoleDef extends SourceNodeMapped<'RoleDef'> {
   description: I18N,
   icon: Icon
 }
-export type RoleGroup = ArrayConst<'RoleGroup', StringConst>
 
-export type RoleRef = RoleDef | RoleGroup
+export type RoleGroups = ObjectConst<'RoleGroups', RoleGroup>
+export interface RoleGroup extends SourceNodeMapped<'RoleGroup'> {
+  roles: UseRoles
+}
 
 export type Types = ObjectConst<'Types', Type>
 
@@ -414,16 +424,17 @@ export interface ProcessVars extends SourceNode<'ProcessVars'> {
   get(fullname: string | StringConst): Field
 }
 
-export type UseRoles = UseLocRole | UseSysRole
+export type UseRoles = UseLocRoles | UseSysRole
+export type UseRole = RoleDef | RoleGroup
 
-export interface UseLocRole extends SourceNode<'UseLocRole'> {
+export interface UseLocRoles extends SourceNode<'UseLocRoles'> {
   roles: ArrayConst<'UseLocRoleList', StringConst>
-  ref(sourceRef: TsNode): RoleRef[]
+  ref(sourceRef: TsNode): UseRole[]
 }
 
 export interface UseSysRole extends SourceNode<'UseSysRole'> {
   role: StringConst
-  ref(sourceRef: TsNode): RoleRef
+  ref(sourceRef: TsNode): RoleDef
 }
 
 export interface UseTask extends SourceNode<'UseTask'> {
@@ -579,7 +590,7 @@ export interface MenuItemSeparator extends SourceNode<'MenuItemSeparator'> {
 export const sysRoles: string[] = ['public', 'anonymous', 'authenticated']
 
 export function objectConst<KIND extends SourceNodeObjectKind, T extends SourceNode<any>>(kind: KIND, sourceRef: SourceRef) {
-  const props: Array<{ key: StringConst, val: T }> = []
+  const props: Array<ObjectConstProp<KIND,T>> = []
   const ret: ObjectConst<KIND, T>
     & {
       add(key: StringConst, val: T): void
@@ -616,6 +627,7 @@ export function arrayConst<KIND extends SourceNodeArrayKind, T extends SourceNod
 }
 
 export interface PackageRefs<T extends SourceNode<any>> {
+  find(path: string): PackageRef<T> | undefined
   items: Array<PackageRef<T>>
 }
 
@@ -656,7 +668,7 @@ export type SourceNodeType<KIND extends SourceNodeKind> = KIND extends 'Applicat
   KIND extends 'UseDocStates' ? UseDocStates :
   KIND extends 'Process' ? Process :
   KIND extends 'ProcessVars' ? ProcessVars :
-  KIND extends 'UseLocRole' ? UseLocRole :
+  KIND extends 'UseLocRoles' ? UseLocRoles :
   KIND extends 'UseSysRole' ? UseSysRole :
   KIND extends 'UseTask' ? UseTask :
   KIND extends 'UITask' ? UITask :

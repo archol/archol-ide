@@ -72,11 +72,18 @@ export interface GenInfo {
   }
   node: {
 
-  }
+  },
+  stack: GenFuncStack
 }
 
 export type GenFunc<name extends SourceNodeKind> =
   (writer: CodeWriter, node: SourceNodeType<name>, info: GenInfo) => CodePartL
+
+
+export interface GenFuncStack {
+  items: Array<SourceNodeType<any>>
+  get<KIND extends SourceNodeKind>(kind: KIND, n?: number): SourceNodeType<KIND>
+}
 
 export async function generateApplication<SW extends GenNodes>(
   { ws, app, transformations, projects }:
@@ -127,9 +134,10 @@ export async function generateApplication<SW extends GenNodes>(
       ws,
       prj: {},
       src: { importDefault },
-      node: {}
+      node: {},
+      stack: createStack()
     })
-    const rest=w.transform(app)
+    const rest = w.transform(app)
     const res = w.resolveCode(rest)
     mapObjectToArray(srcImportDefs, (val) => {
       srcfile.addStatements(val)
@@ -143,56 +151,27 @@ export async function generateApplication<SW extends GenNodes>(
       srcImportDefs[id] = module
     }
   }
+  function createStack(): GenFuncStack {
+    const items: Array<SourceNode<any>> = []
+    return {
+      items,
+      get(kind, idx) {
+        debugger
+        let ocor = 0
+        const last = items.length - 1
+        idx = idx || 0
+        for (let i = last; i >= 0; i--) {
+          const item = items[i]
+          if (item.kind === kind) {
+            if (ocor >= idx) return item as any
+            ocor++
+          }
+        }
+        throw ws.fatal('stack não tem ' + kind, items[last])
+      }
+    }
+  }
 }
-
-// export function generator(
-//   { transverse, project, workspace }: {
-//     transverse: S,
-//     project: string,
-//     workspace: Workspace
-//   }
-// ): GeneratorWorkspace {
-//   return {
-
-//   }
-
-//   function generate(n: SourceNode<any>, ws: GenWS): void {
-//     const w1 = codeWriter(transverse, { ws })
-//     const res = w1.resolveCode(w1.transverse(n))
-//     const src = ws.getSourceFile(project, file)
-//     src.addStatements(res)
-//   }
-
-//   function generatorNode<S extends GenNodes>(
-//     transverse: S
-//   ): GenerateFunc & S {
-//     const r: any = generate
-//     Object.keys(transverse).forEach((n) => {
-//       r[n] = (transverse as any)[n]
-//     })
-//     return r
-//     function generate(n: SourceNode<any>, ws: GenWS): CodePart {
-//       const w1 = codeWriter(transverse, { ws })
-//       const res = w1.resolveCode(w1.transverse(n))
-//       return res
-//     }
-//   }
-
-//   function generatorSource<S extends GenNodes>(
-//     { transverse, project, file }: {
-//       transverse: S,
-//       file: string,
-//     }
-//   ): (n: SourceNode<any>, ws: GenWS) => void {
-//     return generate
-//     function generate(n: SourceNode<any>, ws: GenWS): void {
-//       const w1 = codeWriter(transverse, { ws })
-//       const res = w1.resolveCode(w1.transverse(n))
-//       const src = ws.getSourceFile(project, file)
-//       src.addStatements(res)
-//     }
-//   }
-// }
 
 export function typePipeStr(s: string[]) {
   return s.length ? s.map(quote).join('|') : quote('')
@@ -205,30 +184,3 @@ export function typePipeObj(s: string[]) {
 export function quote(s: string) {
   return '"' + s + '"'
 }
-
-
-// export interface AppGenerator<SW extends GenNodes = any> {
-//   ws: Workspace
-//   app: Application
-//   transforms: SW,
-//   project<SP extends GenNodes>(
-//     projectPath: string, projectTransforms: SP,
-//     ...sources: Array<SourceTransformers<any>>
-//   ): GeneratorForProject<SP>
-//   openProject(projectPath: string): GeneratorForProject<any>
-//   saveAll(): Promise<void>
-// }
-
-// export interface GeneratorForProject<SP extends GenNodes> {
-//   transforms: SP,
-//   source<SS extends GenNodes>(filePath: string, sourceTransforms: SS): GeneratorForSource<SS>
-//   project: Project
-//   openSourceFile(projectPath: string, filePath: string): SourceFile
-// }
-
-// export interface GeneratorForSource<SS extends GenNodes> {
-//   transforms: SS,
-//   source: SourceFile
-// }
-
-// export type GenerateFunc = (n: SourceNode<any>, ws: ProjectTransformer<any>) => CodePart

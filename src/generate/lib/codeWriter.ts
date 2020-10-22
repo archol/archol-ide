@@ -1,7 +1,7 @@
 import {
   ArrayConst, ObjectConst,
   SourceNode, SourceNodeKind, SourceNodeType, StringConst,
-  isObjectConst, isSourceNode, isStringConst, Code, isCode, isArrayConst, SourceNodeObjectKind, Workspace
+  isObjectConst, isSourceNode, isStringConst, Code, isCode, isArrayConst, SourceNodeObjectKind, Workspace, ObjectConstProp, isObjectConstProp
 } from "load/types"
 import { mapObjectToArray } from 'utils'
 import {
@@ -15,9 +15,10 @@ export interface CodeWriter {
   transform(node: SourceNode<any>): CodePartR[]
   map(nodes: Array<ObjectConst<any> | ArrayConst<any>>): CodeLines
   mapObj<kind extends SourceNodeObjectKind>(
-    obj: ObjectConst<kind>,
+    objs: ObjectConst<kind> | Array<ObjectConst<kind>>,
     fn?: (val: SourceNodeType<kind>, name: StringConst) => CodePartL,
     filter?: (val: SourceNodeType<kind>, name: StringConst) => boolean,
+    heading?: CodePartL[]
   ): CodeLines
   code(node: Code, opts?: { after?: CodePartL[], forceRetType?: string }): CodeLines
   array(arr: CodePartL[]): CodeLines
@@ -28,7 +29,10 @@ export interface CodeWriter {
 }
 
 export type CodePartR = string | string[] | CodeLines
-export type CodePartL = string | string[] | CodeLines | SourceNode<any> | CodePartL[] | (() => CodePartL) | NodeTransformer<any>
+export type CodePartL = string | string[] | CodeLines |
+  SourceNode<any> | CodePartL[] |
+  Array<ObjectConstProp<any, any>> | ObjectConstProp<any, any> |
+  (() => CodePartL) | NodeTransformer<any>
 
 export interface CodeLine {
   $parts$: CodePartR[]
@@ -55,12 +59,10 @@ export function codeWriter(transforms: GenNodes[], info: GenInfo): CodeWriter {
       return wSelf.lines(statements, block ? '{' : '', block ? '}' : '', ';')
     },
     lines(lines: CodePartL[], start: string, end: string, separator: string): CodeLines {
-      // console.log(JSON.stringify({ antes: resolveCode(lines as any, transformNode), depis: resolveCode(mapPart(lines), transformNode) }))
-      // console.log(JSON.stringify({ $lines$: lines, depis: mapPartL2R(lines) }))
       return { $lines$: flatLines(lines), start, end, separator }
     },
     transform(node) {
-      return flatPartL(transformNode(node))
+      return transformNode(node)
     },
     map(nodes: Array<ObjectConst<any> | ArrayConst<any>>): CodeLines {
       const lines = nodes.reduce<CodePartR[]>((p, c) => {
@@ -70,16 +72,23 @@ export function codeWriter(transforms: GenNodes[], info: GenInfo): CodeWriter {
       }, [])
       return wSelf.lines(lines, '[', ']', ',')
     },
-    mapObj<kind extends SourceNodeObjectKind>(
-      obj: ObjectConst<kind>,
-      fn?: (val: SourceNodeType<kind>, name: StringConst) => CodePartL,
-      filter?: (val: SourceNodeType<kind>, name: StringConst) => boolean
+    mapObj<KIND extends SourceNodeObjectKind>(
+      objs: ObjectConst<KIND> | Array<ObjectConst<KIND>>,
+      fn?: (val: SourceNodeType<KIND>, name: StringConst) => CodePartL,
+      filter?: (val: SourceNodeType<KIND>, name: StringConst) => boolean,
+      heading?: CodePartL[]
     ): CodeLines {
-      return wSelf.lines(obj.props
-        .filter((i) => filter ? filter(i.val as any, i.key) : true)
-        .map((i) => [
-          [wSelf.string(i.key), ':', (fn || transformNode)(i.val as any, i.key)]
-        ]), '{', '}', ',')
+      if (isObjectConst(objs)) objs = [objs]
+      const allprops = objs.reduce<Array<ObjectConstProp<KIND, any>>>
+        ((ret, o) => ret.concat(o.props), [])
+      return wSelf.lines(
+        (heading || []).concat(
+          allprops
+            .filter((i) => filter ? filter(i.val as any, i.key) : true)
+            .map((i) => [
+              [wSelf.string(i.key), ':', (fn || transformNode)(i.val as any, i.key)]
+            ])),
+        '{', '}', ',')
     },
     code(node, opts): CodeLines {
       const body = wSelf.statements(node.body.map(b => b.getText()), true)
@@ -118,13 +127,19 @@ export function codeWriter(transforms: GenNodes[], info: GenInfo): CodeWriter {
   }
   return wSelf
 
-  function transformNode(n: SourceNode<any>): CodePartL {
+  function transformNode(n: SourceNode<any>): CodePartR[] {
     const w2 = codeWriter(transforms, info)
     for (const t of transforms) {
-      const fn: GenFunc<any> = (t as any)[n.kind]
-      if (fn) return fn(w2, n, info)
+      try {
+        info.stack.items.push(n)
+        const fn: GenFunc<any> = (t as any)[n.kind]
+        if (fn) return flatPartL(fn(w2, n, info))
+      }
+      finally {
+        info.stack.items.pop()
+      }
     }
-    return defaultTransformer(n)
+    return flatPartL(defaultTransformer(n))
   }
   function defaultTransformer(n: SourceNode<any>) {
     if (isStringConst(n)) return wSelf.string(n)
@@ -152,13 +167,13 @@ export function codeWriter(transforms: GenNodes[], info: GenInfo): CodeWriter {
       // })
       else if (typeof p === 'string') fres.push(p)
       else if (Array.isArray(p)) return p.forEach(flat)
+      else if (isObjectConstProp(p)) flat(p.val)
       else if (isSourceNode(p)) flat(transformNode(p))
       else if (isNodeTransformer(p)) {
         flat(p.transform(transforms, info))
       }
       else if (typeof p === 'function') flat(p())
       else {
-        debugger
         throw new Error('cant flat ' + JSON.stringify(p))
       }
     }
@@ -220,7 +235,6 @@ export function codeWriter(transforms: GenNodes[], info: GenInfo): CodeWriter {
       }
       else if (typeof c === 'function') resolveCodePart(c())
       else {
-        debugger
         throw new Error('cant resolveCodePart ' + typeof c)
       }
     }
