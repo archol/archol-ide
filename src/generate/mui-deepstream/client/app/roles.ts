@@ -7,7 +7,6 @@ export const generateClientRoles = sourceTransformer({
   transformations: {
     Application(w, app, { ws }) {
       return w.statements([
-        `import React from 'react'`,
         `import { AppRole, AppRoles } from '../lib'`,
         '',
         genSysRoles(app.sysroles),
@@ -16,6 +15,12 @@ export const generateClientRoles = sourceTransformer({
         // genPkgRolesMerge(app.uses),
       ], false)
     },
+  }
+})
+
+export const genUseRoles = nodeTransformer({
+  UseLocRoles(w, roles, info) {
+    return 'TODO'
   }
 })
 
@@ -74,7 +79,7 @@ const genPkgRolesDefs = nodeTransformer({
 const genPkgRoles = nodeTransformer({
   PackageUses(w, pkgs) {
     return w.lines([
-      'export const approles = (<T extends { [pkg: string]: AppRole|{ [grp: string]: AppRole | AppRole[] }}>(v: T) => v)(',
+      'export const roles = (<T extends { [pkg: string]: AppRole|{ [grp: string]: AppRole | AppRole[] }}>(v: T) => v)(',
         [w.mapObj(pkgs, (val, key) => val, undefined, ['...sysroles'])],
       ')'
     ], '', '', '')

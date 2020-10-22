@@ -56,6 +56,12 @@ declare type ${appname}_PackageUses = {
 
 declare type ${appname}_Route = string | ((app: ${appname}_Ref, ...args: any[]) => void)
 
+declare type Menu = { 
+  caption: I18N
+  icon: Icon
+  run: string | ((app: ${appname}_Ref) => void)
+}
+
 declare interface ${appname}_Ref {
 ${app.uses.props.map((u) => `${u.key.str}: ${u.val.ref(u.val.uri.sourceRef).uri.id.str}_Ref,`).join('\n')}
 }
@@ -315,6 +321,7 @@ declare interface ${pkgid}_view_${viewName}_DeclBind<S> {
       const docName = doc.name.str
       w.writeLine(`
 declare interface ${pkgid}_document_${docName}_Decl {
+  caption: I18N
   persistence: DocPersistence
   identification: 'Centralized'|'ByPeer',
   states: {
@@ -406,11 +413,6 @@ declare interface DocState {
 }
 
 declare type FunctionLevel = 'cpu' | 'io' | 'proc'
-
-declare type Menu = { 
-  caption: I18N
-  icon: Icon
-}
 
 declare type Pagelet = {
   drawer?: true,

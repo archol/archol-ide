@@ -7,11 +7,11 @@ import {
   SourceNode, StringConst, Workspace, sysRoles, isDocument, isProcess, isWidgetContent, EnumType, UseType1,
   Process, Function, View, Type, Document, RoleDef, Code, I18N, arrayConst, Icon, PackageUse, PackageUses,
   Task, UseTask, UseSysRole, UseLocRoles, UseRoles, Fields, Field, UseType, BindVar, ProcessVars,
-  UseView, UseFunction, BindVars, FunctionLevel, Widget, ViewAction, BaseType, NormalType, normalTypes, DocFields, DocIndexes,
+  UseView, UseFunction, BindVars, FunctionLevel, Widgets, ViewAction, BaseType, NormalType, normalTypes, DocFields, DocIndexes,
   DocumentStates, DocActions, DocAction, DocField, DocIndex, DocumentState, UseDocStates, Routes, Pagelets,
   Pagelet, Menu, MenuItem, MenuItemSeparator, SourceNodeMapped, SourceNodeRefsKind, isPackage, RouteRedirect,
   RouteCode, RoleGroup, TsNode, basicTypes3, PackageRefs, PackageRef, isView, EnumOption, ComplexType, ArrayType,
-  UseTypeAsArray, Types, SourceNodeKind, SourceNodeObjectKind, SourceNodeArrayKind, BuilderConfig, AppMappings, RoleDefs, RoleGroups
+  UseTypeAsArray, Types, SourceNodeKind, SourceNodeObjectKind, SourceNodeArrayKind, BuilderConfig, AppMappings, RoleDefs, RoleGroups, WidgetItem, WidgetContent
 } from './types'
 
 export async function loadApp(ws: Workspace, appName: string): Promise<Application> {
@@ -84,6 +84,14 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
 
   function isObjArg(arg: ts.Node) {
     return (arg instanceof ts.ObjectLiteralExpression)
+  }
+
+  function getObjArgPropVal(arg: ts.Node, prop: string): string | undefined {
+    if (arg instanceof ts.ObjectLiteralExpression) {
+      const p = arg.getProperty(prop)
+      const i = p instanceof ts.PropertyAssignment && p.getInitializer()
+      if (i) return i.getText()
+    }
   }
 
   function isArrArg(arg: ts.Node) {
@@ -231,9 +239,10 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     }
   >(
     arg: ts.Node,
-    props: PROPS
+    props: PROPS,
+    optionalProps: Array<keyof PROPS>
   ): ParsedObjProps<PROPS> {
-    return parseObjArgAny(arg, props)
+    return parseObjArgAny(arg, props, optionalProps)
   }
 
   type ParsedObjPropsAny<T extends {
@@ -248,7 +257,8 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     }
   >(
     arg: ts.Node,
-    props: PROPS
+    props: PROPS,
+    optionalProps: Array<keyof PROPS>
   ): ParsedObjPropsAny<PROPS> {
     let ret: ParsedObjPropsAny<PROPS> = {} as any
     if (arg instanceof ts.ObjectLiteralExpression) {
@@ -270,6 +280,12 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         //arg.getLiteralValue()
       }
     } else ws.fatal(arg.getSourceFile().getFilePath() + ' ' + arg.getText() + ' objeto é esperado', arg)
+    Object.keys(props).forEach((name) => {
+      if (!(ret as any)[name]) {
+        if (optionalProps.indexOf(name) === -1)
+          ws.error(arg.getSourceFile().getFilePath() + ' ' + arg.getText() + ' falta propriedade ' + name + ' em ' + arg.getText(), arg)
+      }
+    })
     return ret
     function invokeProp(propNode: ts.PropertyName, propName: StringConst, propValue: ts.Node) {
       let fn = (props as any)[propName.str]
@@ -301,7 +317,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         }
         return undefined as any
       }
-    })
+    }, ['*'])
     return col
   }
 
@@ -336,7 +352,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           })
           return msg
         }
-      })
+      }, ['*'])
     }
     else if (arg instanceof ts.StringLiteral) ret.msg.props.push({
       key: ws.defaultLang,
@@ -374,7 +390,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         sysroles(val) {
           return parseRoleDefs(name)(val, true)
         }
-      })
+      }, [])
     appsysroles = appprops.sysroles
     appprops.uses = await packageUsesWaitter(appprops.uses)
     const app: Application = {
@@ -482,7 +498,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         bottom: parseNumArg,
         drawer: parseBolArg,
         content: parseBolArg
-      })
+      }, ['left', 'top', 'right', 'bottom', 'drawer', 'content'])
       const pagelet: Pagelet = {
         kind: 'Pagelet',
         sourceRef: ws.getRef(itmPagelet),
@@ -511,7 +527,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           if (isStrArg(val)) return parseStrArg(val)
           return parserForCode()(val)
         }
-      })
+      }, [])
       const menuItem: MenuItem = {
         kind: 'MenuItem',
         sourceRef: ws.getRef(itmMenu),
@@ -527,7 +543,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         const rprops = parseObjArg(itm, {
           description: parseI18N,
           icon: parseIcon,
-        })
+        }, [])
         const role: RoleDef = {
           kind: 'RoleDef',
           sourceRef: ws.getRef(itm),
@@ -830,7 +846,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         const fprops = parseObjArg(itm, {
           description: parseI18N,
           type: parseUseType,
-        })
+        }, ['description'])
         const field: Field = {
           kind: 'Field',
           sourceRef: ws.getRef(itm),
@@ -868,7 +884,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             vars: parseVars,
             roles: parseUseRoles,
             volatile: parseBolArg,
-          })
+          }, [])
           const process: Process = {
             kind: 'Process',
             sourceRef: ws.getRef(processName),
@@ -887,7 +903,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
               input: parseFields,
               output: parseFields,
               local: parseFields,
-            })
+            }, [])
             const vars: ProcessVars = {
               kind: 'ProcessVars',
               sourceRef: ws.getRef(argVars),
@@ -921,7 +937,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
                 next: parseNextTask,
                 useView: parseUseView,
                 useFunction: parseUseFunction
-              })
+              }, ['useView', 'useFunction', 'roles', 'pool', 'lane'])
               const task: Task = {
                 kind: tprops.useFunction ? 'SystemTask' : 'UITask',
                 sourceRef: ws.getRef(val),
@@ -962,7 +978,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             const puseview = parseObjArg(argUseView, {
               view: parseStrArg,
               bind: parseBindVars
-            })
+            }, [])
             const r: UseView = {
               kind: 'UseView',
               sourceRef: ws.getRef(argUseView),
@@ -980,7 +996,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
               function: parseStrArg,
               input: parseBindVars,
               output: parseBindVars,
-            })
+            }, [])
             const r: UseFunction = {
               kind: 'UseFunction',
               sourceRef: ws.getRef(argUseFunction),
@@ -994,7 +1010,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             return r
           }
         }
-      })
+      }, ['*'])
       return { functions }
     }
     function functions(expr1Functions: ts.CallExpression) {
@@ -1006,7 +1022,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           input: parseFields,
           output: parseFields,
           code: parserForCode(),
-        })
+        }, [])
         const func: Function = {
           kind: 'Function',
           sourceRef: ws.getRef(argsFunctions[0]),
@@ -1034,11 +1050,11 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       if (argsview.length !== 1) ws.error(expr1View.getSourceFile().getFilePath() + ' views precisa de um parametro', expr1View)
       pkg.views = parseColObjArg('Views', argsview[0], (itmView, viewName) => {
         const vprops = parseObjArg(itmView, {
-          content: parserForArrArg('ViewContent', parseWidget),
+          content: parseWidgets,
           primaryAction: parseAction,
           secondaryAction: parseAction,
           othersActions: parserForArrArg('othersActions', parseAction)
-        })
+        }, ['secondaryAction', 'othersActions'])
         const allActions = arrayConst<'allActions', ViewAction>('allActions', ws.getRef(itmView))
         allActions.items.push(vprops.primaryAction)
         if (vprops.secondaryAction)
@@ -1058,24 +1074,45 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       })
 
       return { types }
-      function parseWidget(argWidget: ts.Node): Widget {
-        const wprops = parseObjArg(argWidget, {
-          content: parserForArrArg('ViewContent', parseWidget),
+      function parseWidget(argWidget: ts.Node): WidgetContent | WidgetItem {
+        if (getObjArgPropVal(argWidget, 'content') === 'WidgetContent')
+          return parseWidgetContent(argWidget)
+        return parseWidgetItem(argWidget)
+      }
+      function parseWidgetContent(argWidget: ts.Node): WidgetContent {
+        const cwprops = parseObjArg(argWidget, {
+          caption: parseI18N,
+          content: parseWidgets,
+        }, ['caption'])
+        const cwidget: WidgetContent = {
+          kind: 'WidgetContent',
+          sourceRef: ws.getRef(argWidget),
+          ...cwprops
+        }
+        return cwidget
+      }
+      function parseWidgetItem(argWidget: ts.Node): WidgetItem {
+        const iwprops = parseObjArg(argWidget, {
           caption: parseI18N,
           model: parserForStrArg<"show" | "edit">(),
           field: parseStrArg,
           type: parseUseType
-        })
-        const widget: Widget = {
-          kind: wprops.content ? 'WidgetContent' : 'WidgetItem',
+        }, ['caption'])
+        const iwidget: WidgetItem = {
+          kind: 'WidgetItem',
           sourceRef: ws.getRef(argWidget),
-          ...wprops
-        } as any
-        return widget
+          ...iwprops
+        }
+        return iwidget
       }
+      function parseWidgets(argWidget: ts.Node): Widgets {
+        return parserForArrArg('Widgets', parseWidget)(argWidget)
+      }
+
       function parseAction(argAction: ts.Node): ViewAction {
         const aprops = parseObjArg(argAction, {
           caption: parseI18N,
+          description: parseI18N,
           icon: parseIcon,
           isEnabled: parserForCode(),
           isVisible: parserForCode(),
@@ -1087,7 +1124,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             }
             return parserForCode()(val)
           }
-        })
+        }, ['isEnabled', 'isVisible','caption', 'icon', 'description'])
         const viewAction: ViewAction = {
           kind: 'ViewAction',
           sourceRef: ws.getRef(argAction),
@@ -1108,7 +1145,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           options: parseEnumOptions,
           fields: parseFields,
           itemType: parseUseType,
-        })
+        }, ['parse', 'format', 'validate', 'options', 'fields', 'itemType'])
         const base = typeProps.base
         delete (typeProps as any).base
         if (typeProps.options) return asEnumType()
@@ -1159,7 +1196,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
               value: parseStrArg,
               description: parseI18N,
               icon: parseIcon,
-            })
+            }, [])
             const otype: EnumOption = {
               kind: 'EnumOption',
               sourceRef: ws.getRef(itmOption),
@@ -1227,7 +1264,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           },
           states: parseDocumentStates,
           actions: parseDocActions,
-        })
+        }, [])
         const doc: Document = {
           kind: 'Document',
           sourceRef: ws.getRef(itmDoc),
@@ -1244,7 +1281,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           const fprops = parseObjArg(argField, {
             description: parseI18N,
             type: parseUseType,
-          })
+          }, [])
           const field: DocField = {
             kind: 'DocField',
             sourceRef: ws.getRef(argField),
@@ -1275,7 +1312,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           const sprops = parseObjArg(argState, {
             icon: parseIcon,
             description: parseI18N
-          })
+          }, [])
           const state: DocumentState = {
             kind: 'DocumentState',
             sourceRef: ws.getRef(argState),
@@ -1295,7 +1332,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             icon: parseIcon,
             description: parseI18N,
             run: parserForCode()
-          })
+          }, ['run', 'from'])
           const ac: DocAction = {
             kind: 'DocAction',
             sourceRef: ws.getRef(argAction),
@@ -1423,8 +1460,8 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       const ret = packageRefs<Field>([])
 
       view.content.items.forEach(add)
-      function add(w: Widget) {
-        if (isWidgetContent(w)) w.content.forEach(add)
+      function add(w: WidgetContent | WidgetItem) {
+        if (isWidgetContent(w)) w.content.items.forEach(add)
         else {
           if (!ret.items.some((i) => i.path === w.field.str)) {
             ret.items.push({
@@ -1482,7 +1519,7 @@ function packageRefs<T extends SourceNode<any>>(items: Array<PackageRef<T>>): Pa
   const ret: PackageRefs<T> = {
     items: items.slice(0),
     find(path) {
-      return ret.items.filter( (i)=>i.path===path)[0]
+      return ret.items.filter((i) => i.path === path)[0]
     },
   }
   return ret

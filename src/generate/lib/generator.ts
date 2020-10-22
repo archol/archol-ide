@@ -68,7 +68,7 @@ export interface GenInfo {
   ws: Workspace
   prj: {}
   src: {
-    importDefault(identifier: string, module: string, sourceRef: TsNode): void
+    require(identifier: string, module: string, sourceRef: TsNode): void
   }
   node: {
 
@@ -133,7 +133,7 @@ export async function generateApplication<SW extends GenNodes>(
     const w = codeWriter([src.transformations, prj.transformations, transformations], {
       ws,
       prj: {},
-      src: { importDefault },
+      src: { require: importDefault },
       node: {},
       stack: createStack()
     })
@@ -156,7 +156,6 @@ export async function generateApplication<SW extends GenNodes>(
     return {
       items,
       get(kind, idx) {
-        debugger
         let ocor = 0
         const last = items.length - 1
         idx = idx || 0

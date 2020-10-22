@@ -23,16 +23,17 @@ export interface CodeWriter {
   code(node: Code, opts?: { after?: CodePartL[], forceRetType?: string }): CodeLines
   array(arr: CodePartL[]): CodeLines
   object(obj: { [name: string]: CodePartL }): CodeLines
-  object(obj: { [name: string]: CodePartL | NodeTransformerFactory<any> }, objNode: SourceNode<any>): CodeLines
+  object(obj: { [name: string]: CodePartLo }, objNode: SourceNode<any>): CodeLines
   string(node: StringConst | string): string
   resolveCode(code: CodePartR[]): string
 }
 
 export type CodePartR = string | string[] | CodeLines
-export type CodePartL = string | string[] | CodeLines |
-  SourceNode<any> | CodePartL[] |
-  Array<ObjectConstProp<any, any>> | ObjectConstProp<any, any> |
-  (() => CodePartL) | NodeTransformer<any>
+export type CodePartLb = CodePartR | SourceNode<any> | CodePartL[] |
+  NodeTransformer<any> |
+  Array<ObjectConstProp<any, any>> | ObjectConstProp<any, any>
+export type CodePartL = CodePartLb | (() => CodePartL)
+export type CodePartLo = CodePartLb | (<T extends SourceNodeKind>(n: SourceNode<T>) => CodePartL)
 
 export interface CodeLine {
   $parts$: CodePartR[]
@@ -106,14 +107,18 @@ export function codeWriter(transforms: GenNodes[], info: GenInfo): CodeWriter {
     },
     object(obj: { [name: string]: CodePartL | NodeTransformerFactory<any> }, node?: SourceNode<any>): CodeLines {
       return wSelf.lines(mapObjectToArray(obj, (val, key) => {
-        if (isNodeTransformerFactory(val)) {
-          if (node) {
-            const vnode = (isObjectConst(node)) ? node.get(key) : (node as any)[key]
+        if (node) {
+          const vnode = (isObjectConst(node)) ? node.get(key) : (node as any)[key]
+          if (!vnode) throw info.ws.error('propriedade ' + key + ' não existe em ' + node.kind, node)
+          if (isNodeTransformerFactory(val)) {
             return () => [wSelf.string(key), ':', val(vnode)]
+          } else if (typeof val === 'function') {
+            return [wSelf.string(key), ':', (val as any)(vnode)]
           }
+        }
+        if (isNodeTransformerFactory(val))
           throw info.ws.fatal('object com TransformerFactory precisa de Node', info.ws.sourceRef)
-        } else
-          return [wSelf.string(key), ':', val]
+        return [wSelf.string(key), ':', val]
       }), '{', '}', ',')
     },
     string(node: StringConst | string | string[]): string {

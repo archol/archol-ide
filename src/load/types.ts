@@ -1,7 +1,7 @@
 import * as ts from 'ts-morph'
 
 export type SourceNodeArrayKind = 'AppLanguages' | 'RoleGroup' | 'DocIndexFields' |
-  'UsedDocStates' | 'UseLocRoleList' | 'UseTasknames' | 'ViewContent' | 'othersActions' | 'allActions' |
+  'UsedDocStates' | 'UseLocRoleList' | 'UseTasknames' | 'Widgets' | 'othersActions' | 'allActions' |
   'Menu'
 
 export type SourceNodeRefsKind = 'RefTypes' | 'RefDocuments' | 'RefProcesses' | 'RefRoles' | 'RefViews' |
@@ -488,7 +488,7 @@ export function isView(node: any): node is View {
 }
 
 export interface View extends SourceNodeMapped<'View'> {
-  content: ArrayConst<'ViewContent', Widget>
+  content: Widgets
   primaryAction?: ViewAction
   secondaryAction?: ViewAction
   othersActions?: ArrayConst<'othersActions', ViewAction>
@@ -510,11 +510,11 @@ export function isWidgetContent(node: any): node is WidgetContent {
   return node && node.kind === 'WidgetContent'
 }
 
-export type Widget = WidgetContent | WidgetItem
+export type Widgets = ArrayConst<'Widgets', WidgetContent | WidgetItem>
 
 export interface WidgetContent extends SourceNode<'WidgetContent'> {
-  caption: I18N,
-  content: Widget[]
+  caption?: I18N,
+  content: Widgets
 }
 
 export interface WidgetItem extends SourceNode<'WidgetItem'> {
@@ -590,7 +590,7 @@ export interface MenuItemSeparator extends SourceNode<'MenuItemSeparator'> {
 export const sysRoles: string[] = ['public', 'anonymous', 'authenticated']
 
 export function objectConst<KIND extends SourceNodeObjectKind, T extends SourceNode<any>>(kind: KIND, sourceRef: SourceRef) {
-  const props: Array<ObjectConstProp<KIND,T>> = []
+  const props: Array<ObjectConstProp<KIND, T>> = []
   const ret: ObjectConst<KIND, T>
     & {
       add(key: StringConst, val: T): void
