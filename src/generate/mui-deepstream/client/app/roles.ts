@@ -121,17 +121,5 @@ const genPkgRoles = nodeTransformer({
       role.ref(role).
         map((r) => info.stack.get('PackageUse').alias.str + '_' + r.name.str)
     )
-  },
-  // RoleDef(w, role) {
-  //   return w.object({
-  //     path: route.path,
-  //     component: w.code(route.code, { after: 'return <AppContent />', forceRetType: '' })
-  //   })
-  // },
-  // RoleGroup(w, role) {
-  //   return w.object({
-  //     path: route.path,
-  //     component: w.code(route.code, { after: 'return <AppContent />', forceRetType: '' })
-  //   })
-  // }      
+  },  
 })

@@ -226,7 +226,7 @@ export function codeWriter(transforms: GenNodes[], info: GenInfo): CodeWriter {
           incIdent()
           resolveCodePart(l.$parts$)
           decIdent()
-          if (c.separator && o < txt.length) write(c.separator)
+          if (c.separator && (!lineIsEmpty) && o < txt.length) write(c.separator)
           writeln()
         })
         if (c.end) write(c.end)
