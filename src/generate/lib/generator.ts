@@ -70,6 +70,7 @@ export interface GenInfo {
   src: {
     require(identifier: string, module: string, sourceRef: TsNode): void
     requireDefault(identifier: string, module: string, sourceRef: TsNode): void
+    chip(identifier: string, sourceRef: TsNode, nt: () => NodeTransformer<any>): string
   }
   node: {
 
@@ -127,21 +128,29 @@ export async function generateApplication<SW extends GenNodes>(
     }))
   }
   function transformFile(prj: ProjectTransformer<any>, src: SourceTransformer<any>) {
+    const srcUsed: { [id: string]: TsNode } = {}
+    const srcIdentifiers: { [id: string]: () => NodeTransformer<any> } = {}
     const srcRequires: {
       [module: string]: {
         def?: string
         ids: string[]
       }
     } = {}
+
     const srcfile = openSourceFile(prj.projectPath, src.filePath)
     const w = codeWriter([src.transformations, prj.transformations, transformations], {
       ws,
       prj: {},
-      src: { requireDefault, require },
+      src: { requireDefault, require, chip },
       node: {},
       stack: createStack()
     })
-    const rest = w.transform(app)
+    let rest = w.transform(app)
+
+    mapObjectToArray(srcIdentifiers, (val, key) => {
+      rest = rest.concat(w.statements([val()], false))
+    })
+    
     const res = w.resolveCode(rest)
     mapObjectToArray(srcRequires, (val, key) => {
       const preq: string[] = [];
@@ -149,19 +158,31 @@ export async function generateApplication<SW extends GenNodes>(
       if (val.ids.length) preq.push('{ ' + val.ids.join(', ') + ' }')
       srcfile.addStatements('import ' + preq.join(', ') + ' from "' + key + '"')
     })
+
     srcfile.addStatements(res)
     function initReq() {
       return {
         ids: []
       }
     }
-    function require(id: string, module: string): void {
+    function useId(id: string, sourceRef: TsNode) {
+      // if (srcUsed[id]) throw ws.fatal(id + ' identificar duplicado', [srcUsed[id], sourceRef])
+      srcUsed[id] = sourceRef
+    }
+    function require(id: string, module: string, sourceRef: TsNode): void {
+      useId(id, sourceRef)
       const req = srcRequires[module] || (srcRequires[module] = initReq())
       if (!req.ids.includes(id)) req.ids.push(id)
     }
-    function requireDefault(id: string, module: string): void {
+    function requireDefault(id: string, module: string, sourceRef: TsNode): void {
+      useId(id, sourceRef)
       const req = srcRequires[module] || (srcRequires[module] = initReq())
       req.def = id
+    }
+    function chip(id: string, sourceRef: TsNode, nt: () => NodeTransformer<any>): string {
+      useId(id, sourceRef)
+      srcIdentifiers[id] = nt
+      return id
     }
   }
   function createStack(): GenFuncStack {

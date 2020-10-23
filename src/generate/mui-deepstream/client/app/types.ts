@@ -6,14 +6,14 @@ export const generateClientTypes = sourceTransformer({
     Application(w, app, { src }) {
       return w.statements([
         ['export interface AppRef ', app.uses],
-        genPkgRef(app.uses)
+        // genPkgRef(app.uses)
       ], false)
     },
     PackageUses(w, pkgs) {
       return [w.mapObj(pkgs, (val, key) => val)]
     },
-    PackageUse(w, pkg) {
-      return pkg.ref(pkg).uri.id.str + 'Ref'
+    PackageUse(w, pkg, { src }) {
+      return src.chip(pkg.ref(pkg).uri.id.str + 'Ref', pkg, () => genPkgRef(pkg))
     },
   },
 })
@@ -27,10 +27,12 @@ const genPkgRef = nodeTransformer({
   },
   Package(w, pkg) {
     return [
-      'export interface ', pkg.uri.id.str, 'Ref {',
-      'x',
-      '}'
+      'export interface ', pkg.uri.id.str, 'Ref',
+      w.mapObj(pkg.processes)
     ]
+  },
+  Process(w, proc) {
+    return "proc."
   },
   // RoleDefs(w, roles, info) {
   //   return w.lines(roles.props.map((r) => [
