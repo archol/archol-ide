@@ -1,7 +1,7 @@
 import { sourceTransformer } from 'generate/lib/generator'
 
 export const generateClientRoutes = sourceTransformer({
-  filePath: 'app/routes.tsx',
+  filePath: 'app/routes.ts',
   cfg:{},
   transformations: {
     Application(w, app, { src }) {

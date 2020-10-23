@@ -6,7 +6,7 @@ import { genIcon } from './icon'
 import { genUseRoles } from './roles'
 
 export const generateClientMenu = sourceTransformer({
-  filePath: 'app/menu.tsx',
+  filePath: 'app/menu.ts',
   transformations: {
     Application(w, app, { src }) {
       src.require('AppMenuItem', 'lib', app)

@@ -147,7 +147,7 @@ export interface Application extends SourceNode<'Application'> {
   mappingList: { [id: string]: SourceNodeMapped<any> }
   sysroles: RoleDefs,
 
-  getMapped(uri: StringConst): StringConst  
+  getMapped(uri: StringConst): StringConst
 }
 
 export type AppMappings = ObjectConst<'AppMappings', StringConst>
@@ -205,12 +205,19 @@ export interface Package extends SourceNode<'Package'> {
 
 export type RoleDefs = ObjectConst<'RoleDefs', RoleDef>
 
+export function isRoleDef(o: any): o is RoleDef {
+  return o.kind === 'RoleDef'
+}
+
 export interface RoleDef extends SourceNodeMapped<'RoleDef'> {
   description: I18N,
   icon: Icon
 }
 
 export type RoleGroups = ObjectConst<'RoleGroups', RoleGroup>
+export function isRoleGroups(o: any): o is RoleGroups {
+  return o.kind === 'RoleGroups'
+}
 export interface RoleGroup extends SourceNodeMapped<'RoleGroup'> {
   roles: UseRoles
 }
@@ -425,11 +432,11 @@ export interface ProcessVars extends SourceNode<'ProcessVars'> {
 }
 
 export type UseRoles = UseLocRoles | UseSysRole
-export type UseRole = RoleDef | RoleGroup
+export type AnyRole = RoleDef | RoleGroup
 
 export interface UseLocRoles extends SourceNode<'UseLocRoles'> {
   roles: ArrayConst<'UseLocRoleList', StringConst>
-  ref(sourceRef: TsNode): UseRole[]
+  ref(sourceRef: TsNode): Array<{ pkg: Package, role: AnyRole }>
 }
 
 export interface UseSysRole extends SourceNode<'UseSysRole'> {

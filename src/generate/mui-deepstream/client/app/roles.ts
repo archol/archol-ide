@@ -1,16 +1,17 @@
 import { info } from 'console'
 import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
+import { isRoleDef, isRoleGroups } from 'load/types'
 import { genI18N } from './i18n'
 import { genIcon } from './icon'
 
 export const generateClientRoles = sourceTransformer({
-  filePath: 'app/roles.tsx',
-  cfg:{},
+  filePath: 'app/roles.ts',
+  cfg: {},
   transformations: {
     Application(w, app, { ws, src }) {
       src.require('AppRole', 'lib', app)
       src.require('AppRoles', 'lib', app)
-      return w.statements([        
+      return w.statements([
         genSysRoles.make(app.sysroles, {}),
         genPkgRolesDefs.make(app.uses, {}),
         genPkgRoles.make(app.uses, {}),
@@ -22,15 +23,17 @@ export const generateClientRoles = sourceTransformer({
 
 export const genUseRoles = nodeTransformer({
   UseLocRoles(w, roles, info) {
-    return 'TODO'
+    return w.array(roles.ref(roles).map((r) => {
+      const s = isRoleDef(r.role) ? r.pkg.uri.id.str + '_role_' + r.role.name.str :
+        r.pkg.uri.id.str + '_role_' + r.role.name.str
+      info.src.require(s, './roles', roles)
+      return s
+    }))
   },
-  UseSysRoles() {
-    return 'TODO'
+  UseSysRole(w, role) {
+    return role.role
   },
-  UseSysRole() {
-    return 'TODO'
-  },
-},{})
+}, {})
 
 const genSysRoles = nodeTransformer({
   RoleDefs(w, roles) {
@@ -48,7 +51,7 @@ const genSysRoles = nodeTransformer({
       icon: genIcon,
     }, role)
   }
-},{})
+}, {})
 
 const genPkgRolesDefs = nodeTransformer({
   PackageUses(w, pkgs) {
@@ -75,20 +78,20 @@ const genPkgRolesDefs = nodeTransformer({
   RoleDef(w, role, info) {
     return w.statements([
       [
-        'const ' + info.stack.get('PackageUse').alias.str + '_' + role.name.str + ': AppRole =', w.object({
+        'export const ' + info.stack.get('PackageUse').ref(role).uri.id.str + '_role_' + role.name.str + ': AppRole =', w.object({
           description: genI18N,
           icon: genIcon,
         }, role)
       ]
     ], false)
   },
-},{})
+}, {})
 
 const genPkgRoles = nodeTransformer({
   PackageUses(w, pkgs) {
     return w.lines([
       'export const roles = (<T extends { [pkg: string]: AppRole|{ [grp: string]: AppRole | AppRole[] }}>(v: T) => v)(',
-        [w.mapObj(pkgs, (val, key) => val, undefined, ['...sysroles'])],
+      [w.mapObj(pkgs, (val, key) => val, undefined, ['...sysroles'])],
       ')'
     ], '', '', '')
   },
@@ -102,12 +105,12 @@ const genPkgRoles = nodeTransformer({
     return w.lines(roles.props.map((r) => [
       [
         r.key, ':',
-        info.stack.get('PackageUse').alias.str + '_' + r.key.str,
+        info.stack.get('PackageUse').ref(r.val).uri.id.str + '_role_' + r.key.str,
       ]
     ]), '', '', ',')
   },
   RoleDef(w, role, info) {
-    return info.stack.get('PackageUse').alias.str + '_' + role.name.str
+    return info.stack.get('PackageUse').ref(role).uri.id.str + '_role_'  + role.name.str
   },
   RoleGroups(w, roles) {
     return w.lines([
@@ -120,7 +123,7 @@ const genPkgRoles = nodeTransformer({
   UseLocRoles(w, role, info) {
     return w.array(
       role.ref(role).
-        map((r) => info.stack.get('PackageUse').alias.str + '_' + r.name.str)
+        map((r) => info.stack.get('PackageUse').ref(role).uri.id.str + '_role_' + r.role.name.str)
     )
-  },  
-},{})
+  },
+}, {})

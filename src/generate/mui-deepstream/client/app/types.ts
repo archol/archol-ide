@@ -1,7 +1,7 @@
 import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
 
 export const generateClientTypes = sourceTransformer({
-  filePath: 'app/types.tsx',
+  filePath: 'app/types.ts',
   cfg: {},
   transformations: {
     Application(w, app, { src }) {
