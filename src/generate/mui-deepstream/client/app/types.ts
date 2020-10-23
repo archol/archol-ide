@@ -2,6 +2,7 @@ import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
 
 export const generateClientTypes = sourceTransformer({
   filePath: 'app/types.tsx',
+  cfg: {},
   transformations: {
     Application(w, app, { src }) {
       return w.statements([
@@ -13,7 +14,8 @@ export const generateClientTypes = sourceTransformer({
       return [w.mapObj(pkgs, (val, key) => val)]
     },
     PackageUse(w, pkg, { src }) {
-      return src.chip(pkg.ref(pkg).uri.id.str + 'Ref', pkg, () => genPkgRef(pkg))
+      const pkguri = pkg.ref(pkg).uri.id.str
+      return src.chip(pkguri + 'Ref', pkg, () => genPkgRef.make(pkg, { pkguri }))
     },
   },
 })
@@ -31,19 +33,31 @@ const genPkgRef = nodeTransformer({
       'export interface ', pkguri, 'Ref',
       w.object({
         process: w.mapObj(pkg.processes, (val, key) =>
-          src.chip(pkguri + '_' + key.str + 'Ref', pkg, () => genProcessRef(val))
+          src.chip(pkguri + '_' + key.str + 'Ref', pkg, () => genProcessRef.make(val, { pkguri }))
         )
       })
     ]
-  },   
-})
+  },
+}, {})
 
-const genProcessRef = nodeTransformer({  
+const genProcessRef = nodeTransformer({
   Process(w, proc, info) {
-    console.log(proc.name.str)
-    return info.stack.get('PackageUse').alias.str + '_' + proc.name
-    // return w.object({
-    //   start: '()=>{}'
-    // })
-  },  
-})
+    const procuri = info.cfg.pkguri + '_' + proc.name.str
+    info.src.chip(procuri + 'Instance', proc, () => genProcessInstance.make(proc, { procuri }))
+    return [
+      'export interface ' + procuri + 'Ref',
+      w.object({
+        start: w.methodDecl([], procuri + 'Instance', null)
+      })
+    ]
+    //"xxx"//info.stack.get('PackageUse').alias.sstr + '_' + proc.name
+  },
+}, { pkguri: '' })
+
+const genProcessInstance = nodeTransformer({
+  Process(w, proc, info) {
+    return [
+      'export interface ', info.cfg.procuri, 'Instance{}'
+    ]
+  },
+}, { procuri: '' })

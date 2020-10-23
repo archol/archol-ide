@@ -11,6 +11,7 @@ export function generateMuiDeepStream(ws: Workspace, app: Application) {
     ],
     transformations: {
 
-    }
+    },
+    cfg: {}
   })
 }

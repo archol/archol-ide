@@ -4,82 +4,86 @@ import { CodePartL, CodeWriter, codeWriter } from './codeWriter'
 import { join } from 'path'
 import { mapObject, mapObjectToArray, mergeObjWith } from 'utils'
 
-export interface ProjectTransformer<PT extends GenNodes> {
+export interface ProjectTransformer<CFG extends object, PT extends GenNodes<CFG>> {
   projectPath: string,
   transformations: PT
-  sources: Array<SourceTransformer<any>>
+  cfg: CFG
+  sources: Array<SourceTransformer<any, any>>
 }
 
-export function projectTransformer<ST extends GenNodes>(
-  info: ProjectTransformer<ST>) {
+export function projectTransformer<CFG extends object, ST extends GenNodes<CFG>>(
+  info: ProjectTransformer<CFG, ST>) {
   return info
 }
 
-export interface SourceTransformer<ST extends GenNodes> {
+export interface SourceTransformer<CFG extends object, ST extends GenNodes<CFG>> {
   filePath: string,
   transformations: ST
+  cfg: CFG
 }
 
-export function sourceTransformer<ST extends GenNodes>(
-  info: SourceTransformer<ST>) {
+export function sourceTransformer<CFG extends object, ST extends GenNodes<CFG>>(
+  info: SourceTransformer<CFG, ST>) {
   return info
 }
 
-export type NodeTransformerFactory<NT extends GenNodes> = (
-  (node: SourceNode<any>) => NodeTransformer<NT>
-) & {
-  transformerFactory: true
+export interface NodeTransformerFactory<CFG extends object, NT extends GenNodes<CFG>> {
+  transformerFactory: CFG & NT
+  make(node: SourceNode<any>, cfg: CFG): NodeTransformer<CFG, NT>
 }
 
-export interface NodeTransformer<NT extends GenNodes> {
-  transformNode: true
-  transform(parent: GenNodes[], info: GenInfo): CodePartL
+export interface NodeTransformer<CFG extends object, NT extends GenNodes<CFG>> {
+  transformNode: CFG & NT
+  transform(parent: Array<GenNodes<CFG>>, info: GenInfo<CFG>): CodePartL
 }
 
-export function nodeTransformer<NT extends GenNodes>(transforms: NT): NodeTransformerFactory<NT> {
-  return mergeObjWith(
-    (node: SourceNode<any>) => {
-      const r: NodeTransformer<NT> = {
-        transformNode: true,
-        transform(parent: GenNodes[], info: GenInfo): CodePartL {
-          const w2 = codeWriter([transforms, ...parent], info)
+export function nodeTransformer<CFG extends object, NT extends GenNodes<CFG>>(
+  transforms: NT, cfginit: CFG): NodeTransformerFactory<CFG, NT> {
+  const r1: NodeTransformerFactory<CFG, NT> = {
+    transformerFactory: true as any as CFG & NT,
+    make(node: SourceNode<any>, cfg: CFG): NodeTransformer<CFG, NT> {
+      const r2: NodeTransformer<CFG, NT> = {
+        transformNode: true as any as CFG & NT,
+        transform(parent: Array<GenNodes<CFG>>, info: GenInfo<CFG>): CodePartL {
+          const w2 = codeWriter([transforms, ...parent], { ...info, cfg: { ...info.cfg, ...cfg } })
           return w2.transform(node)
         }
       }
-      return r
-    },
-    { transformerFactory: true as true }
-  )
+      return r2
+    }
+  }
+  return r1
 }
 
-export function isNodeTransformerFactory(obj: any): obj is NodeTransformerFactory<any> {
+export function isNodeTransformerFactory(obj: any): obj is NodeTransformerFactory<any, any> {
   return (obj as any).transformerFactory
 }
 
-export function isNodeTransformer(obj: any): obj is NodeTransformer<any> {
+export function isNodeTransformer(obj: any): obj is NodeTransformer<any, any> {
   return (obj as any).transformNode
 }
 
-export type GenNodes = {
-  [name in SourceNodeKind]?: GenFunc<name>
+export type GenNodes<CFG extends object> = {
+  [name in SourceNodeKind]?: GenFunc<name, CFG>
 }
 
-export interface GenInfo {
+export interface GenInfo<CFG extends object> {
   ws: Workspace
   prj: {}
   src: {
     require(identifier: string, module: string, sourceRef: TsNode): void
     requireDefault(identifier: string, module: string, sourceRef: TsNode): void
-    chip(identifier: string, sourceRef: TsNode, nt: () => NodeTransformer<any>): string
+    chip<CFG2 extends object>(id: string, sourceRef: TsNode, nt: () => NodeTransformer<CFG2, any>): string
   }
   node: {
 
   },
   stack: GenFuncStack
+  cfg: CFG
 }
 
-export type GenFunc<name extends SourceNodeKind> =
-  (writer: CodeWriter, node: SourceNodeType<name>, info: GenInfo) => CodePartL
+export type GenFunc<name extends SourceNodeKind, CFG extends object> =
+  (writer: CodeWriter, node: SourceNodeType<name>, info: GenInfo<CFG>) => CodePartL
 
 
 export interface GenFuncStack {
@@ -87,14 +91,16 @@ export interface GenFuncStack {
   get<KIND extends SourceNodeKind>(kind: KIND, n?: number): SourceNodeType<KIND>
 }
 
-export async function generateApplication<SW extends GenNodes>(
-  { ws, app, transformations, projects }:
-    {
-      ws: Workspace,
-      app: Application,
-      transformations: SW,
-      projects: Array<ProjectTransformer<any>>
-    }): Promise<void> {
+export interface generateApplication<CFG extends object, SW extends GenNodes<CFG>> {
+  ws: Workspace,
+  app: Application,
+  cfg: CFG,
+  transformations: SW,
+  projects: Array<ProjectTransformer<any, any>>,
+}
+
+export async function generateApplication<CFG extends object, SW extends GenNodes<CFG>>(
+  { ws, app, transformations, projects, cfg }: generateApplication<CFG, SW>): Promise<void> {
   const prjs: { [name: string]: Project } = {}
   const srcs: { [name: string]: boolean } = {}
   projects.forEach((prj) => {
@@ -127,9 +133,13 @@ export async function generateApplication<SW extends GenNodes>(
       return p.save()
     }))
   }
-  function transformFile(prj: ProjectTransformer<any>, src: SourceTransformer<any>) {
+  function transformFile(prj: ProjectTransformer<any, any>, src: SourceTransformer<any, any>) {
     const srcUsed: { [id: string]: TsNode } = {}
-    let srcIdentifiers: { [id: string]: () => NodeTransformer<any> } = {}
+    let srcIdentifiers: {
+      [id: string]: {
+        transform(): NodeTransformer<any, any>
+      }
+    } = {}
     const srcRequires: {
       [module: string]: {
         def?: string
@@ -143,15 +153,16 @@ export async function generateApplication<SW extends GenNodes>(
       prj: {},
       src: { requireDefault, require, chip },
       node: {},
-      stack: createStack()
+      stack: createStack(),
+      cfg
     })
     let rest = w.transform(app)
 
     while (Object.keys(srcIdentifiers).length) {
-      const srcids=srcIdentifiers
-      srcIdentifiers={}
+      const srcids = srcIdentifiers
+      srcIdentifiers = {}
       mapObjectToArray(srcids, (val, key) => {
-        rest = rest.concat(w.statements([val()], false))
+        rest = rest.concat(w.statements([val.transform()], false))
       })
     }
 
@@ -183,9 +194,11 @@ export async function generateApplication<SW extends GenNodes>(
       const req = srcRequires[module] || (srcRequires[module] = initReq())
       req.def = id
     }
-    function chip(id: string, sourceRef: TsNode, nt: () => NodeTransformer<any>): string {
+    function chip<CFG2 extends object>(id: string, sourceRef: TsNode, nt: () => NodeTransformer<CFG2, any>): string {
       useId(id, sourceRef)
-      srcIdentifiers[id] = nt
+      srcIdentifiers[id] = {
+        transform: nt
+      }
       return id
     }
   }

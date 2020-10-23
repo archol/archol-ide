@@ -2,6 +2,7 @@ import { sourceTransformer } from 'generate/lib/generator'
 
 export const generateClientRoutes = sourceTransformer({
   filePath: 'app/routes.tsx',
+  cfg:{},
   transformations: {
     Application(w, app, { src }) {
       src.requireDefault('React', 'react', app)
@@ -14,7 +15,7 @@ export const generateClientRoutes = sourceTransformer({
     RouteCode(w, route) {
       return w.object({
         path: route.path,
-        run: [w.code(route.code)]
+        run: w.code(route.code)
       })
     },
     RouteRedirect(w, route, { src }) {

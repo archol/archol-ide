@@ -20,7 +20,8 @@ export interface CodeWriter {
     filter?: (val: SourceNodeType<kind>, name: StringConst) => boolean,
     heading?: CodePartL[]
   ): CodeLines
-  code(node: Code, opts?: { after?: CodePartL[], forceRetType?: string }): CodeLines
+  code(node: Code, opts?: { after?: CodePartL[], forceRetType?: string }): MethodDecl
+  methodDecl(args: string[], ret: string, statements: null | CodePartL[]): MethodDecl
   array(arr: CodePartL[]): CodeLines
   object(obj: { [name: string]: CodePartL }): CodeLines
   object(obj: { [name: string]: CodePartLo }, objNode: SourceNode<any>): CodeLines
@@ -29,11 +30,11 @@ export interface CodeWriter {
 }
 
 export type CodePartR = string | string[] | CodeLines
-export type CodePartLb = CodePartR | SourceNode<any> | CodePartL[] |
-  NodeTransformer<any> |
-  Array<ObjectConstProp<any, any>> | ObjectConstProp<any, any>
+export type CodePartLb = CodePartR | SourceNode<any> | CodePartL[] | MethodDecl |
+  NodeTransformer<any, any> | Array<ObjectConstProp<any, any>> | ObjectConstProp<any, any>
 export type CodePartL = CodePartLb | (() => CodePartL)
 export type CodePartLo = CodePartLb | (<T extends SourceNodeKind>(n: SourceNode<T>) => CodePartL)
+  | NodeTransformerFactory<any, any>
 
 export interface CodeLine {
   $parts$: CodePartR[]
@@ -54,7 +55,19 @@ export function isCodeLine(o: any): o is CodeLine {
   return o && (o as any).$parts$
 }
 
-export function codeWriter(transforms: GenNodes[], info: GenInfo): CodeWriter {
+export interface MethodDecl {
+  $method$: {
+    args: string[]
+    ret: string
+    body: null | CodeLines
+  }
+}
+
+export function isMethodDecl(o: any): o is MethodDecl {
+  return o && (o as any).$method$
+}
+
+export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>, info: GenInfo<CFG>): CodeWriter {
   const wSelf: CodeWriter = {
     statements(statements: CodePartL[], block: boolean): CodeLines {
       return wSelf.lines(statements, block ? '{' : '', block ? '}' : '', ';')
@@ -87,38 +100,52 @@ export function codeWriter(transforms: GenNodes[], info: GenInfo): CodeWriter {
           allprops
             .filter((i) => filter ? filter(i.val as any, i.key) : true)
             .map((i) => [
-              [wSelf.string(i.key), ':', (fn || transformNode)(i.val as any, i.key)]
+              propv(i.key, (fn || transformNode)(i.val as any, i.key))
             ])),
         '{', '}', ',')
     },
-    code(node, opts): CodeLines {
-      const body = wSelf.statements(node.body.map(b => b.getText()), true)
+    code(node, opts): MethodDecl {
+      const body: CodePartL[] = node.body.map(b => b.getText())
       let retType = node.ret.getText()
       if (opts) {
-        if (opts.after) body.$lines$.push(...(flatLines(opts.after)))
+        if (opts.after) body.push(opts.after)
         if (typeof opts.forceRetType === 'string') retType = opts.forceRetType
       }
-      return wSelf.lines([
-        ['(', node.params.map(p => p.getText()).join(','), ')', retType ? ':' : '', retType, '=>', body]
-      ], '', '', '')
+      // return wSelf.lines([
+      //   ['(', node.params.map(p => p.getText()).join(','), ')', retType ? ':' : '', retType, '=>', body]
+      // ], '', '', '')
+      wSelf.lines(body, '', '', '')
+      return wSelf.methodDecl(
+        node.params.map(p => p.getText()),
+        retType,
+        body
+      )
+    },
+    methodDecl(args: string[], ret: string, statements: null | CodePartL[]): MethodDecl {
+      const body = statements && wSelf.statements(statements, true)
+      return {
+        $method$: {
+          args, ret, body
+        }
+      }
     },
     array(arr: CodePartL[]): CodeLines {
       return wSelf.lines(arr, '[', ']', ',')
     },
-    object(obj: { [name: string]: CodePartL | NodeTransformerFactory<any> }, node?: SourceNode<any>): CodeLines {
+    object(obj: { [name: string]: CodePartL | NodeTransformerFactory<any, any> }, node?: SourceNode<any>): CodeLines {
       return wSelf.lines(mapObjectToArray(obj, (val, key) => {
         if (node) {
           const vnode = (isObjectConst(node)) ? node.get(key) : (node as any)[key]
           if (!vnode) throw info.ws.error('propriedade ' + key + ' não existe em ' + node.kind, node)
           if (isNodeTransformerFactory(val)) {
-            return () => [wSelf.string(key), ':', val(vnode)]
+            return () => propv(key, val.make(vnode, info.cfg))
           } else if (typeof val === 'function') {
-            return [wSelf.string(key), ':', (val as any)(vnode)]
+            return propv(key, (val as any)(vnode))
           }
         }
         if (isNodeTransformerFactory(val))
           throw info.ws.fatal('object com TransformerFactory precisa de Node', info.ws.sourceRef)
-        return [wSelf.string(key), ':', val]
+        return propv(key, val)
       }), '{', '}', ',')
     },
     string(node: StringConst | string | string[]): string {
@@ -132,12 +159,19 @@ export function codeWriter(transforms: GenNodes[], info: GenInfo): CodeWriter {
   }
   return wSelf
 
+  function propv(key: string|StringConst, v: CodePartL) {
+    const sk=isStringConst(key)?key.str:key
+    const k = /^\w+$/.test(sk) ? sk : wSelf.string(sk)
+    if (isMethodDecl(v)) return [k, v]
+    return [k, ':', v]
+  }
+
   function transformNode(n: SourceNode<any>): CodePartR[] {
     try {
       info.stack.items.push(n)
       const w2 = codeWriter(transforms, info)
       for (const t of transforms) {
-        const fn: GenFunc<any> = (t as any)[n.kind]
+        const fn: GenFunc<any, any> = (t as any)[n.kind]
         if (fn) return flatPartL(fn(w2, n, info))
       }
       return flatPartL(defaultTransformer(n))
@@ -169,6 +203,14 @@ export function codeWriter(transforms: GenNodes[], info: GenInfo): CodeWriter {
     return fres
     function flat(p: CodePartL) {
       if (isCodeLines(p)) fres.push(p)
+      else if (isMethodDecl(p)) {
+        fres.push('(')
+        fres.push(p.$method$.args.join(', '))
+        fres.push('):')
+        fres.push(p.$method$.ret)
+        if (p.$method$.body)
+          fres.push(p.$method$.body)
+      }
       // fres.push({
       //   ...p,
       //   $lines$: flatLines(p.$lines$),

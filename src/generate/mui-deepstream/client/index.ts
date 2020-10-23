@@ -13,5 +13,6 @@ export const generateClientProject = projectTransformer({
     generateClientRoles,
     generateClientMenu,
     generateClientTypes,
-  ]
+  ],
+  cfg: {}
 })

@@ -5,14 +5,15 @@ import { genIcon } from './icon'
 
 export const generateClientRoles = sourceTransformer({
   filePath: 'app/roles.tsx',
+  cfg:{},
   transformations: {
     Application(w, app, { ws, src }) {
       src.require('AppRole', 'lib', app)
       src.require('AppRoles', 'lib', app)
       return w.statements([        
-        genSysRoles(app.sysroles),
-        genPkgRolesDefs(app.uses),
-        genPkgRoles(app.uses),
+        genSysRoles.make(app.sysroles, {}),
+        genPkgRolesDefs.make(app.uses, {}),
+        genPkgRoles.make(app.uses, {}),
         // genPkgRolesMerge(app.uses),
       ], false)
     },
@@ -29,7 +30,7 @@ export const genUseRoles = nodeTransformer({
   UseSysRole() {
     return 'TODO'
   },
-})
+},{})
 
 const genSysRoles = nodeTransformer({
   RoleDefs(w, roles) {
@@ -47,7 +48,7 @@ const genSysRoles = nodeTransformer({
       icon: genIcon,
     }, role)
   }
-})
+},{})
 
 const genPkgRolesDefs = nodeTransformer({
   PackageUses(w, pkgs) {
@@ -81,7 +82,7 @@ const genPkgRolesDefs = nodeTransformer({
       ]
     ], false)
   },
-})
+},{})
 
 const genPkgRoles = nodeTransformer({
   PackageUses(w, pkgs) {
@@ -122,4 +123,4 @@ const genPkgRoles = nodeTransformer({
         map((r) => info.stack.get('PackageUse').alias.str + '_' + r.name.str)
     )
   },  
-})
+},{})

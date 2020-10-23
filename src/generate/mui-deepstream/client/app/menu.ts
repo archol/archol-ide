@@ -8,7 +8,7 @@ import { genUseRoles } from './roles'
 export const generateClientMenu = sourceTransformer({
   filePath: 'app/menu.tsx',
   transformations: {
-    Application(w, app, {src}) {
+    Application(w, app, { src }) {
       src.require('AppMenuItem', 'lib', app)
 
       return w.statements([
@@ -38,6 +38,7 @@ export const generateClientMenu = sourceTransformer({
         }
       }, menuitem)
     }
-  }
+  },
+  cfg: {}
 })
 

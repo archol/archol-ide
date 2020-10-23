@@ -10,4 +10,4 @@ export const genIcon = nodeTransformer({
     src.requireDefault(id, '@material-ui/icons/' + name, icon)
     return id
   }
-})
+},{})

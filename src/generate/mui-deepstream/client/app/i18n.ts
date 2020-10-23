@@ -5,4 +5,4 @@ export const genI18N = nodeTransformer({
     info.src.require('i18n', 'docs', i18n)
     return ['i18n(', w.mapObj(i18n.msg), ')']
   }
-})
+}, {})
