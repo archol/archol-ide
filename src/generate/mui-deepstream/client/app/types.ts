@@ -7,7 +7,6 @@ export const generateClientTypes = sourceTransformer({
     Application(w, app, { src }) {
       return w.statements([
         ['export interface AppRef ', app.uses],
-        // genPkgRef(app.uses)
       ], false)
     },
     PackageUses(w, pkgs) {
@@ -50,14 +49,34 @@ const genProcessRef = nodeTransformer({
         start: w.methodDecl([], procuri + 'Instance', null)
       })
     ]
-    //"xxx"//info.stack.get('PackageUse').alias.sstr + '_' + proc.name
   },
 }, { pkguri: '' })
 
 const genProcessInstance = nodeTransformer({
   Process(w, proc, info) {
-    return [
-      'export interface ', info.cfg.procuri, 'Instance{}'
-    ]
+    return w.statements([
+      [
+        'export interface ', info.cfg.procuri, 'Instance',
+        w.object({
+          vars: [info.cfg.procuri, 'InstanceVars']
+        })
+      ],
+      [
+        'export interface ', info.cfg.procuri, 'InstanceVars',
+        w.object({
+          local: genFields.make(proc.vars.local, {}),
+          input: genFields.make(proc.vars.input, {}),
+          output: genFields.make(proc.vars.output, {}),
+        })
+      ],
+    ], false)
   },
 }, { procuri: '' })
+
+const genFields = nodeTransformer({
+  Fields(w, fields, info) {
+    return w.mapObj(fields, (f) => {
+      return f.type.base(f)
+    })
+  },
+}, {})

@@ -660,6 +660,7 @@ export type SourceNodeType<KIND extends SourceNodeKind> = KIND extends 'Applicat
   KIND extends 'ArrayType' ? ArrayType :
   KIND extends 'UseType1' ? UseType1 :
   KIND extends 'UseTypeAsArray' ? UseTypeAsArray :
+  KIND extends 'Fields' ? Fields :
   KIND extends 'Field' ? Field :
   KIND extends 'Document' ? Document :
   KIND extends 'DocAction' ? DocAction :

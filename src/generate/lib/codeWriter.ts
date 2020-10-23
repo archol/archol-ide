@@ -14,10 +14,10 @@ export interface CodeWriter {
   lines(lines: CodePartL[], start: string, end: string, separator: string): CodeLines
   transform(node: SourceNode<any>): CodePartR[]
   map(nodes: Array<ObjectConst<any> | ArrayConst<any>>): CodeLines
-  mapObj<kind extends SourceNodeObjectKind>(
-    objs: ObjectConst<kind> | Array<ObjectConst<kind>>,
-    fn?: (val: SourceNodeType<kind>, name: StringConst) => CodePartL,
-    filter?: (val: SourceNodeType<kind>, name: StringConst) => boolean,
+  mapObj<KIND extends SourceNodeObjectKind, T extends SourceNode<any>>(
+    objs: ObjectConst<KIND, T> | Array<ObjectConst<KIND, any>>,
+    fn?: (val: T, name: StringConst) => CodePartL,
+    filter?: (val: T, name: StringConst) => boolean,
     heading?: CodePartL[]
   ): CodeLines
   code(node: Code, opts?: { after?: CodePartL[], forceRetType?: string }): MethodDecl
@@ -86,10 +86,10 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
       }, [])
       return wSelf.lines(lines, '[', ']', ',')
     },
-    mapObj<KIND extends SourceNodeObjectKind>(
-      objs: ObjectConst<KIND> | Array<ObjectConst<KIND>>,
-      fn?: (val: SourceNodeType<KIND>, name: StringConst) => CodePartL,
-      filter?: (val: SourceNodeType<KIND>, name: StringConst) => boolean,
+    mapObj<KIND extends SourceNodeObjectKind, T extends SourceNode<any>>(
+      objs: ObjectConst<KIND, T> | Array<ObjectConst<KIND, any>>,
+      fn?: (val: T, name: StringConst) => CodePartL,
+      filter?: (val: T, name: StringConst) => boolean,
       heading?: CodePartL[]
     ): CodeLines {
       if (isObjectConst(objs)) objs = [objs]
