@@ -28,6 +28,9 @@ const genPkgRef = nodeTransformer({
   },
   Package(w, pkg, { src }) {
     const pkguri = pkg.uri.id.str
+    pkg.types.props.forEach(t => src.chip(
+      '', t.val, () => genType.make(t.val, { pkguri }))
+    )
     return [
       'export interface ', pkguri, 'Ref',
       w.object({
@@ -80,3 +83,25 @@ const genFields = nodeTransformer({
     })
   },
 }, {})
+
+const genType = nodeTransformer({
+  NormalType() {
+    return ""
+  },
+  EnumType(w, t, info) {
+    return [
+      'export type ', info.cfg.pkguri, '_enum_', t.name.str, ' = ',
+      t.options.props.map((o) => w.string(o.key.str)).join(' | ')
+    ]
+  },
+  ComplexType(w, t, info) {
+    return [
+      'export type TODO_', info.cfg.pkguri, '_complex_', t.name.str, ' = TODO',      
+    ]
+  },
+  ArrayType(w, t, info) {
+    return [
+      'export type TODO_', info.cfg.pkguri, '_arr_', t.name.str, ' = TODO',      
+    ]
+  },
+}, { pkguri: '' })
