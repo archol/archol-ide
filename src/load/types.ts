@@ -667,6 +667,7 @@ export type SourceNodeType<KIND extends SourceNodeKind> = KIND extends 'Applicat
   KIND extends 'DocIndex' ? DocIndex :
   KIND extends 'DocumentState' ? DocumentState :
   KIND extends 'UseDocStates' ? UseDocStates :
+  KIND extends 'Processes' ? Processes :
   KIND extends 'Process' ? Process :
   KIND extends 'ProcessVars' ? ProcessVars :
   KIND extends 'UseLocRoles' ? UseLocRoles :

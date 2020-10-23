@@ -129,7 +129,7 @@ export async function generateApplication<SW extends GenNodes>(
   }
   function transformFile(prj: ProjectTransformer<any>, src: SourceTransformer<any>) {
     const srcUsed: { [id: string]: TsNode } = {}
-    const srcIdentifiers: { [id: string]: () => NodeTransformer<any> } = {}
+    let srcIdentifiers: { [id: string]: () => NodeTransformer<any> } = {}
     const srcRequires: {
       [module: string]: {
         def?: string
@@ -147,10 +147,14 @@ export async function generateApplication<SW extends GenNodes>(
     })
     let rest = w.transform(app)
 
-    mapObjectToArray(srcIdentifiers, (val, key) => {
-      rest = rest.concat(w.statements([val()], false))
-    })
-    
+    while (Object.keys(srcIdentifiers).length) {
+      const srcids=srcIdentifiers
+      srcIdentifiers={}
+      mapObjectToArray(srcids, (val, key) => {
+        rest = rest.concat(w.statements([val()], false))
+      })
+    }
+
     const res = w.resolveCode(rest)
     mapObjectToArray(srcRequires, (val, key) => {
       const preq: string[] = [];

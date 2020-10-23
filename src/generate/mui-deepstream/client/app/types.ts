@@ -25,38 +25,25 @@ const genPkgRef = nodeTransformer({
   PackageUse(w, pkg) {
     return pkg.ref(pkg)
   },
-  Package(w, pkg) {
+  Package(w, pkg, { src }) {
+    const pkguri = pkg.uri.id.str
     return [
-      'export interface ', pkg.uri.id.str, 'Ref',
-      w.mapObj(pkg.processes)
+      'export interface ', pkguri, 'Ref',
+      w.object({
+        process: w.mapObj(pkg.processes, (val, key) =>
+          src.chip(pkguri + '_' + key.str + 'Ref', pkg, () => genProcessRef(val))
+        )
+      })
     ]
-  },
-  Process(w, proc) {
-    return "proc."
-  },
-  // RoleDefs(w, roles, info) {
-  //   return w.lines(roles.props.map((r) => [
-  //     [
-  //       r.key, ':',
-  //       info.stack.get('PackageUse').alias.str + '_' + r.key.str,
-  //     ]
-  //   ]), '', '', ',')
-  // },
-  // RoleDef(w, role, info) {
-  //   return info.stack.get('PackageUse').alias.str + '_' + role.name.str
-  // },
-  // RoleGroups(w, roles) {
-  //   return w.lines([
-  //     w.mapObj(roles, undefined)
-  //   ], '', '', '')
-  // },
-  // RoleGroup(w, role) {
-  //   return role.roles
-  // },
-  // UseLocRoles(w, role, info) {
-  //   return w.array(
-  //     role.ref(role).
-  //       map((r) => info.stack.get('PackageUse').alias.str + '_' + r.name.str)
-  //   )
-  // },  
+  },   
+})
+
+const genProcessRef = nodeTransformer({  
+  Process(w, proc, info) {
+    console.log(proc.name.str)
+    return info.stack.get('PackageUse').alias.str + '_' + proc.name
+    // return w.object({
+    //   start: '()=>{}'
+    // })
+  },  
 })
