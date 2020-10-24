@@ -60,7 +60,7 @@ declare type Menu = {
   caption: I18N
   icon: Icon
   run: string | ((app: ${appname}_Ref) => void)
-  roles: ${appname}_Roles
+  allow: ${appname}_Roles
 }
 
 declare interface ${appname}_Ref {
@@ -229,7 +229,7 @@ declare interface ${pkgid}_process_${procName}_Decl {
   icon: Icon,
   start: ${pkgid}_process_${procName}_Tasknames,
   volatile: boolean,
-  roles: ${pkgid}_Roles,
+  allow: ${pkgid}_Roles,
   vars: ${pkgid}_process_${procName}_DeclVars,
   tasks: ${pkgid}_process_${procName}_DeclTasks,
 }
@@ -270,7 +270,7 @@ declare type ${pkgid}_process_${procName}_DeclTask = ${typePipeObj(pkg.functions
     bind: ${pkgid}_view_${view.key.str}_DeclBind<${pkgid}_process_${procName}_Scope>
   },
   next: ${pkgid}_process_${procName}_NextTask,
-  roles: ${pkgid}_Roles,
+  allow: ${pkgid}_Roles,
 }`)))
         }
 declare type ${pkgid}_process_${procName}_Scope = ${typePipeStr(process.refs.vars.items.map(v => v.path))}

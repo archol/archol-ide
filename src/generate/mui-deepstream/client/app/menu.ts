@@ -9,7 +9,7 @@ export const generateClientMenu = sourceTransformer({
   filePath: 'app/menu.ts',
   transformations: {
     Application(w, app, { src }) {
-      src.require('AppMenuItem', 'lib', app)
+      src.require('AppMenuItem', '~/lib', app)
 
       return w.statements([
         ['export const menu: AppMenuItem[] = ', app.menu],
@@ -27,7 +27,7 @@ export const generateClientMenu = sourceTransformer({
       return w.object({
         caption: genI18N,
         icon: genIcon,
-        roles: genUseRoles,
+        allow: genUseRoles,
         run(v) {
           if (isCode(v)) return w.code(v)
           if (isStringConst(v)) {

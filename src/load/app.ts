@@ -6,7 +6,7 @@ import {
   Application, ArrayConst, BooleanConst, NumberConst, objectConst, ObjectConst, Package,
   SourceNode, StringConst, Workspace, sysRoles, isDocument, isProcess, isWidgetContent, EnumType, UseType1,
   Process, Function, View, Type, Document, RoleDef, Code, I18N, arrayConst, Icon, PackageUse, PackageUses,
-  Task, UseTask, UseSysRole, UseLocRoles, UseRoles, Fields, Field, UseType, BindVar, ProcessVars,
+  Task, UseTask, AllowSysRole, AllowLocRoles, AllowRoles, Fields, Field, UseType, BindVar, ProcessVars,
   UseView, UseFunction, BindVars, FunctionLevel, Widgets, ViewAction, BaseType, NormalType, normalTypes, DocFields, DocIndexes,
   DocumentStates, DocActions, DocAction, DocField, DocIndex, DocumentState, UseDocStates, Routes, Pagelets,
   Pagelet, Menu, MenuItem, MenuItemSeparator, SourceNodeMapped, SourceNodeRefsKind, isPackage, RouteRedirect,
@@ -256,13 +256,13 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       [name: string]: (val: ts.Node, name: StringConst) => any
     }
   >(
-    arg: ts.Node,
+    argObj: ts.Node,
     props: PROPS,
     optionalProps: Array<keyof PROPS>
   ): ParsedObjPropsAny<PROPS> {
     let ret: ParsedObjPropsAny<PROPS> = {} as any
-    if (arg instanceof ts.ObjectLiteralExpression) {
-      for (const p of arg.getProperties()) {
+    if (argObj instanceof ts.ObjectLiteralExpression) {
+      for (const p of argObj.getProperties()) {
         if (p instanceof ts.PropertyAssignment) {
           const propNode = p.getNameNode()
           const propName = parsePropertyName(propNode)
@@ -279,11 +279,11 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         //ts.NoSubstitutionTemplateLiteral | TemplateExpression | ts.BooleanLiteral |  ts.StringLiteral | ts.NumericLiteral | ObjectLiteralElementLike
         //arg.getLiteralValue()
       }
-    } else ws.fatal(arg.getSourceFile().getFilePath() + ' ' + arg.getText() + ' objeto é esperado', arg)
+    } else ws.fatal(argObj.getSourceFile().getFilePath() + ' ' + argObj.getText() + ' objeto é esperado', argObj)
     Object.keys(props).forEach((name) => {
       if (!(ret as any)[name]) {
         if (optionalProps.indexOf(name) === -1)
-          ws.error(arg.getSourceFile().getFilePath() + ' ' + arg.getText() + ' falta propriedade ' + name + ' em ' + arg.getText(), arg)
+          ws.error(argObj.getSourceFile().getFilePath() + ' ' + argObj.getText() + ' falta propriedade ' + name + ' em ' + argObj.getText(), argObj)
       }
     })
     return ret
@@ -295,7 +295,8 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         const fnres = fn(propValue, propName);
         if (fnres !== undefined) (ret as any)[propName.str] = fnres
       } catch (e) {
-        if (!fn) ws.fatal('Erro interpretar a propriedade: ' + propName.str + ' ' + e.message, propNode);
+         ws.fatal('Erro interpretar a propriedade: ' + propName.str + ' ' + e.message, propNode);
+         console.log(argObj.getText())
       }
     }
   }
@@ -524,7 +525,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         const pprops = parseObjArg(itmMenu, {
           caption: parseI18N,
           icon: parseIcon,
-          roles: parseUseRolesApp(appuses),
+          allow: parseAllowRolesApp(appuses),
           run(val): StringConst | Code {
             if (isStrArg(val)) return parseStrArg(val)
             return parserForCode()(val)
@@ -565,22 +566,22 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     }
   }
 
-  function parseUseRolesApp(appuses: () => PackageUses) {
-    return (argUseRoles: ts.Node): UseRoles => {
-      if (argUseRoles instanceof ts.ArrayLiteralExpression) {
-        const el = argUseRoles.getElements()
-        if (el.length === 0) ws.error('need role', argUseRoles)
+  function parseAllowRolesApp(appuses: () => PackageUses) {
+    return (argAllowRoles: ts.Node): AllowRoles => {
+      if (argAllowRoles instanceof ts.ArrayLiteralExpression) {
+        const el = argAllowRoles.getElements()
+        if (el.length === 0) ws.error('need role', argAllowRoles)
         if (el.length === 1) return r1(el[0])
-        const roles = parserForArrArg('UseLocRoleList', parseStrArg)(argUseRoles)
-        roles.items.some((r) => {
+        const allow = parserForArrArg('AllowLocRoleList', parseStrArg)(argAllowRoles)
+        allow.items.some((r) => {
           if (sysRoles.includes(r.str)) ws.error('Role de sistema não pode ser combinado com outros', r)
         })
-        const ret: UseLocRoles = {
-          kind: 'UseLocRoles',
-          sourceRef: ws.getRef(argUseRoles),
-          roles,
+        const ret: AllowLocRoles = {
+          kind: 'AllowLocRoles',
+          sourceRef: ws.getRef(argAllowRoles),
+          allow,
           ref() {
-            return roles.items.map((r) => {
+            return allow.items.map((r) => {
               const [pkgname, rolename] = r.str.split('/')
               const p = appuses().get(pkgname)?.ref(r)
               if (p) {
@@ -595,12 +596,12 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         }
         return ret
       }
-      return r1(argUseRoles)
+      return r1(argAllowRoles)
       function r1(arg1: ts.Node): any {
         const str = parseStrArg(arg1)
         if (sysRoles.includes(str.str)) {
-          const rs: UseSysRole = {
-            kind: 'UseSysRole',
+          const rs: AllowSysRole = {
+            kind: 'AllowSysRole',
             sourceRef: str.sourceRef,
             role: str,
             ref() {
@@ -611,11 +612,11 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           }
           return rs
         }
-        const ret: UseLocRoles = {
-          kind: 'UseLocRoles',
+        const ret: AllowLocRoles = {
+          kind: 'AllowLocRoles',
           sourceRef: str.sourceRef,
-          roles: {
-            kind: 'UseLocRoleList',
+          allow: {
+            kind: 'AllowLocRoleList',
             sourceRef: str.sourceRef,
             items: [
               str
@@ -771,13 +772,13 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       return (argRoles: ts.Node, sys: boolean): RoleGroups => {
         const roleGroups = parseColObjArg('RoleGroups', argRoles, (itm, name) => {
 
-          const roles = parseUseRoles(itm)
+          const roles = parseAllowRoles(itm)
           const role: RoleGroup = {
             kind: 'RoleGroup',
             sourceRef: ws.getRef(itm),
             nodeMapping: nodeMapping([parent.str, 'role', name.str], () => role),
             name,
-            roles
+            allow: roles
           }
           return role;
         }, (itm) => !isObjArg(itm))
@@ -791,21 +792,21 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       }
     }
 
-    function parseUseRoles(argUseRoles: ts.Node): UseRoles {
-      if (argUseRoles instanceof ts.ArrayLiteralExpression) {
-        const el = argUseRoles.getElements()
-        if (el.length === 0) ws.error('need role', argUseRoles)
+    function parseAllowRoles(argAllowRoles: ts.Node): AllowRoles {
+      if (argAllowRoles instanceof ts.ArrayLiteralExpression) {
+        const el = argAllowRoles.getElements()
+        if (el.length === 0) ws.error('need role', argAllowRoles)
         if (el.length === 1) return r1(el[0])
-        const roles = parserForArrArg('UseLocRoleList', parseStrArg)(argUseRoles)
-        roles.items.some((r) => {
+        const allow = parserForArrArg('AllowLocRoleList', parseStrArg)(argAllowRoles)
+        allow.items.some((r) => {
           if (sysRoles.includes(r.str)) ws.error('Role de sistema não pode ser combinado com outros', r)
         })
-        const ret: UseLocRoles = {
-          kind: 'UseLocRoles',
-          sourceRef: ws.getRef(argUseRoles),
-          roles,
+        const ret: AllowLocRoles = {
+          kind: 'AllowLocRoles',
+          sourceRef: ws.getRef(argAllowRoles),
+          allow,
           ref() {
-            return roles.items.map((r) => {
+            return allow.items.map((r) => {
               const l = pkg.refs.roleDefs.find(r.str)
               if (l) return { pkg, role: l.ref }
               const l2 = pkg.refs.roleGroups.find(r.str)
@@ -816,12 +817,12 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         }
         return ret
       }
-      return r1(argUseRoles)
+      return r1(argAllowRoles)
       function r1(arg1: ts.Node): any {
         const str = parseStrArg(arg1)
         if (sysRoles.includes(str.str)) {
-          const rs: UseSysRole = {
-            kind: 'UseSysRole',
+          const rs: AllowSysRole = {
+            kind: 'AllowSysRole',
             sourceRef: str.sourceRef,
             role: str,
             ref() {
@@ -832,11 +833,11 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           }
           return rs
         }
-        const ret: UseLocRoles = {
-          kind: 'UseLocRoles',
+        const ret: AllowLocRoles = {
+          kind: 'AllowLocRoles',
           sourceRef: str.sourceRef,
-          roles: {
-            kind: 'UseLocRoleList',
+          allow: {
+            kind: 'AllowLocRoleList',
             sourceRef: str.sourceRef,
             items: [
               str
@@ -954,7 +955,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             start: parseUseTask,
             tasks: parseTasks,
             vars: parseVars,
-            roles: parseUseRoles,
+            allow: parseAllowRoles,
             volatile: parseBolArg,
           }, [])
           const process: Process = {
@@ -1005,11 +1006,11 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
               const tprops = parseObjArg(val, {
                 pool: parseStrArg,
                 lane: parseStrArg,
-                roles: parseUseRoles,
+                allow: parseAllowRoles,
                 next: parseNextTask,
                 useView: parseUseView,
                 useFunction: parseUseFunction
-              }, ['useView', 'useFunction', 'roles', 'pool', 'lane'])
+              }, ['useView', 'useFunction', 'allow', 'pool', 'lane'])
               const task: Task = {
                 kind: tprops.useFunction ? 'SystemTask' : 'UITask',
                 sourceRef: ws.getRef(val),

@@ -9,8 +9,8 @@ export const generateClientRoles = sourceTransformer({
   cfg: {},
   transformations: {
     Application(w, app, { ws, src }) {
-      src.require('AppRole', 'lib', app)
-      src.require('AppRoles', 'lib', app)
+      src.require('AppRole', '~/lib', app)
+      src.require('AppRoles', '~/lib', app)
       return w.statements([
         genSysRoles.make(app.sysroles, {}),
         genPkgRolesDefs.make(app.uses, {}),
@@ -22,7 +22,7 @@ export const generateClientRoles = sourceTransformer({
 })
 
 export const genUseRoles = nodeTransformer({
-  UseLocRoles(w, roles, info) {
+  AllowLocRoles(w, roles, info) {
     return w.array(roles.ref(roles).map((r) => {
       const s = isRoleDef(r.role) ? r.pkg.uri.id.str + '_role_' + r.role.name.str :
         r.pkg.uri.id.str + '_role_' + r.role.name.str
@@ -30,7 +30,7 @@ export const genUseRoles = nodeTransformer({
       return s
     }))
   },
-  UseSysRole(w, role) {
+  AllowSysRole(w, role) {
     return role.role
   },
 }, {})
@@ -118,9 +118,9 @@ const genPkgRoles = nodeTransformer({
     ], '', '', '')
   },
   RoleGroup(w, role) {
-    return role.roles
+    return role.allow
   },
-  UseLocRoles(w, role, info) {
+  AllowLocRoles(w, role, info) {
     return w.array(
       role.ref(role).
         map((r) => info.stack.get('PackageUse').ref(role).uri.id.str + '_role_' + r.role.name.str)

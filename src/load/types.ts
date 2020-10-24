@@ -1,7 +1,7 @@
 import * as ts from 'ts-morph'
 
 export type SourceNodeArrayKind = 'AppLanguages' | 'RoleGroup' | 'DocIndexFields' |
-  'UsedDocStates' | 'UseLocRoleList' | 'UseTasknames' | 'Widgets' | 'othersActions' | 'allActions' |
+  'UsedDocStates' | 'AllowLocRoleList' | 'UseTasknames' | 'Widgets' | 'othersActions' | 'allActions' |
   'Menu'
 
 export type SourceNodeRefsKind = 'RefTypes' | 'RefDocuments' | 'RefProcesses' | 'RefRoles' | 'RefViews' |
@@ -17,7 +17,7 @@ export type SourceNodeKind = 'Application' | 'Package' | 'StringConst' | 'Number
   'Workspace' | 'Application' | 'Icon' | 'I18N' | 'PackageUse' | 'Package' | 'RoleDef' |
   'BaseType' | 'NormalType' | 'EnumType' | 'EnumOption' | 'ComplexType' | 'ArrayType' | 'UseType1' | 'UseTypeAsArray' |
   'Field' | 'Document' | 'DocAction' | 'DocField' | 'DocIndex' | 'DocumentState' | 'UseDocStates' |
-  'Process' | 'ProcessVars' | 'UseLocRoles' | 'UseSysRole' | 'UseTask' | 'UITask' | 'UseView' | 'SystemTask' |
+  'Process' | 'ProcessVars' | 'AllowLocRoles' | 'AllowSysRole' | 'UseTask' | 'UITask' | 'UseView' | 'SystemTask' |
   'UseFunction' | 'BindVar' | 'View' | 'ViewAction' | 'WidgetContent' | 'WidgetItem' | 'FunctionLevel' |
   'Function' | 'Code' | 'BuilderConfig' | 'Pagelet' | 'RouteCode' | 'RouteRedirect' | 'MenuItem' | 'MenuItemSeparator' |
   //
@@ -219,7 +219,7 @@ export function isRoleGroups(o: any): o is RoleGroups {
   return o.kind === 'RoleGroups'
 }
 export interface RoleGroup extends SourceNodeMapped<'RoleGroup'> {
-  roles: UseRoles
+  allow: AllowRoles
 }
 
 export type Types = ObjectConst<'Types', Type>
@@ -417,7 +417,7 @@ export interface Process extends SourceNodeMapped<'Process'> {
   start: UseTask
   tasks: Tasks
   vars: ProcessVars
-  roles: UseRoles
+  allow: AllowRoles
   volatile: BooleanConst
   refs: {
     vars: PackageRefs<Field>
@@ -431,15 +431,15 @@ export interface ProcessVars extends SourceNode<'ProcessVars'> {
   get(fullname: string | StringConst): Field
 }
 
-export type UseRoles = UseLocRoles | UseSysRole
+export type AllowRoles = AllowLocRoles | AllowSysRole
 export type AnyRole = RoleDef | RoleGroup
 
-export interface UseLocRoles extends SourceNode<'UseLocRoles'> {
-  roles: ArrayConst<'UseLocRoleList', StringConst>
+export interface AllowLocRoles extends SourceNode<'AllowLocRoles'> {
+  allow: ArrayConst<'AllowLocRoleList', StringConst>
   ref(sourceRef: TsNode): Array<{ pkg: Package, role: AnyRole }>
 }
 
-export interface UseSysRole extends SourceNode<'UseSysRole'> {
+export interface AllowSysRole extends SourceNode<'AllowSysRole'> {
   role: StringConst
   ref(sourceRef: TsNode): RoleDef
 }
@@ -456,7 +456,7 @@ export type Task = UITask | SystemTask
 export interface BaseTask<KIND extends SourceNodeKind> extends SourceNodeMapped<KIND> {
   pool?: StringConst,
   lane?: StringConst,
-  roles: UseRoles,
+  allow: AllowRoles,
   next: UseTask | ArrayConst<'UseTasknames', UseTask> | ObjectConst<'UseTaskForks', Code | UseTask>
 }
 
@@ -588,7 +588,7 @@ export type Menu = ArrayConst<'Menu', MenuItem | MenuItemSeparator>
 export interface MenuItem extends SourceNode<'MenuItem'> {
   caption: I18N
   icon: Icon
-  roles: UseRoles
+  allow: AllowRoles
   run: StringConst | Code
 }
 
@@ -678,8 +678,8 @@ export type SourceNodeType<KIND extends SourceNodeKind> = KIND extends 'Applicat
   KIND extends 'Processes' ? Processes :
   KIND extends 'Process' ? Process :
   KIND extends 'ProcessVars' ? ProcessVars :
-  KIND extends 'UseLocRoles' ? UseLocRoles :
-  KIND extends 'UseSysRole' ? UseSysRole :
+  KIND extends 'AllowLocRoles' ? AllowLocRoles :
+  KIND extends 'AllowSysRole' ? AllowSysRole :
   KIND extends 'UseTask' ? UseTask :
   KIND extends 'UITask' ? UITask :
   KIND extends 'UseView' ? UseView :
