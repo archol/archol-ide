@@ -6,7 +6,7 @@ export const generateClientRoutes = sourceTransformer({
   transformations: {
     Application(w, app, { src }) {
       src.requireDefault('React', 'react', app)
-      src.require('AppRoute', '~/lib', app)
+      src.require('AppRoute', '../lib/archol/types', app)
 
       return w.statements([
         ['export const routes: AppRoute[] = ', w.map([app.routes])],
@@ -19,7 +19,7 @@ export const generateClientRoutes = sourceTransformer({
       })
     },
     RouteRedirect(w, route, { src }) {
-      src.require('appWindowDoc', '~/docs', route)
+      src.require('appWindowDoc', '../docs/app/appwindow', route)
       return w.object({
         path: route.path,
         run: [

@@ -159,8 +159,8 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
   }
   return wSelf
 
-  function propv(key: string|StringConst, v: CodePartL) {
-    const sk=isStringConst(key)?key.str:key
+  function propv(key: string | StringConst, v: CodePartL) {
+    const sk = isStringConst(key) ? key.str : key
     const k = /^\w+$/.test(sk) ? sk : wSelf.string(sk)
     if (isMethodDecl(v)) return [k, v]
     return [k, ':', v]
@@ -206,8 +206,11 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
       else if (isMethodDecl(p)) {
         fres.push('(')
         fres.push(p.$method$.args.join(', '))
-        fres.push('):')
-        fres.push(p.$method$.ret)
+        fres.push(')')
+        if (p.$method$.ret) {
+          fres.push(':')
+          fres.push(p.$method$.ret)
+        }
         if (p.$method$.body)
           fres.push(p.$method$.body)
       }

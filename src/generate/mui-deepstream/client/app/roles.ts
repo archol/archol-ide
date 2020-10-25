@@ -9,8 +9,8 @@ export const generateClientRoles = sourceTransformer({
   cfg: {},
   transformations: {
     Application(w, app, { ws, src }) {
-      src.require('AppRole', '~/lib', app)
-      src.require('AppRoles', '~/lib', app)
+      src.require('AppRole', '../lib/archol/types', app)
+      src.require('AppRoles', '../lib/archol/types', app)
       return w.statements([
         genSysRoles.make(app.sysroles, {}),
         genPkgRolesDefs.make(app.uses, {}),

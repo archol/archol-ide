@@ -9,7 +9,7 @@ export const generateClientMenu = sourceTransformer({
   filePath: 'app/menu.ts',
   transformations: {
     Application(w, app, { src }) {
-      src.require('AppMenuItem', '~/lib', app)
+      src.require('AppMenuItem', '../lib/archol/types', app)
 
       return w.statements([
         ['export const menu: AppMenuItem[] = ', app.menu],
@@ -31,8 +31,10 @@ export const generateClientMenu = sourceTransformer({
         run(v) {
           if (isCode(v)) return w.code(v)
           if (isStringConst(v)) {
-            // info.src.require('navigate')
-            return w.string(v)
+            info.src.require('appWindowDoc', '../docs/app/appwindow', v)
+            return w.methodDecl([], '', [
+              ['appWindowDoc.goUrl(', w.string(v), ')']
+            ])
           }
           throw info.ws.fatal('conteúdo inesperado ', v)
         }
