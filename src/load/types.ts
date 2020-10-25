@@ -17,7 +17,7 @@ export type SourceNodeKind = 'Application' | 'Package' | 'StringConst' | 'Number
   'Workspace' | 'Application' | 'Icon' | 'I18N' | 'PackageUse' | 'Package' | 'RoleDef' |
   'BaseType' | 'NormalType' | 'EnumType' | 'EnumOption' | 'ComplexType' | 'ArrayType' | 'UseType1' | 'UseTypeAsArray' |
   'Field' | 'Document' | 'DocAction' | 'DocField' | 'DocIndex' | 'DocumentState' | 'UseDocStates' |
-  'Process' | 'ProcessVars' | 'AllowLocRoles' | 'AllowSysRole' | 'UseTask' | 'UITask' | 'UseView' | 'SystemTask' |
+  'Process' | 'ProcessUse' | 'ProcessVars' | 'AllowLocRoles' | 'AllowSysRole' | 'UseTask' | 'UITask' | 'UseView' | 'SystemTask' |
   'UseFunction' | 'BindVar' | 'View' | 'ViewAction' | 'WidgetContent' | 'WidgetItem' | 'FunctionLevel' |
   'Function' | 'Code' | 'BuilderConfig' | 'Pagelet' | 'RouteCode' | 'RouteRedirect' | 'MenuItem' | 'MenuItemSeparator' |
   //
@@ -138,6 +138,7 @@ export interface Application extends SourceNode<'Application'> {
   icon: Icon,
   uses: PackageUses,
   allPackages: Package[],
+  start: ProcessUse,
   langs: ArrayConst<'AppLanguages', StringConst>
   builders: ObjectConst<'AppBuilders', BuilderConfig>
   pagelets: Pagelets
@@ -424,6 +425,10 @@ export interface Process extends SourceNodeMapped<'Process'> {
   }
 }
 
+export interface ProcessUse extends StringConst<'ProcessUse'> {
+  ref(sourceRef: TsNode): Process
+}
+
 export interface ProcessVars extends SourceNode<'ProcessVars'> {
   input: Fields,
   output: Fields,
@@ -677,6 +682,7 @@ export type SourceNodeType<KIND extends SourceNodeKind> = KIND extends 'Applicat
   KIND extends 'UseDocStates' ? UseDocStates :
   KIND extends 'Processes' ? Processes :
   KIND extends 'Process' ? Process :
+  KIND extends 'ProcessUse' ? ProcessUse :
   KIND extends 'ProcessVars' ? ProcessVars :
   KIND extends 'AllowLocRoles' ? AllowLocRoles :
   KIND extends 'AllowSysRole' ? AllowSysRole :

@@ -11,7 +11,7 @@ import {
   DocumentStates, DocActions, DocAction, DocField, DocIndex, DocumentState, UseDocStates, Routes, Pagelets,
   Pagelet, Menu, MenuItem, MenuItemSeparator, SourceNodeMapped, SourceNodeRefsKind, isPackage, RouteRedirect,
   RouteCode, RoleGroup, TsNode, basicTypes3, PackageRefs, PackageRef, isView, EnumOption, ComplexType, ArrayType,
-  UseTypeAsArray, Types, SourceNodeKind, SourceNodeObjectKind, SourceNodeArrayKind, BuilderConfig, AppMappings, RoleDefs, RoleGroups, WidgetItem, WidgetContent, AnyRole
+  UseTypeAsArray, Types, SourceNodeKind, SourceNodeObjectKind, SourceNodeArrayKind, BuilderConfig, AppMappings, RoleDefs, RoleGroups, WidgetItem, WidgetContent, AnyRole, ProcessUse
 } from './types'
 
 export async function loadApp(ws: Workspace, appName: string): Promise<Application> {
@@ -295,8 +295,8 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         const fnres = fn(propValue, propName);
         if (fnres !== undefined) (ret as any)[propName.str] = fnres
       } catch (e) {
-         ws.fatal('Erro interpretar a propriedade: ' + propName.str + ' ' + e.message, propNode);
-         console.log(argObj.getText())
+        ws.fatal('Erro interpretar a propriedade: ' + propName.str + ' ' + e.message, propNode);
+        console.log(argObj.getText())
       }
     }
   }
@@ -381,6 +381,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       = parseObjArg(opts, {
         description: parseI18N,
         icon: parseIcon,
+        start: parseProcessUse,
         uses: parsePackageUses,
         langs: parserForArrArg('AppLanguages', parseStrArg),
         builders: parseAppBuilders,
@@ -458,6 +459,17 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       }
       return pkguse
     })
+  }
+
+  function parseProcessUse(argProcUse: ts.Node): ProcessUse {
+    const procuri = parseStrArg<'ProcessUse'>(argProcUse)
+    const ret: ProcessUse = {
+      ...procuri,
+      ref(sourceRef){
+        return sourceRef as any
+      }
+    }
+    return ret
   }
 
   async function packageUsesWaitter(packageUses: PackageUses): Promise<PackageUses> {

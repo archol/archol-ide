@@ -33,6 +33,7 @@ declare function declareApplication (name: '${appname}', opts: {
   description: I18N,
   icon: Icon,
   uses: ${appname}_PackageUses,
+  start: ${appname}_AllProcs,
   langs: Lang[],
   builders: Builders
   pagelets: {
@@ -73,9 +74,20 @@ declare type ${appname}_Roles = 'public' | 'anonymous' | 'authenticated' | Array
           const pkg = u.val.ref(u.val.uri.sourceRef)
           return ret.concat(
             pkg.roleDefs
-            .map(r => alias + '/' + r.name.str)
-            .concat(pkg.roleGroups.map(r => alias + '/' + r.name.str)))
+              .map(r => alias + '/' + r.name.str)
+              .concat(pkg.roleGroups.map(r => alias + '/' + r.name.str)))
         }, []))}>
+
+declare type ${appname}_AllProcs = ${typePipeStr((() => {
+          const ret: string[] = []
+          app.uses.props.forEach((u) => {
+            const pkg = u.val
+            pkg.ref(u.key).processes.props.forEach((proc) => {
+              ret.push(u.key.str + '/' + proc.key.str)
+            })
+          })
+          return ret
+        })())}
 
 declare type ${appname}_Mapping = ${typePipeStr(Object.keys(app.mappingList))}
 declare type ${appname}_Mappings = {
@@ -107,6 +119,7 @@ type ${pkgid}_Role = 'public' | 'anonymous' | 'authenticated' | ${typePipeStr(
             .concat(pkg.refs.roleGroups.items.map((r) => r.path))
         )
       }
+
 declare interface ${pkgid}_DeclProcesses {
   processes (processes: {${pkg.processes.props.map((p) => `${p.key.str}: ${pkgid}_process_${p.key.str}_Decl,`).join('\n')}
   }): ${pkgid}_DeclFunctions
