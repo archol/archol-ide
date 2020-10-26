@@ -11,7 +11,8 @@ import {
   DocumentStates, DocActions, DocAction, DocField, DocIndex, DocumentState, UseDocStates, Routes, Pagelets,
   Pagelet, Menu, MenuItem, MenuItemSeparator, SourceNodeMapped, SourceNodeRefsKind, isPackage, RouteRedirect,
   RouteCode, RoleGroup, TsNode, basicTypes3, PackageRefs, PackageRef, isView, EnumOption, ComplexType, ArrayType,
-  UseTypeAsArray, Types, SourceNodeKind, SourceNodeObjectKind, SourceNodeArrayKind, BuilderConfig, AppMappings, RoleDefs, RoleGroups, WidgetItem, WidgetContent, AnyRole, ProcessUse, SourceRef
+  UseTypeAsArray, Types, SourceNodeKind, SourceNodeObjectKind, SourceNodeArrayKind, BuilderConfig, AppMappings, RoleDefs, RoleGroups,
+  WidgetEntry, WidgetMarkdown, WidgetContent, AnyRole, ProcessUse, SourceRef, WidgetItem, SourceNodeWidgetKind
 } from './types'
 
 export async function loadApp(ws: Workspace, appName: string): Promise<Application> {
@@ -296,7 +297,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         if (fnres !== undefined) (ret as any)[propName.str] = fnres
       } catch (e) {
         ws.fatal('Erro interpretar a propriedade: ' + propName.str + ' ' + e.message, propNode);
-        console.log(argObj.getText())
+        console.log('Erro interpretar a propriedade: ' + propName.str + ' ' + e.message, argObj.getText(), fn, e)
       }
     }
   }
@@ -904,7 +905,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             try {
               return typeRef.base().base
             } catch (e) {
-              console.log(typeRef)
+              console.log('UseType1 error: ', typeRef)
               console.log(e)
               throw e
             }
@@ -1132,14 +1133,14 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           content: parseWidgets,
           primaryAction: parseAction,
           secondaryAction: parseAction,
-          othersActions: parserForArrArg('othersActions', parseAction)
-        }, ['secondaryAction', 'othersActions'])
+          otherActions: parserForArrArg('otherActions', parseAction)
+        }, ['secondaryAction', 'otherActions'])
         const allActions = arrayConst<'allActions', ViewAction>('allActions', ws.getRef(itmView))
         allActions.items.push(vprops.primaryAction)
         if (vprops.secondaryAction)
           allActions.items.push(vprops.secondaryAction)
-        if (vprops.othersActions)
-          vprops.othersActions.items.forEach((i) => allActions.items.push(i))
+        if (vprops.otherActions)
+          vprops.otherActions.items.forEach((i) => allActions.items.push(i))
         const view: View = {
           kind: 'View',
           sourceRef: ws.getRef(itmView),
@@ -1153,7 +1154,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       })
 
       return { types }
-      function parseWidget(argWidget: ts.Node): WidgetContent | WidgetItem {
+      function parseWidget(argWidget: ts.Node): WidgetContent | WidgetItem<any> {
         if (getObjArgPropVal(argWidget, 'content') === 'WidgetContent')
           return parseWidgetContent(argWidget)
         return parseWidgetItem(argWidget)
@@ -1170,17 +1171,54 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         }
         return cwidget
       }
-      function parseWidgetItem(argWidget: ts.Node): WidgetItem {
+      function parseWidgetItem(argWidget: ts.Node): WidgetItem<any> {
+        if (getObjArgPropVal(argWidget, 'markdown'))
+          return parseWidgetMarkdown(argWidget)
+        return parseWidgetEntry(argWidget)
+      }
+      function parseWidgetEntry(argWidget: ts.Node): WidgetEntry {
+        const sourceRef = ws.getRef(argWidget)
         const iwprops = parseObjArg(argWidget, {
           caption: parseI18N,
           model: parserForStrArg<"show" | "edit">(),
           field: parseStrArg,
           type: parseUseType
         }, ['caption'])
-        const iwidget: WidgetItem = {
-          kind: 'WidgetItem',
-          sourceRef: ws.getRef(argWidget),
+        const iwidget: WidgetEntry = {
+          kind: 'WidgetEntry',
+          sourceRef,
+          widgetFields() {
+            const fields = objectConst<'Fields', Field>('Fields', sourceRef)
+            const vf: Field = {
+              kind: 'Field',
+              sourceRef,
+              name: iwidget.field,
+              type: mountUseType({
+                'kind': 'StringConst',
+                sourceRef,
+                str: 'string'
+              })
+            }
+            fields.add(iwidget.field, vf)
+            return fields
+          },
           ...iwprops
+        }
+        return iwidget
+      }
+      function parseWidgetMarkdown(argWidget: ts.Node): WidgetMarkdown {
+        const sourceRef = ws.getRef(argWidget)
+        const iwprops = parseObjArg(argWidget, {
+          markdown: parseI18N,
+        }, [])
+        const iwidget: WidgetMarkdown = {
+          kind: 'WidgetMarkdown',
+          sourceRef,
+          ...iwprops,
+          widgetFields() {
+            const fields = objectConst<'Fields', Field>('Fields', sourceRef)
+            return fields
+          }
         }
         return iwidget
       }
@@ -1539,20 +1577,35 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       const ret = packageRefs<Field>([])
 
       view.content.items.forEach(add)
-      function add(w: WidgetContent | WidgetItem) {
+      function add(w: WidgetContent | WidgetItem<any>) {
         if (isWidgetContent(w)) w.content.items.forEach(add)
         else {
-          if (!ret.items.some((i) => i.path === w.field.str)) {
-            ret.items.push({
-              path: w.field.str, ref: {
-                kind: 'Field',
-                sourceRef: w.sourceRef,
-                name: w.field,
-                description: w.caption,
-                type: w.type
-              }
-            })
-          }
+          w.widgetFields().props.forEach((field) => {
+            if (!ret.items.some((i) => i.path === field.key.str)) {
+              ret.items.push({
+                path: field.key.str, ref: {
+                  kind: 'Field',
+                  sourceRef: w.sourceRef,
+                  name: field.key,
+                  type: {
+                    kind: 'UseType1',
+                    sourceRef: w.sourceRef,
+                    type: {
+                      kind: 'StringConst',
+                      str: 'string',
+                      sourceRef: w.sourceRef,
+                    },
+                    ref(s2) {
+                      return basicTypes3.string
+                    },
+                    base(s2) {
+                      return basicTypes3.string.base().base
+                    }
+                  }
+                }
+              })
+            }
+          })
         }
       }
 
@@ -1605,7 +1658,7 @@ function packageRefs<T extends SourceNode<any>>(items: Array<PackageRef<T>>): Pa
 }
 
 function makeInvalid(ws: Workspace, s: string, sourceRef: SourceRef) {
-  ws.error('Invalid type: '+s, sourceRef)
+  ws.error('Invalid type: ' + s, sourceRef)
   const ret: NormalType = {
     kind: basicTypes3.invalid.kind,
     sourceRef,

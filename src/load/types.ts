@@ -1,7 +1,7 @@
 import * as ts from 'ts-morph'
 
 export type SourceNodeArrayKind = 'AppLanguages' | 'RoleGroup' | 'DocIndexFields' |
-  'UsedDocStates' | 'AllowLocRoleList' | 'UseTasknames' | 'Widgets' | 'othersActions' | 'allActions' |
+  'UsedDocStates' | 'AllowLocRoleList' | 'UseTasknames' | 'Widgets' | 'otherActions' | 'allActions' |
   'Menu'
 
 export type SourceNodeRefsKind = 'RefTypes' | 'RefDocuments' | 'RefProcesses' | 'RefRoles' | 'RefViews' |
@@ -13,15 +13,17 @@ export type SourceNodeObjectKind = 'AppBuilders' | 'Pagelets' | 'AppMappings' |
   'BindVars' | 'Views' | 'Functions' | 'Routes' |
   SourceNodeRefsKind
 
+export type SourceNodeWidgetKind = 'WidgetEntry'|  'WidgetMarkdown'
+
 export type SourceNodeKind = 'Application' | 'Package' | 'StringConst' | 'NumberConst' | 'BooleanConst' |
   'Workspace' | 'Application' | 'Icon' | 'I18N' | 'PackageUse' | 'Package' | 'RoleDef' |
   'BaseType' | 'NormalType' | 'EnumType' | 'EnumOption' | 'ComplexType' | 'ArrayType' | 'UseType1' | 'UseTypeAsArray' |
   'Field' | 'Document' | 'DocAction' | 'DocField' | 'DocIndex' | 'DocumentState' | 'UseDocStates' |
   'Process' | 'ProcessUse' | 'ProcessVars' | 'AllowLocRoles' | 'AllowSysRole' | 'UseTask' | 'UITask' | 'UseView' | 'SystemTask' |
-  'UseFunction' | 'BindVar' | 'View' | 'ViewAction' | 'WidgetContent' | 'WidgetItem' | 'FunctionLevel' |
+  'UseFunction' | 'BindVar' | 'View' | 'ViewAction' | 'WidgetContent' | 'WidgetEntry' | 'WidgetMarkdown' | 'FunctionLevel' |
   'Function' | 'Code' | 'BuilderConfig' | 'Pagelet' | 'RouteCode' | 'RouteRedirect' | 'MenuItem' | 'MenuItemSeparator' |
   //
-  SourceNodeArrayKind | SourceNodeObjectKind
+  SourceNodeArrayKind | SourceNodeObjectKind | SourceNodeWidgetKind
 
 
 export function isSourceNode(node: any): node is SourceNode<any> {
@@ -517,7 +519,7 @@ export interface View extends SourceNodeMapped<'View'> {
   content: Widgets
   primaryAction?: ViewAction
   secondaryAction?: ViewAction
-  othersActions?: ArrayConst<'othersActions', ViewAction>
+  otherActions?: ArrayConst<'otherActions', ViewAction>
   allActions?: ArrayConst<'allActions', ViewAction>
   refs: {
     fields: PackageRefs<Field>
@@ -536,18 +538,31 @@ export function isWidgetContent(node: any): node is WidgetContent {
   return node && node.kind === 'WidgetContent'
 }
 
-export type Widgets = ArrayConst<'Widgets', WidgetContent | WidgetItem>
+export type Widgets = ArrayConst<'Widgets', WidgetContent | WidgetItem<any>>
+
+export interface WidgetItem<KIND extends SourceNodeWidgetKind> extends SourceNode<KIND> {
+  grid?:StringConst  
+  widgetFields(): Fields
+}
+
+export function isWidgetItem<KIND extends SourceNodeWidgetKind>(node: any): node is WidgetItem<KIND> {
+  return node && typeof node.widgetFields==='object'
+}
 
 export interface WidgetContent extends SourceNode<'WidgetContent'> {
   caption?: I18N,
   content: Widgets
 }
 
-export interface WidgetItem extends SourceNode<'WidgetItem'> {
+export interface WidgetEntry extends WidgetItem<'WidgetEntry'> {
   caption: I18N,
   model: StringConst<"show" | "edit">,
   field: StringConst,
   type: UseType
+}
+
+export interface WidgetMarkdown extends WidgetItem<'WidgetMarkdown'> {
+  markdown: I18N,
 }
 
 export type Functions = ObjectConst<'Functions', Function>
@@ -709,7 +724,8 @@ export type SourceNodeType<KIND extends SourceNodeKind> = KIND extends 'Applicat
   KIND extends 'View' ? View :
   KIND extends 'ViewAction' ? ViewAction :
   KIND extends 'WidgetContent' ? WidgetContent :
-  KIND extends 'WidgetItem' ? WidgetItem :
+  KIND extends 'WidgetEntry' ? WidgetEntry :
+  KIND extends 'WidgetMarkdown' ? WidgetMarkdown :
   KIND extends 'FunctionLevel' ? FunctionLevel :
   KIND extends 'Function' ? Function :
   KIND extends 'Code' ? Code :

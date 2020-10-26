@@ -330,13 +330,17 @@ declare interface ${pkgid}_view_${viewName}_Decl {
   secondaryAction?: IAction<${pkgid}_view_${viewName}_DeclData>
   otherActions?: Array<IAction<${pkgid}_view_${viewName}_DeclData>>
 }
-declare type ${pkgid}_view_${viewName}_DeclContent = Array<{
+declare type ${pkgid}_view_${viewName}_DeclContent = ${pkgid}_view_${viewName}_DeclWidgget[]
+declare type ${pkgid}_view_${viewName}_DeclWidgget = {
   model: 'show' | 'edit'
   field: string
   type: ${pkgid}_TypeName
-}>
+} | { markdown: I18N } 
 declare interface ${pkgid}_view_${viewName}_DeclData {
-  ${view.refs.fields.items.map((f) => `${f.path}: ${f.ref.type.base(null)}`)}
+  ${view.refs.fields.items.map((f) => {
+    debugger
+    return `${f.path}: ${f.ref.type ? f.ref.type.base(null): 'invalid type'}`
+  })}
 }
 declare interface ${pkgid}_view_${viewName}_DeclBind<S> {
   ${view.refs.fields.items.map((f) => `${f.path}: S`)}

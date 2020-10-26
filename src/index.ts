@@ -20,6 +20,7 @@ const build = debounce(async function build() {
     Object.keys(ws.diagnostics).forEach((m) => {
       const d = ws.diagnostics[m]
       console.log(
+        'diagnostic:',
         d.kind,
         d.sourceRefs.map((s) => [s.file + ':' + s.start.row + ':' + s.start.col]).join(';'),
         m

@@ -16,8 +16,17 @@ export function projectTransformer<CFG extends object, ST extends GenNodes<CFG>>
   return info
 }
 
-export interface SourceTransformer<CFG extends object, ST extends GenNodes<CFG>> {
+export type SourceTransformer<CFG extends object, ST extends GenNodes<CFG>> = 
+SourceTransformerOne<CFG,ST> | SourceTransformerMany<CFG,ST>
+
+export interface SourceTransformerOne<CFG extends object, ST extends GenNodes<CFG>>  {
   filePath: string,
+  transformations: ST
+  cfg: CFG
+} 
+
+export interface SourceTransformerMany<CFG extends object, ST extends GenNodes<CFG>>  {
+  multiple: true
   transformations: ST
   cfg: CFG
 }
@@ -79,7 +88,11 @@ export interface GenInfo<CFG extends object> {
 
   },
   stack: GenFuncStack
-  cfg: CFG
+  cfg: CFG  
+  transformFile<CFG extends object, ST extends GenNodes<CFG>>(
+    filePath: string,
+    transformations: NodeTransformer<CFG, ST>        
+    ): void  
 }
 
 export type GenFunc<name extends SourceNodeKind, CFG extends object> =
@@ -95,16 +108,16 @@ export interface generateApplication<CFG extends object, SW extends GenNodes<CFG
   ws: Workspace,
   app: Application,
   cfg: CFG,
-  transformations: SW,
+  wstransformations: SW,
   projects: Array<ProjectTransformer<any, any>>,
 }
 
 export async function generateApplication<CFG extends object, SW extends GenNodes<CFG>>(
-  { ws, app, transformations, projects, cfg }: generateApplication<CFG, SW>): Promise<void> {
+  { ws, app, wstransformations, projects, cfg }: generateApplication<CFG, SW>): Promise<void> {
   const prjs: { [name: string]: Project } = {}
   const srcs: { [name: string]: boolean } = {}
   projects.forEach((prj) => {
-    prj.sources.forEach((src) => transformFile(prj, src))
+    prj.sources.forEach((src) => transformFileDecl(prj, src))
   })
   return saveAll()
 
@@ -133,7 +146,43 @@ export async function generateApplication<CFG extends object, SW extends GenNode
       return p.save()
     }))
   }
-  function transformFile(prj: ProjectTransformer<any, any>, src: SourceTransformer<any, any>) {
+
+  function isSourceTransformerOne<CFG extends object, ST extends GenNodes<CFG>>(o: SourceTransformer<CFG, ST>): o is SourceTransformerOne<CFG,ST> {
+    return (o as any).filePath
+  }
+
+  function transformFileDecl<CFG extends object, ST extends GenNodes<CFG>>(
+    prj: ProjectTransformer<any, any>, src: SourceTransformer<any, any>) {
+    if (isSourceTransformerOne(src)) 
+    return genereateFile(prj, src.filePath, src.transformations)
+    
+    const wnll = codeWriter([src.transformations], {
+      ws,
+      prj: {},
+      src: { requireDefault: deny, require:deny, chip:deny},
+      node: {},
+      stack: createStack(),
+      transformFile: transformFileInt,
+      cfg
+    })
+    let codenull = wnll.transform(app)
+    const srcnull=wnll.resolveCode(codenull)
+    if (srcnull)    ws.fatal('multiple files cant return code', ws.sourceRef)
+
+    function deny(): any {
+      ws.fatal('transform multiple sources dont support that', ws.sourceRef)
+    }
+
+    function transformFileInt<CFGsub extends object, STsub extends GenNodes<CFGsub>>(
+      subfilePath: string,
+      subtransformations: NodeTransformer<CFGsub, STsub>        
+      ): void  {
+        genereateFile<CFGsub, STsub>(prj, subfilePath, subtransformations.transformNode)
+      }    
+  
+
+  function genereateFile<CFG extends object, ST extends GenNodes<CFG>>(
+    prj: ProjectTransformer<any, any>, filePath: string, srctransformations: ST): void {
     const srcUsed: { [id: string]: TsNode } = {}
     let srcIdentifiers: {
       [id: string]: {
@@ -147,13 +196,14 @@ export async function generateApplication<CFG extends object, SW extends GenNode
       }
     } = {}
 
-    const srcfile = openSourceFile(prj.projectPath, src.filePath)
-    const w = codeWriter([src.transformations, prj.transformations, transformations], {
+    const srcfile = openSourceFile(prj.projectPath, filePath)
+    const w = codeWriter([srctransformations, prj.transformations, wstransformations], {
       ws,
       prj: {},
       src: { requireDefault, require, chip },
       node: {},
       stack: createStack(),
+      transformFile: transformFileInt,
       cfg
     })
     let rest = w.transform(app)
@@ -202,6 +252,7 @@ export async function generateApplication<CFG extends object, SW extends GenNode
       return id
     }
   }
+}
   function createStack(): GenFuncStack {
     const items: Array<SourceNode<any>> = []
     return {

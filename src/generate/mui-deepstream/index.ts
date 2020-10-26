@@ -9,7 +9,7 @@ export function generateMuiDeepStream(ws: Workspace, app: Application) {
     projects: [
       generateClientProject
     ],
-    transformations: {
+    wstransformations: {
 
     },
     cfg: {}
