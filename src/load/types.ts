@@ -13,7 +13,7 @@ export type SourceNodeObjectKind = 'AppBuilders' | 'Pagelets' | 'AppMappings' |
   'BindVars' | 'Views' | 'Functions' | 'Routes' |
   SourceNodeRefsKind
 
-export type SourceNodeWidgetKind = 'WidgetEntry'|  'WidgetMarkdown'
+export type SourceNodeWidgetKind = 'WidgetEntry' | 'WidgetMarkdown'
 
 export type SourceNodeKind = 'Application' | 'Package' | 'StringConst' | 'NumberConst' | 'BooleanConst' |
   'Workspace' | 'Application' | 'Icon' | 'I18N' | 'PackageUse' | 'Package' | 'RoleDef' |
@@ -516,7 +516,7 @@ export function isView(node: any): node is View {
 }
 
 export interface View extends SourceNodeMapped<'View'> {
-  content: Widgets
+  content: WidgetContent
   primaryAction?: ViewAction
   secondaryAction?: ViewAction
   otherActions?: ArrayConst<'otherActions', ViewAction>
@@ -538,20 +538,22 @@ export function isWidgetContent(node: any): node is WidgetContent {
   return node && node.kind === 'WidgetContent'
 }
 
-export type Widgets = ArrayConst<'Widgets', WidgetContent | WidgetItem<any>>
-
 export interface WidgetItem<KIND extends SourceNodeWidgetKind> extends SourceNode<KIND> {
-  grid?:StringConst  
+  grid?: StringConst
   widgetFields(): Fields
 }
 
 export function isWidgetItem<KIND extends SourceNodeWidgetKind>(node: any): node is WidgetItem<KIND> {
-  return node && typeof node.widgetFields==='object'
+  return node && typeof node.widgetFields === 'object'
 }
 
 export interface WidgetContent extends SourceNode<'WidgetContent'> {
   caption?: I18N,
-  content: Widgets
+  widgets: ArrayConst<'Widgets',WidgetContent  | WidgetItem<any>>
+}
+
+export function isWidgetEntry(node: any): node is WidgetEntry {
+  return node && node.kind === 'WidgetEntry'
 }
 
 export interface WidgetEntry extends WidgetItem<'WidgetEntry'> {
@@ -559,6 +561,10 @@ export interface WidgetEntry extends WidgetItem<'WidgetEntry'> {
   model: StringConst<"show" | "edit">,
   field: StringConst,
   type: UseType
+}
+
+export function isWidgetMarkdown(node: any): node is WidgetMarkdown {
+  return node && node.kind === 'WidgetMarkdown'
 }
 
 export interface WidgetMarkdown extends WidgetItem<'WidgetMarkdown'> {

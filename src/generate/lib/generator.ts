@@ -37,12 +37,12 @@ export function sourceTransformer<CFG extends object, ST extends GenNodes<CFG>>(
 }
 
 export interface NodeTransformerFactory<CFG extends object, NT extends GenNodes<CFG>> {
-  transformerFactory: CFG & NT
+  transformerFactory: NT
   make(node: SourceNode<any>, cfg: CFG): NodeTransformer<CFG, NT>
 }
 
 export interface NodeTransformer<CFG extends object, NT extends GenNodes<CFG>> {
-  transformations: CFG & NT
+  transformations:  NT
   transformNode: SourceNode<any>
   transform(parent: Array<GenNodes<CFG>>, info: GenInfo<CFG>): CodePartL
 }
@@ -50,7 +50,7 @@ export interface NodeTransformer<CFG extends object, NT extends GenNodes<CFG>> {
 export function nodeTransformer<CFG extends object, NT extends GenNodes<CFG>>(
   transforms: NT, cfginit: CFG): NodeTransformerFactory<CFG, NT> {
   const r1: NodeTransformerFactory<CFG, NT> = {
-    transformerFactory: true as any as CFG & NT,
+    transformerFactory: transforms as any as CFG & NT,
     make(node: SourceNode<any>, cfg: CFG): NodeTransformer<CFG, NT> {
       const r2: NodeTransformer<CFG, NT> = {
         transformations: transforms as any as CFG & NT,

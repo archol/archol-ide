@@ -402,12 +402,12 @@
         "affectsGlobalScope": false
       },
       "../src/load/types.ts": {
-        "version": "07a1d6b87e7e6536b99c0bea9c205bb8bb9d2478ad568a96c3eb1e737df04f9a",
-        "signature": "1c43498737c75c81eddda25272174ed7cb807a1707653579dd9a5f0262799ece",
+        "version": "81a52041b3f16ab265132b2fc097e4c5851fab5c2edc759e9f549b2c949d86e0",
+        "signature": "e1db351a6eeaaabfed38a8849f8bcb04489a11a2c768749410e49c27dbe42ad7",
         "affectsGlobalScope": false
       },
       "../src/load/app.ts": {
-        "version": "884ff4d79ec22694d785bfb4077aca8563166adec384f83519c90f947fe2a44c",
+        "version": "be39ffb050cdce0293e0a7a49a54ae841094fc606f87aaf07a7918a5fbafc2a3",
         "signature": "6dbdfe485aabd0b94b2bfb6908d1277ad675a2856a39fd5341f43b7580513ae6",
         "affectsGlobalScope": false
       },
@@ -427,8 +427,8 @@
         "affectsGlobalScope": false
       },
       "../src/generate/lib/generator.ts": {
-        "version": "b418f2f543b58891e599fd83f594089a8cda0d92f0e1838d3a7c0f8a4c7eb59c",
-        "signature": "4a13764a0334f9bab873b8f71d3c9b297b39844fcdc3722bcf18e5d6671c10e3",
+        "version": "f27288babc0bb3f54effc15c44a35c28221510a0da5ccb25d36520d6a43c49d7",
+        "signature": "5efedcf559e9ef17a5ec61e6aaa586cb65f0f340e285e1e6eb908dfa62c36b33",
         "affectsGlobalScope": false
       },
       "../src/generate/wsdecl/materialuiicons.ts": {
@@ -437,7 +437,7 @@
         "affectsGlobalScope": false
       },
       "../src/generate/wsdecl/index.ts": {
-        "version": "18c58cbb7ebe80178ad3d20b9ae3eaf646d9f252fe2438ba073a8e603e505fcf",
+        "version": "679a2ccea20c569272aa3197900408bf7c13138a0c35149a88927e6017d2aa07",
         "signature": "544ef4123b7a3b8233523f79c22181d1420e324af2cccbee25720bf0d605c5f2",
         "affectsGlobalScope": false
       },
@@ -472,13 +472,13 @@
         "affectsGlobalScope": false
       },
       "../src/generate/mui-deepstream/client/app/views.ts": {
-        "version": "eeff1a018ea3b822b6e6ab74d6b9463efc6812c49c134c97f8cfff33a228ed03",
+        "version": "de3c3d9cec0198b33812b56e9f9270fca89f51331e911d562ee02d1981d29474",
         "signature": "1c6c7335039caff404b52a1a120a0d4756db4c9543c5a9cd1b1e39415d02e612",
         "affectsGlobalScope": false
       },
       "../src/generate/mui-deepstream/client/index.ts": {
-        "version": "5c30ebaa60a237f48c26023f6482936082e97fe498d37bac52eafef8d55fc76f",
-        "signature": "9ae2dec693644315b96feed50c01266a2af7a88d4c1497974c0f9ba593f6b456",
+        "version": "3698553fce32c4210e8d0834a20b9d8cc8de1d4b11ae8e3c83fc50dde537369c",
+        "signature": "aaf22ad74d5cd35aea6fceda57ef389fb09b082dd2c17b72dfd937bff27cfe96",
         "affectsGlobalScope": false
       },
       "../src/generate/mui-deepstream/index.ts": {
@@ -773,10 +773,14 @@
         "../src/generate/lib/generator.ts"
       ],
       "../src/generate/mui-deepstream/client/app/views.ts": [
-        "../src/generate/lib/generator.ts"
+        "../src/generate/lib/codeWriter.ts",
+        "../src/generate/lib/generator.ts",
+        "../src/load/types.ts"
       ],
       "../src/generate/mui-deepstream/client/index.ts": [
         "../src/generate/lib/generator.ts",
+        "../src/generate/mui-deepstream/client/app/i18n.ts",
+        "../src/generate/mui-deepstream/client/app/icon.ts",
         "../src/generate/mui-deepstream/client/app/menu.ts",
         "../src/generate/mui-deepstream/client/app/roles.ts",
         "../src/generate/mui-deepstream/client/app/routes.ts",
@@ -1057,7 +1061,9 @@
         "../src/load/types.ts"
       ],
       "../src/generate/mui-deepstream/client/index.ts": [
-        "../src/generate/lib/generator.ts"
+        "../src/generate/lib/codeWriter.ts",
+        "../src/generate/lib/generator.ts",
+        "../src/load/types.ts"
       ],
       "../src/generate/mui-deepstream/index.ts": [
         "../src/load/types.ts"

@@ -7,12 +7,12 @@ import {
   SourceNode, StringConst, Workspace, sysRoles, isDocument, isProcess, isWidgetContent, EnumType, UseType1,
   Process, Function, View, Type, Document, RoleDef, Code, I18N, arrayConst, Icon, PackageUse, PackageUses,
   Task, UseTask, AllowSysRole, AllowLocRoles, AllowRoles, Fields, Field, UseType, BindVar, ProcessVars,
-  UseView, UseFunction, BindVars, FunctionLevel, Widgets, ViewAction, BaseType, NormalType, normalTypes, DocFields, DocIndexes,
+  UseView, UseFunction, BindVars, FunctionLevel, ViewAction, BaseType, NormalType, normalTypes, DocFields, DocIndexes,
   DocumentStates, DocActions, DocAction, DocField, DocIndex, DocumentState, UseDocStates, Routes, Pagelets,
   Pagelet, Menu, MenuItem, MenuItemSeparator, SourceNodeMapped, SourceNodeRefsKind, isPackage, RouteRedirect,
   RouteCode, RoleGroup, TsNode, basicTypes3, PackageRefs, PackageRef, isView, EnumOption, ComplexType, ArrayType,
-  UseTypeAsArray, Types, SourceNodeKind, SourceNodeObjectKind, SourceNodeArrayKind, BuilderConfig, AppMappings, RoleDefs, RoleGroups,
-  WidgetEntry, WidgetMarkdown, WidgetContent, AnyRole, ProcessUse, SourceRef, WidgetItem, SourceNodeWidgetKind
+  UseTypeAsArray, Types, SourceNodeKind, SourceNodeObjectKind, SourceNodeArrayKind, BuilderConfig, AppMappings, 
+  RoleDefs, RoleGroups,  WidgetEntry, WidgetMarkdown, WidgetContent, AnyRole, ProcessUse, SourceRef, WidgetItem, 
 } from './types'
 
 export async function loadApp(ws: Workspace, appName: string): Promise<Application> {
@@ -274,7 +274,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           const propNode = p.getNameNode()
           const propName = parsePropertyName(propNode)
           invokeProp(propNode, propName, p)
-        } else ws.error(p.getText() + ': tipo de propriedade não tratado', p)
+        } else ws.fatal(p.getText() + ': tipo de propriedade não tratado', p)
         // ts.PropertyAssignment | ShorthandPropertyAssignment | SpreadAssignment | ts.MethodDeclaration | AccessorDeclaration;
 
         //ts.NoSubstitutionTemplateLiteral | TemplateExpression | ts.BooleanLiteral |  ts.StringLiteral | ts.NumericLiteral | ObjectLiteralElementLike
@@ -1130,7 +1130,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       if (argsview.length !== 1) ws.error(expr1View.getSourceFile().getFilePath() + ' views precisa de um parametro', expr1View)
       pkg.views = parseColObjArg('Views', argsview[0], (itmView, viewName) => {
         const vprops = parseObjArg(itmView, {
-          content: parseWidgets,
+          content: parseWidgetContent,
           primaryAction: parseAction,
           secondaryAction: parseAction,
           otherActions: parserForArrArg('otherActions', parseAction)
@@ -1160,9 +1160,14 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         return parseWidgetItem(argWidget)
       }
       function parseWidgetContent(argWidget: ts.Node): WidgetContent {
-        const cwprops = parseObjArg(argWidget, {
+        const cwprops: {
+          caption?: I18N,
+          widgets: ArrayConst<'Widgets',WidgetContent  | WidgetItem<any>>
+        } = isArrArg(argWidget) ? {
+          widgets: parserForArrArg('Widgets', parseWidget)(argWidget)
+        } : parseObjArg(argWidget, {
           caption: parseI18N,
-          content: parseWidgets,
+          widgets: parserForArrArg('Widgets', parseWidget),
         }, ['caption'])
         const cwidget: WidgetContent = {
           kind: 'WidgetContent',
@@ -1221,9 +1226,6 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           }
         }
         return iwidget
-      }
-      function parseWidgets(argWidget: ts.Node): Widgets {
-        return parserForArrArg('Widgets', parseWidget)(argWidget)
       }
 
       function parseAction(argAction: ts.Node): ViewAction {
@@ -1576,9 +1578,9 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     function refViewFields(view: View) {
       const ret = packageRefs<Field>([])
 
-      view.content.items.forEach(add)
+      view.content.widgets.items.forEach(add)
       function add(w: WidgetContent | WidgetItem<any>) {
-        if (isWidgetContent(w)) w.content.items.forEach(add)
+        if (isWidgetContent(w)) w.widgets.items.forEach(add)
         else {
           w.widgetFields().props.forEach((field) => {
             if (!ret.items.some((i) => i.path === field.key.str)) {

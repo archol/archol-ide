@@ -332,6 +332,8 @@ declare interface ${pkgid}_view_${viewName}_Decl {
 }
 declare type ${pkgid}_view_${viewName}_DeclContent = ${pkgid}_view_${viewName}_DeclWidgget[]
 declare type ${pkgid}_view_${viewName}_DeclWidgget = {
+  content: ${pkgid}_view_${viewName}_DeclContent
+} | {
   model: 'show' | 'edit'
   field: string
   type: ${pkgid}_TypeName
