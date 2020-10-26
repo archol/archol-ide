@@ -20,8 +20,8 @@ export interface CodeWriter {
     filter?: (val: T, name: StringConst) => boolean,
     heading?: CodePartL[]
   ): CodeLines
-  code(node: Code, opts?: { after?: CodePartL[], forceRetType?: string }): MethodDecl
-  methodDecl(args: string[], ret: string, statements: null | CodePartL[]): MethodDecl
+  code(node: Code, opts?: { after?: CodePartL[], forceRetType?: string }): FuncDecl
+  funcDecl(args: string[], ret: string, statements: null | CodePartL[]): FuncDecl
   array(arr: CodePartL[]): CodeLines
   object(obj: { [name: string]: CodePartL }): CodeLines
   object(obj: { [name: string]: CodePartLo }, objNode: SourceNode<any>): CodeLines
@@ -30,7 +30,7 @@ export interface CodeWriter {
 }
 
 export type CodePartR = string | string[] | CodeLines
-export type CodePartLb = CodePartR | SourceNode<any> | CodePartL[] | MethodDecl |
+export type CodePartLb = CodePartR | SourceNode<any> | CodePartL[] | FuncDecl |
   NodeTransformer<any, any> | Array<ObjectConstProp<any, any>> | ObjectConstProp<any, any>
 export type CodePartL = CodePartLb | (() => CodePartL)
 export type CodePartLo = CodePartLb | (<T extends SourceNodeKind>(n: SourceNode<T>) => CodePartL)
@@ -55,16 +55,16 @@ export function isCodeLine(o: any): o is CodeLine {
   return o && (o as any).$parts$
 }
 
-export interface MethodDecl {
-  $method$: {
+export interface FuncDecl {
+  $func$: {
     args: string[]
     ret: string
     body: null | CodeLines
   }
 }
 
-export function isMethodDecl(o: any): o is MethodDecl {
-  return o && (o as any).$method$
+export function isFuncDecl(o: any): o is FuncDecl {
+  return o && (o as any).$func$
 }
 
 export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>, info: GenInfo<CFG>): CodeWriter {
@@ -104,7 +104,7 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
             ])),
         '{', '}', ',')
     },
-    code(node, opts): MethodDecl {
+    code(node, opts): FuncDecl {
       const body: CodePartL[] = node.body.map(b => b.getText())
       let retType = node.ret.getText()
       if (opts) {
@@ -115,16 +115,16 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
       //   ['(', node.params.map(p => p.getText()).join(','), ')', retType ? ':' : '', retType, '=>', body]
       // ], '', '', '')
       wSelf.lines(body, '', '', '')
-      return wSelf.methodDecl(
+      return wSelf.funcDecl(
         node.params.map(p => p.getText()),
         retType,
         body
       )
     },
-    methodDecl(args: string[], ret: string, statements: null | CodePartL[]): MethodDecl {
+    funcDecl(args: string[], ret: string, statements: null | CodePartL[]): FuncDecl {
       const body = statements && wSelf.statements(statements, true)
       return {
-        $method$: {
+        $func$: {
           args, ret, body
         }
       }
@@ -162,7 +162,7 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
   function propv(key: string | StringConst, v: CodePartL) {
     const sk = isStringConst(key) ? key.str : key
     const k = /^\w+$/.test(sk) ? sk : wSelf.string(sk)
-    if (isMethodDecl(v)) return [k, v]
+    if (isFuncDecl(v)) return [k, v]
     return [k, ':', v]
   }
 
@@ -203,16 +203,16 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
     return fres
     function flat(p: CodePartL) {
       if (isCodeLines(p)) fres.push(p)
-      else if (isMethodDecl(p)) {
+      else if (isFuncDecl(p)) {
         fres.push('(')
-        fres.push(p.$method$.args.join(', '))
+        fres.push(p.$func$.args.join(', '))
         fres.push(')')
-        if (p.$method$.ret) {
+        if (p.$func$.ret) {
           fres.push(':')
-          fres.push(p.$method$.ret)
+          fres.push(p.$func$.ret)
         }
-        if (p.$method$.body)
-          fres.push(p.$method$.body)
+        if (p.$func$.body)
+          fres.push(p.$func$.body)
       }
       // fres.push({
       //   ...p,

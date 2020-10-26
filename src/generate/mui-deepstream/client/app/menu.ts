@@ -32,7 +32,7 @@ export const generateClientMenu = sourceTransformer({
           if (isCode(v)) return w.code(v)
           if (isStringConst(v)) {
             info.src.require('appWindowDoc', '../docs/app/appwindow', v)
-            return w.methodDecl([], '', [
+            return w.funcDecl([], '', [
               ['appWindowDoc.goUrl(', w.string(v), ')']
             ])
           }

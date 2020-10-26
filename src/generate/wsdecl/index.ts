@@ -338,7 +338,6 @@ declare type ${pkgid}_view_${viewName}_DeclWidgget = {
 } | { markdown: I18N } 
 declare interface ${pkgid}_view_${viewName}_DeclData {
   ${view.refs.fields.items.map((f) => {
-    debugger
     return `${f.path}: ${f.ref.type ? f.ref.type.base(null): 'invalid type'}`
   })}
 }

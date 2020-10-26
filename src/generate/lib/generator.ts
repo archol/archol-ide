@@ -42,7 +42,8 @@ export interface NodeTransformerFactory<CFG extends object, NT extends GenNodes<
 }
 
 export interface NodeTransformer<CFG extends object, NT extends GenNodes<CFG>> {
-  transformNode: CFG & NT
+  transformations: CFG & NT
+  transformNode: SourceNode<any>
   transform(parent: Array<GenNodes<CFG>>, info: GenInfo<CFG>): CodePartL
 }
 
@@ -52,7 +53,8 @@ export function nodeTransformer<CFG extends object, NT extends GenNodes<CFG>>(
     transformerFactory: true as any as CFG & NT,
     make(node: SourceNode<any>, cfg: CFG): NodeTransformer<CFG, NT> {
       const r2: NodeTransformer<CFG, NT> = {
-        transformNode: true as any as CFG & NT,
+        transformations: transforms as any as CFG & NT,
+        transformNode: node,
         transform(parent: Array<GenNodes<CFG>>, info: GenInfo<CFG>): CodePartL {
           const w2 = codeWriter([transforms, ...parent], { ...info, cfg: { ...info.cfg, ...cfg } })
           return w2.transform(node)
@@ -131,7 +133,7 @@ export async function generateApplication<CFG extends object, SW extends GenNode
   function openSourceFile(projectPath: string, filePath: string) {
     const fn = join(ws.path, projectPath, 'src', filePath)
     const prj = openProject(projectPath)
-    const src = prj.getSourceFile(fn) || prj.createSourceFile(fn)
+    const src = prj.getSourceFile(fn) || prj.createSourceFile(fn, undefined, {overwrite: true})
     if (!srcs[fn]) {
       src.removeText()
       srcs[fn] = true
@@ -154,7 +156,7 @@ export async function generateApplication<CFG extends object, SW extends GenNode
   function transformFileDecl<CFG extends object, ST extends GenNodes<CFG>>(
     prj: ProjectTransformer<any, any>, src: SourceTransformer<any, any>) {
     if (isSourceTransformerOne(src)) 
-    return genereateFile(prj, src.filePath, src.transformations)
+    return genereateFile(prj, src.filePath, src.transformations, app)
     
     const wnll = codeWriter([src.transformations], {
       ws,
@@ -177,12 +179,16 @@ export async function generateApplication<CFG extends object, SW extends GenNode
       subfilePath: string,
       subtransformations: NodeTransformer<CFGsub, STsub>        
       ): void  {
-        genereateFile<CFGsub, STsub>(prj, subfilePath, subtransformations.transformNode)
+        genereateFile<CFGsub, STsub>(prj, subfilePath, subtransformations.transformations, subtransformations.transformNode)
       }    
   
 
   function genereateFile<CFG extends object, ST extends GenNodes<CFG>>(
-    prj: ProjectTransformer<any, any>, filePath: string, srctransformations: ST): void {
+    prj: ProjectTransformer<any, any>, 
+    filePath: string, 
+    srctransformations: ST,
+    startNode: SourceNode<any>
+    ): void {
     const srcUsed: { [id: string]: TsNode } = {}
     let srcIdentifiers: {
       [id: string]: {
@@ -206,7 +212,7 @@ export async function generateApplication<CFG extends object, SW extends GenNode
       transformFile: transformFileInt,
       cfg
     })
-    let rest = w.transform(app)
+    let rest = w.transform(startNode)
 
     while (Object.keys(srcIdentifiers).length) {
       const srcids = srcIdentifiers

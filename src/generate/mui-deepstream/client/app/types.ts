@@ -49,7 +49,7 @@ const genProcessRef = nodeTransformer({
     return [
       'export interface ' + procuri + 'Ref',
       w.object({
-        start: w.methodDecl([], procuri + 'Instance', null)
+        start: w.funcDecl([], procuri + 'Instance', null)
       })
     ]
   },
