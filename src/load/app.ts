@@ -11,7 +11,7 @@ import {
   DocumentStates, DocActions, DocAction, DocField, DocIndex, DocumentState, UseDocStates, Routes, Pagelets,
   Pagelet, Menu, MenuItem, MenuItemSeparator, SourceNodeMapped, SourceNodeRefsKind, isPackage, RouteRedirect,
   RouteCode, RoleGroup, TsNode, basicTypes3, PackageRefs, PackageRef, isView, EnumOption, ComplexType, ArrayType,
-  UseTypeAsArray, Types, SourceNodeKind, SourceNodeObjectKind, SourceNodeArrayKind, BuilderConfig, AppMappings, RoleDefs, RoleGroups, WidgetItem, WidgetContent, AnyRole, ProcessUse
+  UseTypeAsArray, Types, SourceNodeKind, SourceNodeObjectKind, SourceNodeArrayKind, BuilderConfig, AppMappings, RoleDefs, RoleGroups, WidgetItem, WidgetContent, AnyRole, ProcessUse, SourceRef
 } from './types'
 
 export async function loadApp(ws: Workspace, appName: string): Promise<Application> {
@@ -465,7 +465,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     const procuri = parseStrArg<'ProcessUse'>(argProcUse)
     const ret: ProcessUse = {
       ...procuri,
-      ref(sourceRef){
+      ref(sourceRef) {
         return sourceRef as any
       }
     }
@@ -721,7 +721,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       kind: KIND,
       where: keyof Package,
       isInternal: (str: string) => T | false
-      invalid: (str: string) => Omit<Omit<T, 'sourceRef'>, 'kind'>
+      invalid: (ws: Workspace, str: string, ref: SourceRef) => Omit<Omit<T, 'sourceRef'>, 'kind'>
     }): (sourceRefGet: TsNode) => T {
       return (sourceRefGet: TsNode | null) => {
         const internal = opts.isInternal(opts.refId.str)
@@ -737,7 +737,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         } else tn = pkgid.str + '.type.' + tn
 
         const inv: T = {
-          ...opts.invalid(tn),
+          ...opts.invalid(ws, tn, ws.getRef(opts.refId)),
           kind: opts.kind as any,
           sourceRef: sourceRefGet
         } as any
@@ -890,13 +890,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             refId: strTypeName,
             where: 'types',
             isInternal: (s) => (basicTypes3 as any)[s],
-            invalid(s) {
-              return {
-                base: {
-                  kind: 'invalid_' + s
-                }
-              }
-            }
+            invalid: makeInvalid
           })
         }
         return retTypeArr
@@ -907,20 +901,20 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           type: strTypeName,
           base(sourceRef: TsNode | null): string {
             const typeRef = retType1.ref(sourceRef)
-            return typeRef.base().base
+            try {
+              return typeRef.base().base
+            } catch (e) {
+              console.log(typeRef)
+              console.log(e)
+              throw e
+            }
           },
           ref: packageGetRef({
             kind: 'NormalType',
             refId: strTypeName,
             where: 'types',
             isInternal: (s) => (basicTypes3 as any)[s],
-            invalid(s) {
-              return {
-                base: {
-                  kind: 'invalid_' + s
-                }
-              }
-            }
+            invalid: makeInvalid
           })
         }
         return retType1
@@ -1606,6 +1600,33 @@ function packageRefs<T extends SourceNode<any>>(items: Array<PackageRef<T>>): Pa
     find(path) {
       return ret.items.filter((i) => i.path === path)[0]
     },
+  }
+  return ret
+}
+
+function makeInvalid(ws: Workspace, s: string, sourceRef: SourceRef) {
+  ws.error('Invalid type: '+s, sourceRef)
+  const ret: NormalType = {
+    kind: basicTypes3.invalid.kind,
+    sourceRef,
+    base() {
+      return {
+        kind: 'BaseType',
+        sourceRef,
+        base: 'invalid',
+        enumOptions: false,
+        complexFields: false,
+        arrayType: false
+      }
+    },
+    nodeMapping: {
+      id: 'invalid' + s
+    },
+    name: {
+      kind: 'StringConst',
+      sourceRef,
+      str: 'invalid ' + s
+    }
   }
   return ret
 }

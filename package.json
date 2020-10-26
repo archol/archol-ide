@@ -6,6 +6,7 @@
   "author": "thr0w <josefernandotolentino@gmail.com>",
   "license": "MIT",
   "scripts": {
+    "start": "npm run appcvv",
     "appcvv": "nodemon --watch \"./**\" --ext \"ts,json\" --ignore \"./**/*.spec.ts\" --exec \"ts-node -r tsconfig-paths/register src/index.ts\" \"/home/thr0w/projects/appcvv\" AppCVV"
   },
   "dependencies": {

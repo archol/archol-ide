@@ -180,8 +180,10 @@ ${pkg.refs.baseTypes.items.map((b) => {
       }).join('')
       }
 
-declare type ${pkgid}_TypeDecl = ${typePipeObj(Object.keys(normalTypes).map((b) => {
-        if (b === 'enum') return `{
+declare type ${pkgid}_TypeDecl = ${typePipeObj(Object.keys(normalTypes)
+        .filter((b) => b !== 'invalid')
+        .map((b) => {
+          if (b === 'enum') return `{
           base: "enum"
           options: {
             [key:string]: {
@@ -191,27 +193,27 @@ declare type ${pkgid}_TypeDecl = ${typePipeObj(Object.keys(normalTypes).map((b) 
             }
           }
         }`
-        if (b === 'complex') return `
+          if (b === 'complex') return `
           {
             base: "complex"
             fields: {
               [key:string]: ${pkgid}_TypeDecl
             }
           }`
-        if (b === 'array') return `
+          if (b === 'array') return `
           {
             base: "array"
             item: ${pkgid}_TypeDecl
           }  
           `
-        const js = b === 'date' ? 'Date' : b
-        return `{
+          const js = b === 'date' ? 'Date' : b
+          return `{
           base: ${quote(b)}
           validate?(this: void, val: ${js}): string | false
           format?(this: void, val: ${js}): string
           parse?(this: void, str: string): ${js}
           }`.trim()
-      }))
+        }))
       }
 
 interface ${pkgid}_DeclFields {

@@ -226,6 +226,7 @@ export interface RoleGroup extends SourceNodeMapped<'RoleGroup'> {
 export type Types = ObjectConst<'Types', Type>
 
 export const normalTypes = {
+  invalid: true,
   enum: false,
   complex: false,
   array: false,
@@ -239,6 +240,19 @@ export type BasicTypesOnly = Exclude<Exclude<Exclude<keyof typeof normalTypes, '
 export const basicTypes3: {
   [k in BasicTypesOnly]: NormalType
 } = {
+  invalid: {
+    kind: 'NormalType',
+    sourceRef: unkownErrorPos,
+    base: () => ({ kind: 'BaseType', sourceRef: unkownErrorPos, base: 'invalid', enumOptions: false, complexFields: false, arrayType: false }),
+    nodeMapping: {
+      id: 'invalid'
+    },
+    name: {
+      kind: 'StringConst',
+      sourceRef: unkownErrorPos,
+      str: 'invalid'
+    }
+  },
   string: {
     kind: 'NormalType',
     sourceRef: unkownErrorPos,
