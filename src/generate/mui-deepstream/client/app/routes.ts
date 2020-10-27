@@ -5,7 +5,6 @@ export const generateClientRoutes = sourceTransformer({
   cfg: {},
   transformations: {
     Application(w, app, { src }) {
-      src.requireDefault('React', 'react', app)
       src.require('AppRoute', '~/lib/archol/types', app)
 
       return w.statements([

@@ -437,7 +437,7 @@
         "affectsGlobalScope": false
       },
       "../src/generate/wsdecl/index.ts": {
-        "version": "99842631210deea6e0279f1c087b50a0a304d78164cde7a5759438aaea5ee71a",
+        "version": "a020a15dbbe741b0e3ceac627187ddf1ebe9306a47026afc872f8871c890d671",
         "signature": "544ef4123b7a3b8233523f79c22181d1420e324af2cccbee25720bf0d605c5f2",
         "affectsGlobalScope": false
       },
@@ -462,7 +462,7 @@
         "affectsGlobalScope": false
       },
       "../src/generate/mui-deepstream/client/app/routes.ts": {
-        "version": "0e7d49de0e8ccf839acacca089b26d4f2e8a0dcdbcaa48e12f953643aab7b60a",
+        "version": "691e35412925c0f2b8304cdc7376cee35f5ef612d6f8699c0649d008a542511f",
         "signature": "2c445982ea08924dd4318c1b5b37f18cac16cf5d37ac82939788a8f3f5209350",
         "affectsGlobalScope": false
       },
@@ -472,7 +472,7 @@
         "affectsGlobalScope": false
       },
       "../src/generate/mui-deepstream/client/app/types.ts": {
-        "version": "c54af7725da1b1d627dce48bf495901580ab9fade16f9ae6ef4d8b2170d854fc",
+        "version": "d935ae4cca5ed3277eb03420651f61871f6da739e7c6e05e4ff406024ce0f5c2",
         "signature": "ebdfbe3f5ee11027aa0e82b6ee2f3fd7d90fa2af09f2083180dab9cc5d4bd639",
         "affectsGlobalScope": false
       },
@@ -509,6 +509,11 @@
       "../src/generate/mui-deepstream/worker/index.ts": {
         "version": "e4d05660647ad9d47dd9c74f2f6fbd2a77f4387bb09b9fe6e0cf70ab3aae1d90",
         "signature": "fce40aa1d97ca9506aaef93bb7c967566f9ba5aca0e9527c5df3d40f691da22f",
+        "affectsGlobalScope": false
+      },
+      "../node_modules/@types/json-schema/index.d.ts": {
+        "version": "b2be568d8ce95fcb26eebd04c035d94825655fdf689bf67d799f5ff8cbbb1024",
+        "signature": "b2be568d8ce95fcb26eebd04c035d94825655fdf689bf67d799f5ff8cbbb1024",
         "affectsGlobalScope": false
       },
       "../node_modules/@types/json5/index.d.ts": {
@@ -1109,6 +1114,7 @@
     },
     "semanticDiagnosticsPerFile": [
       "../node_modules/@ts-morph/common/lib/ts-morph-common.d.ts",
+      "../node_modules/@types/json-schema/index.d.ts",
       "../node_modules/@types/json5/index.d.ts",
       "../node_modules/@types/minimatch/index.d.ts",
       "../node_modules/@types/mkdirp/index.d.ts",

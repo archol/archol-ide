@@ -250,7 +250,7 @@ declare interface ${pkgid}_process_${procName}_Decl {
 }
 declare type ${pkgid}_process_${procName}_Tasknames = ${typePipeStr(process.tasks.props.map((t) => t.key.str))}
 declare interface ${pkgid}_process_${procName}_Ref {
-  start(): ${pkgid}_process_${procName}_Instance;
+  start(${process.vars.input.props.map((v) => v.key.str + ': ' + v.val.type.base(v.val)).join(',')}): ${pkgid}_process_${procName}_Instance;
 }
 declare interface ${pkgid}_process_${procName}_Instance {
   vars: ${pkgid}_process_${procName}_InstanceVars,
@@ -340,11 +340,11 @@ declare type ${pkgid}_view_${viewName}_DeclWidgget = {
 } | { markdown: I18N } 
 declare interface ${pkgid}_view_${viewName}_DeclData {
   ${view.refs.fields.props.map((f) => {
-    return `${f.key.str}: ${f.val.type ? f.val.type.base(null): 'invalid type'}`
-  })}
+        return `${f.key.str}: ${f.val.type ? f.val.type.base(null) : 'invalid type'}`
+      })}
 }
 declare interface ${pkgid}_view_${viewName}_DeclBind<S> {
-  ${view.refs.fields.props.map((f) => `${f.val}: S`)}
+  ${view.refs.fields.props.map((f) => `${f.key.str}: S`)}
 }
 `.trimStart())
     }
