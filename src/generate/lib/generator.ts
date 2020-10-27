@@ -1,6 +1,6 @@
 import ts, { CodeBlockWriter, Project, SourceFile } from 'ts-morph'
 import { Application, ArrayConst, isArrayConst, isCode, isObjectConst, isStringConst, ObjectConst, SourceNode, SourceNodeKind, SourceNodeType, SourceRef, StringConst, TsNode, Workspace } from 'load/types'
-import { CodePartL, CodeWriter, codeWriter } from './codeWriter'
+import { CodePartL, CodePartR, CodeWriter, codeWriter } from './codeWriter'
 import { join, resolve, dirname } from 'path'
 import { mapObject, mapObjectToArray, mergeObjWith, tildeExpand } from 'utils'
 
@@ -86,7 +86,7 @@ export interface GenInfo<CFG extends object> {
   src: {
     require(identifier: string, module: string, sourceRef: TsNode): void
     requireDefault(identifier: string, module: string, sourceRef: TsNode): void
-    chip<CFG2 extends object>(id: string, sourceRef: TsNode, nt: () => NodeTransformer<CFG2, any>): string
+    chip<CFG2 extends object>(id: string, sourceRef: TsNode, pos: number, nt: () => NodeTransformer<CFG2, any>): string
   }
   node: {
 
@@ -193,9 +193,10 @@ export async function generateApplication<CFG extends object, SW extends GenNode
       cfg: CFG
     ): void {
       const srcUsed: { [id: string]: TsNode } = {}
-      let srcIdentifiers: {
+      let srcChips: {
         [id: string]: {
           transform(): NodeTransformer<any, any>
+          pos: number
         }
       } = {}
       const srcRequires: {
@@ -216,16 +217,26 @@ export async function generateApplication<CFG extends object, SW extends GenNode
         transformFile: transformFileInt,
         cfg
       })
-      let rest = w.transform(startNode)
 
-      while (Object.keys(srcIdentifiers).length) {
-        const srcids = srcIdentifiers
-        srcIdentifiers = {}
+      let chips: Array<{ part: CodePartR[], pos: number }> = [{
+        part: w.transform(startNode),
+        pos: 0,
+      }]
+      while (Object.keys(srcChips).length) {
+        const srcids = srcChips
+        srcChips = {}
         mapObjectToArray(srcids, (val, key) => {
-          rest = rest.concat(w.statements([val.transform()], false))
+          chips.push({
+            part: [w.statements([val.transform()], false)],
+            pos: val.pos
+          })
         })
       }
-
+      const rest = chips
+        .sort((a, b) => a.pos - b.pos)
+        .reduce<CodePartR[]>((prev, curr) => {
+          return prev.concat(curr.part)
+        }, [])
       const res = w.resolveCode(rest)
       mapObjectToArray(srcRequires, (val, key) => {
         const preq: string[] = [];
@@ -233,7 +244,7 @@ export async function generateApplication<CFG extends object, SW extends GenNode
         if (val.ids.length) preq.push('{ ' + val.ids.join(', ') + ' }')
         debugger
         const fname = tildeExpand(filePath, key)
-        srcfile.addStatements('import ' + preq.join(', ') + ' from "' + fname + '"')
+        srcfile.addStatements('import ' + preq.join(', ') + ' from "' + fname + '";')
       })
 
       srcfile.addStatements(res)
@@ -256,10 +267,11 @@ export async function generateApplication<CFG extends object, SW extends GenNode
         const req = srcRequires[module] || (srcRequires[module] = initReq())
         req.def = id
       }
-      function chip<CFG2 extends object>(id: string, sourceRef: TsNode, nt: () => NodeTransformer<CFG2, any>): string {
+      function chip<CFG2 extends object>(id: string, sourceRef: TsNode, pos: number, nt: () => NodeTransformer<CFG2, any>): string {
         useId(id, sourceRef)
-        srcIdentifiers[id] = {
-          transform: nt
+        srcChips[id] = {
+          transform: nt,
+          pos
         }
         return id
       }

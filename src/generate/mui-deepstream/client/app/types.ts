@@ -8,6 +8,10 @@ export const generateClientTypes = sourceTransformer({
     Application(w, app, { src }) {
       return w.statements([
         ['export interface AppRef ', app.uses],
+        'export type Tstring=string',
+        'export type Tnumber=number',
+        'export type Tboolean=boolean',
+        'export type Tdate=number',
       ], false)
     },
     PackageUses(w, pkgs) {
@@ -15,7 +19,7 @@ export const generateClientTypes = sourceTransformer({
     },
     PackageUse(w, pkg, { src }) {
       const pkguri = pkg.ref(pkg).uri.id.str
-      return src.chip(pkguri + 'Ref', pkg, () => genPkgRef.make(pkg, { pkguri }))
+      return src.chip('T' + pkguri + 'Ref', pkg, 1, () => genPkgRef.make(pkg, { pkguri }))
     },
   },
 })
@@ -30,16 +34,17 @@ const genPkgRef = nodeTransformer({
   Package(w, pkg, { src }) {
     const pkguri = pkg.uri.id.str
     pkg.types.props.forEach(t => src.chip(
-      '', t.val, () => genType.make(t.val, { pkguri }))
+      '', t.val, 1,
+      () => genType.make(t.val, { pkguri }))
     )
     return [
-      'export interface ', pkguri, 'Ref',
+      'export interface T', pkguri, 'Ref',
       w.object({
         process: w.mapObj(pkg.processes, (val, key) =>
-          src.chip(pkguri + '_proc_' + key.str + 'Ref', pkg, () => genProcessRefTypes.make(val, { pkguri }))
+          src.chip('T' + pkguri + '_proc_' + key.str + 'Ref', pkg, 1, () => genProcessRefTypes.make(val, { pkguri }))
         ),
         view: w.mapObj(pkg.views, (val, key) =>
-          src.chip(pkguri + '_view_' + key.str + 'Instance', pkg, () => genViewInstanceType.make(val, { pkguri }))
+          src.chip('T' + pkguri + '_view_' + key.str + 'Instance', pkg, 1, () => genViewInstanceType.make(val, { pkguri }))
         )
       })
     ]
@@ -49,12 +54,12 @@ const genPkgRef = nodeTransformer({
 const genProcessRefTypes = nodeTransformer({
   Process(w, proc, info) {
     const procuri = info.cfg.pkguri + '_proc_' + proc.name.str
-    info.src.chip(procuri + 'Instance', proc, () => genProcessInstanceType.make(proc, { procuri }))
+    info.src.chip('T' + procuri + 'Instance', proc, 1, () => genProcessInstanceType.make(proc, { procuri }))
     return [
-      'export interface ' + procuri + 'Ref',
+      'export interface T' + procuri + 'Ref',
       w.object({
         start: w.funcDecl(proc.vars.input.props
-          .map((v) => v.key.str + ':' + v.val.type.base(v.val)), procuri + 'Instance', null)
+          .map((v) => v.key.str + ':' + v.val.type.base(v.val)), 'T' + procuri + 'Instance', null)
       })
     ]
   },
@@ -64,13 +69,13 @@ const genProcessInstanceType = nodeTransformer({
   Process(w, proc, info) {
     return w.statements([
       [
-        'export interface ', info.cfg.procuri, 'Instance',
+        'export interface T', info.cfg.procuri, 'Instance',
         w.object({
-          vars: [info.cfg.procuri, 'InstanceVars']
+          vars: ['T', info.cfg.procuri, 'InstanceVars']
         })
       ],
       [
-        'export interface ', info.cfg.procuri, 'InstanceVars',
+        'export interface T', info.cfg.procuri, 'InstanceVars',
         w.object({
           local: genFields.make(proc.vars.local, {}),
           input: genFields.make(proc.vars.input, {}),
@@ -87,7 +92,7 @@ const genType = nodeTransformer({
   },
   EnumType(w, t, info) {
     return [
-      'export type ', info.cfg.pkguri, '_enum_', t.name.str, ' = ',
+      'export type T', info.cfg.pkguri, '_enum_', t.name.str, ' = ',
       t.options.props.map((o) => w.string(o.key.str)).join(' | ')
     ]
   },
@@ -108,7 +113,7 @@ const genViewInstanceType = nodeTransformer({
     info.src.require('ArcholVars', '~/lib/archol/types', view)
     const viewuri = info.cfg.pkguri + '_view_' + view.name.str
     return [
-      'export interface ' + viewuri + 'Instance',
+      'export interface T' + viewuri + 'Instance',
       w.object({
         vars: ['ArcholVars<', genFields.make(view.refs.fields, {}), '>']
       })

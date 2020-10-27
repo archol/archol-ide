@@ -33,7 +33,7 @@ const genView = nodeTransformer({
     const body: CodePartL[] = [
       ['return ', render]
     ]
-    const vinst = cfg.pkguri + '_view_' + v.name.str + 'Instance'
+    const vinst = 'T' + cfg.pkguri + '_view_' + v.name.str + 'Instance'
     if (hasfields)
       src.require(vinst, '~/app/types', v);
 

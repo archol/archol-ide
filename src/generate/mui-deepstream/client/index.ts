@@ -7,6 +7,7 @@ import { generateClientRoles } from './app/roles';
 import { generateClientRoutes } from './app/routes'
 import { generateClientTypes } from './app/types';
 import { generateClientViews } from './app/views';
+import { generateClientApp } from './app/app';
 
 export const generateClientProject = projectTransformer({
   projectPath: 'client',
@@ -20,7 +21,7 @@ export const generateClientProject = projectTransformer({
     generateClientMenu,
     generateClientTypes,
     generateClientViews,
+    generateClientApp,
   ],
   cfg: {}
 })
- 
