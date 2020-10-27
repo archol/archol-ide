@@ -482,7 +482,7 @@
         "affectsGlobalScope": false
       },
       "../src/generate/mui-deepstream/client/app/app.ts": {
-        "version": "a273fffe2a4061214791bb3193613e0a281aeb7d2dfe6df0ddf76513db0747d7",
+        "version": "370ddf8d30ec8d4ba8a4930f2f1c63a23b63be587e2ec2f36c23457c7221415f",
         "signature": "4fd60007cb2c74a32652e99073baba393e95313a261b659e9ab13c2eda35c78d",
         "affectsGlobalScope": false
       },
@@ -761,6 +761,8 @@
         "../src/utils.ts"
       ],
       "../src/generate/mui-deepstream/client/app/app.ts": [
+        "../node_modules/@types/node/path.d.ts",
+        "../src/generate/lib/codeWriter.ts",
         "../src/generate/lib/generator.ts",
         "../src/generate/mui-deepstream/client/app/fields.ts"
       ],

@@ -1,4 +1,6 @@
+import { CodePartL } from 'generate/lib/codeWriter'
 import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
+import { format } from 'path'
 import { genFields } from './fields'
 
 // const cadastrarVoluntario: cvv_org_br_cadastro_proc_cadastrarVoluntarioRef = {
@@ -54,12 +56,14 @@ const genPkgRef = nodeTransformer({
     },
     Package(w, pkg, { src }) {
         const pkguri = pkg.uri.id.str
-        pkg.types.props.forEach(t => src.chip(
-            '', t.val, -1000, () => genType.make(t.val, { pkguri }))
-        )
         return [
             'export const ', pkguri, 'Instance = ',
             w.object({
+                types: w.mapObj(pkg.types, (val, key) =>
+                    src.chip(
+                        '', val, -1000, () => genType.make(val, { pkguri })
+                    )
+                ),
                 process: w.mapObj(pkg.processes, (val, key) =>
                     src.chip(pkguri + '_proc_' + key.str + 'Ref', pkg, -10, () => genProcessRefTypes.make(val, { pkguri }))
                 ),
@@ -112,9 +116,34 @@ const genType = nodeTransformer({
         return ""
     },
     EnumType(w, t, info) {
+        const s = info.cfg.pkguri + '_enum_' + t.name.str
+        info.src.require('ArcholType', '~/lib/archol/types', t)
+        info.src.require('T' + s, './types', t)
         return [
-            'export const ', info.cfg.pkguri, '_enum_', t.name.str, ': Type = {}',
-            // t.options.props.map((o) => w.string(o.key.str)).join(' | ')
+            [
+                'export const ', s, ': ArcholType<T',
+                info.cfg.pkguri, '_enum_', t.name.str,
+                '> = ',
+                w.object({
+                    validate: w.funcDecl(['val: T' + s], 'string|undefined',
+                        t.options.props.map((o) => ['if (val===', w.string(o.key.str), ') return'])
+                            .concat([
+                                "return 'Valor inválido'"
+                            ])
+                    ),
+                    parse: w.funcDecl(['str: string | undefined'], 'T' + s + '|undefined',
+                        t.options.props.map((o) => ['if (str===', w.string(o.key.str), ') return str'] as CodePartL).concat(
+                            t.options.props.map((o) => ['if (str===', o.val.description, '()) return ', o.key])
+                        ).concat([
+                            "return"
+                        ])),
+                    format: w.funcDecl(['val: T' + s], 'string',
+                        t.options.props.map((o) => ['if (val===', w.string(o.key.str), ') return ', o.val.description, '()'] as CodePartL).
+                            concat([
+                                "return ''"
+                            ])),
+                })
+            ]
         ]
     },
     ComplexType(w, t, info) {
