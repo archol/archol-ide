@@ -2,7 +2,7 @@ import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
 import { genFields } from './fields'
 
 export const generateClientTypes = sourceTransformer({
-  filePath: 'app/types.ts',
+  filePath: '~/app/types.ts',
   cfg: {},
   transformations: {
     Application(w, app, { src }) {
@@ -104,12 +104,12 @@ const genType = nodeTransformer({
 
 const genViewInstanceType = nodeTransformer({
   View(w, view, info) {
-    info.src.require('ArcholVars', '../../../lib/archol/types', view)
+    info.src.require('ArcholVars', '~/lib/archol/types', view)
     const viewuri = info.cfg.pkguri + '_view_' + view.name.str
     return [
       'export interface ' + viewuri + 'Instance',
       w.object({
-        vars: ['ArcholVars<',genFields.make(view.refs.fields, {}), '>']        
+        vars: ['ArcholVars<', genFields.make(view.refs.fields, {}), '>']
       })
     ]
   },

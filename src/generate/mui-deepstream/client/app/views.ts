@@ -15,7 +15,7 @@ export const generateClientViews = sourceTransformer({
       const pkguri = pkg.uri.id.str
       pkg.views.props.forEach((v) => {
         debugger
-        transformFile('app/' + pkg.uri.id.str + '/views/' + v.key.str + '.tsx', genView.make(v.val, { pkguri }))
+        transformFile('~/app/' + pkg.uri.id.str + '/views/' + v.key.str + '.tsx', genView.make(v.val, { pkguri }))
       })
       return ''
     },
@@ -35,7 +35,7 @@ const genView = nodeTransformer({
     ]
     const vinst = cfg.pkguri + '_view_' + v.name.str + 'Instance'
     if (hasfields)
-      src.require(vinst, '../../types', v);
+      src.require(vinst, '~/app/types', v);
 
     return w.statements([
       [
@@ -48,25 +48,25 @@ const genView = nodeTransformer({
     ], false)
 
     function renderContent(content: WidgetContent): CodeLines {
-      src.require('ContentWidget', '../../../lib/components/widgets/content', content)
+      src.require('ContentWidget', '~/lib/components/widgets/content', content)
       return w.lines(
         content.widgets.items.map((itm) => {
-        if (isWidgetContent(itm)) return renderContent(itm)
-        else if (isWidgetEntry(itm)) return renderEntry(itm)
-        else if (isWidgetMarkdown(itm)) return renderMarkdown(itm)
-        throw ws.fatal('unsupported widget', itm)
-      }), '<ContentWidget>', '</ContentWidget>', '')
+          if (isWidgetContent(itm)) return renderContent(itm)
+          else if (isWidgetEntry(itm)) return renderEntry(itm)
+          else if (isWidgetMarkdown(itm)) return renderMarkdown(itm)
+          throw ws.fatal('unsupported widget', itm)
+        }), '<ContentWidget>', '</ContentWidget>', '')
     }
     function renderEntry(entry: WidgetEntry): CodePartL {
-      src.require('EntryWidget', '../../../lib/components/widgets/entry', entry)
+      src.require('EntryWidget', '~/lib/components/widgets/entry', entry)
       return [
-        '<EntryWidget vars={vinst.vars} path=',entry.field,' />'
+        '<EntryWidget vars={vinst.vars} path=', entry.field, ' />'
       ]
     }
     function renderMarkdown(md: WidgetMarkdown): CodePartL {
-      src.require('MarkdownWidget', '../../../lib/components/widgets/markdown', md)
+      src.require('MarkdownWidget', '~/lib/components/widgets/markdown', md)
       return [
-        '<MarkdownWidget text={', md.markdown, '} />'
+        '<MarkdownWidget text={', md.markdown, '()} />'
       ]
     }
   },

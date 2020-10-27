@@ -397,8 +397,8 @@
         "affectsGlobalScope": false
       },
       "../src/utils.ts": {
-        "version": "3ee4ec0f9984b211362dcceb75fc675b2a4f86738796b60cbffec87224677521",
-        "signature": "584a25cf13b102a36507bb1025588d4918abd98338a3421ae3e5fbbe4d0fdcb8",
+        "version": "9663006fdb800872af177289f59cd3bd94fa8c72e05bbcfb7d2b0979899ea13d",
+        "signature": "0a9632d6e839ea1d15131004579361fec767f17dc1d251cfb12fadf9a4d18c4b",
         "affectsGlobalScope": false
       },
       "../src/load/types.ts": {
@@ -427,7 +427,7 @@
         "affectsGlobalScope": false
       },
       "../src/generate/lib/generator.ts": {
-        "version": "6aca183f943de597515f8d74fa56e4a0507cd08fee9e83645cebfa103c3751d2",
+        "version": "f3120d9c0c9ba0d92f98236bbbc5027691912009c78afd51904636ae260f40dd",
         "signature": "329ea8a8427a7d7a19cec8af570217c416a962a2183f4928f90d613c06c4c1e4",
         "affectsGlobalScope": false
       },
@@ -442,27 +442,27 @@
         "affectsGlobalScope": false
       },
       "../src/generate/mui-deepstream/client/app/i18n.ts": {
-        "version": "c3e5143c0426b76a9c3034bf997ba573c3e37a868ee49ae093252e9cc6346238",
+        "version": "9a17569d48513751484ae5a11fd87555d59200a7e849fe9cc811249630018127",
         "signature": "b27c3b891fa6925169e999ca4b1a45754eaace5be07fe582a471405139f98ef1",
         "affectsGlobalScope": false
       },
       "../src/generate/mui-deepstream/client/app/icon.ts": {
-        "version": "6f166fd532baada112cd57a144f07415032f2b4eb22078a7950a5a0859ef2d83",
+        "version": "5bc45b2d1b5b03e9f38d1a07cbf48312ec227ac5bfdb583a639f456a9de604f8",
         "signature": "a9810cca0048acbfaf5b241a07319c63cd73c21cb07232fdafc89b57a1dbbd57",
         "affectsGlobalScope": false
       },
       "../src/generate/mui-deepstream/client/app/roles.ts": {
-        "version": "d0fcaec6d72db63e82d90f48107844c173ae61512b002ed6ef889a6cc45c49b6",
+        "version": "ec539c366e3ce1763fdf0452b9a54db6425b9693edeb7c3df4b264df83ef13c4",
         "signature": "7ab6e0828ca92a03609b40716fa2592128f9d581398a40f268eeb7b161083e2c",
         "affectsGlobalScope": false
       },
       "../src/generate/mui-deepstream/client/app/menu.ts": {
-        "version": "b52d5c07dd31dbc7929aab265d1449aa62768f5a7c16ea366da96b4ba388698f",
+        "version": "2d63cf254c1d151d8ea3cf27d7bcab7c308f2a53b970c44a7e15549fdee4390f",
         "signature": "c5080ce9cb9e5465b0cf5eb58e13ca0848d47e109cbe4d558afd547f96d22fe5",
         "affectsGlobalScope": false
       },
       "../src/generate/mui-deepstream/client/app/routes.ts": {
-        "version": "fbbf3f20e958551349e9c6ef7ba55706d95b0dd3d9e2cdbb6d4404b3f77560dc",
+        "version": "0e7d49de0e8ccf839acacca089b26d4f2e8a0dcdbcaa48e12f953643aab7b60a",
         "signature": "2c445982ea08924dd4318c1b5b37f18cac16cf5d37ac82939788a8f3f5209350",
         "affectsGlobalScope": false
       },
@@ -472,12 +472,12 @@
         "affectsGlobalScope": false
       },
       "../src/generate/mui-deepstream/client/app/types.ts": {
-        "version": "068812b8044af3ffad7eb9ba2df2229ecf257a273abcdf2b3237dc406064f337",
+        "version": "c54af7725da1b1d627dce48bf495901580ab9fade16f9ae6ef4d8b2170d854fc",
         "signature": "ebdfbe3f5ee11027aa0e82b6ee2f3fd7d90fa2af09f2083180dab9cc5d4bd639",
         "affectsGlobalScope": false
       },
       "../src/generate/mui-deepstream/client/app/views.ts": {
-        "version": "7797e54f22925a07f0dd85bddb6611cb6ceac8261da14e764c8e73b108924c39",
+        "version": "d72d0d8474b7d9386b61ae46a9b57f2b7cfb4851a497e7d5a569df9bbfc31602",
         "signature": "1c6c7335039caff404b52a1a120a0d4756db4c9543c5a9cd1b1e39415d02e612",
         "affectsGlobalScope": false
       },
@@ -492,7 +492,7 @@
         "affectsGlobalScope": false
       },
       "../src/generate/index.ts": {
-        "version": "5488674cbb47649869a6e365b2e916f61825ede593924562131d60b95ee66541",
+        "version": "c46e58a63a5f71b95d798b0b768b534559b0de91db66b8b8fc63ddd267f65bea",
         "signature": "6c290a0b7fa468e623c88681257b68ef792e73bcc6070e69318ff2bb3ebc3d88",
         "affectsGlobalScope": false
       },
@@ -838,6 +838,9 @@
         "../node_modules/ts-morph/lib/ts-morph.d.ts",
         "../src/load/app.ts",
         "../src/load/types.ts"
+      ],
+      "../src/utils.ts": [
+        "../node_modules/@types/node/path.d.ts"
       ]
     },
     "exportedModulesMap": {

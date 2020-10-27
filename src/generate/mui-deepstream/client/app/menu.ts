@@ -6,10 +6,10 @@ import { genIcon } from './icon'
 import { genUseRoles } from './roles'
 
 export const generateClientMenu = sourceTransformer({
-  filePath: 'app/menu.ts',
+  filePath: '~/app/menu.ts',
   transformations: {
     Application(w, app, { src }) {
-      src.require('AppMenuItem', '../lib/archol/types', app)
+      src.require('AppMenuItem', '~/lib/archol/types', app)
 
       return w.statements([
         ['export const menu: AppMenuItem[] = ', app.menu],
@@ -31,7 +31,7 @@ export const generateClientMenu = sourceTransformer({
         run(v) {
           if (isCode(v)) return w.code(v)
           if (isStringConst(v)) {
-            info.src.require('appWindowDoc', '../docs/app/appwindow', v)
+            info.src.require('appWindowDoc', '~/docs/app/appwindow', v)
             return w.funcDecl([], '', [
               ['appWindowDoc.goUrl(', w.string(v), ')']
             ])

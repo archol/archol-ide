@@ -5,12 +5,12 @@ import { genI18N } from './i18n'
 import { genIcon } from './icon'
 
 export const generateClientRoles = sourceTransformer({
-  filePath: 'app/roles.ts',
+  filePath: '~/app/roles.ts',
   cfg: {},
   transformations: {
     Application(w, app, { ws, src }) {
-      src.require('AppRole', '../lib/archol/types', app)
-      src.require('AppRoles', '../lib/archol/types', app)
+      src.require('AppRole', '~/lib/archol/types', app)
+      src.require('AppRoles', '~/lib/archol/types', app)
       return w.statements([
         genSysRoles.make(app.sysroles, {}),
         genPkgRolesDefs.make(app.uses, {}),
@@ -26,7 +26,7 @@ export const genUseRoles = nodeTransformer({
     return w.array(roles.ref(roles).map((r) => {
       const s = isRoleDef(r.role) ? r.pkg.uri.id.str + '_role_' + r.role.name.str :
         r.pkg.uri.id.str + '_role_' + r.role.name.str
-      info.src.require(s, './roles', roles)
+      info.src.require(s, '~/app/roles', roles)
       return s
     }))
   },
@@ -110,7 +110,7 @@ const genPkgRoles = nodeTransformer({
     ]), '', '', ',')
   },
   RoleDef(w, role, info) {
-    return info.stack.get('PackageUse').ref(role).uri.id.str + '_role_'  + role.name.str
+    return info.stack.get('PackageUse').ref(role).uri.id.str + '_role_' + role.name.str
   },
   RoleGroups(w, roles) {
     return w.lines([

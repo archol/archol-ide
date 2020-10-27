@@ -1,8 +1,8 @@
 import ts, { CodeBlockWriter, Project, SourceFile } from 'ts-morph'
 import { Application, ArrayConst, isArrayConst, isCode, isObjectConst, isStringConst, ObjectConst, SourceNode, SourceNodeKind, SourceNodeType, SourceRef, StringConst, TsNode, Workspace } from 'load/types'
 import { CodePartL, CodeWriter, codeWriter } from './codeWriter'
-import { join } from 'path'
-import { mapObject, mapObjectToArray, mergeObjWith } from 'utils'
+import { join, resolve, dirname } from 'path'
+import { mapObject, mapObjectToArray, mergeObjWith, tildeExpand } from 'utils'
 
 export interface ProjectTransformer<CFG extends object, PT extends GenNodes<CFG>> {
   projectPath: string,
@@ -16,16 +16,16 @@ export function projectTransformer<CFG extends object, ST extends GenNodes<CFG>>
   return info
 }
 
-export type SourceTransformer<CFG extends object, ST extends GenNodes<CFG>> = 
-SourceTransformerOne<CFG,ST> | SourceTransformerMany<CFG,ST>
+export type SourceTransformer<CFG extends object, ST extends GenNodes<CFG>> =
+  SourceTransformerOne<CFG, ST> | SourceTransformerMany<CFG, ST>
 
-export interface SourceTransformerOne<CFG extends object, ST extends GenNodes<CFG>>  {
+export interface SourceTransformerOne<CFG extends object, ST extends GenNodes<CFG>> {
   filePath: string,
   transformations: ST
   cfg: CFG
-} 
+}
 
-export interface SourceTransformerMany<CFG extends object, ST extends GenNodes<CFG>>  {
+export interface SourceTransformerMany<CFG extends object, ST extends GenNodes<CFG>> {
   multiple: true
   transformations: ST
   cfg: CFG
@@ -42,7 +42,7 @@ export interface NodeTransformerFactory<CFG extends object, NT extends GenNodes<
 }
 
 export interface NodeTransformer<CFG extends object, NT extends GenNodes<CFG>> {
-  transformations:  NT
+  transformations: NT
   transformNode: SourceNode<any>
   transformCFG: CFG
   transform(parent: Array<GenNodes<CFG>>, info: GenInfo<CFG>): CodePartL
@@ -92,11 +92,11 @@ export interface GenInfo<CFG extends object> {
 
   },
   stack: GenFuncStack
-  cfg: CFG  
+  cfg: CFG
   transformFile<CFG extends object, ST extends GenNodes<CFG>>(
     filePath: string,
-    transformations: NodeTransformer<CFG, ST>        
-    ): void  
+    transformations: NodeTransformer<CFG, ST>
+  ): void
 }
 
 export type GenFunc<name extends SourceNodeKind, CFG extends object> =
@@ -135,7 +135,7 @@ export async function generateApplication<CFG extends object, SW extends GenNode
   function openSourceFile(projectPath: string, filePath: string) {
     const fn = join(ws.path, projectPath, 'src', filePath)
     const prj = openProject(projectPath)
-    const src = prj.getSourceFile(fn) || prj.createSourceFile(fn, undefined, {overwrite: true})
+    const src = prj.getSourceFile(fn) || prj.createSourceFile(fn, undefined, { overwrite: true })
     if (!srcs[fn]) {
       src.removeText()
       srcs[fn] = true
@@ -151,27 +151,27 @@ export async function generateApplication<CFG extends object, SW extends GenNode
     }))
   }
 
-  function isSourceTransformerOne<CFG extends object, ST extends GenNodes<CFG>>(o: SourceTransformer<CFG, ST>): o is SourceTransformerOne<CFG,ST> {
+  function isSourceTransformerOne<CFG extends object, ST extends GenNodes<CFG>>(o: SourceTransformer<CFG, ST>): o is SourceTransformerOne<CFG, ST> {
     return (o as any).filePath
   }
 
   function transformFileDecl<CFG extends object, ST extends GenNodes<CFG>>(
     prj: ProjectTransformer<any, any>, src: SourceTransformer<any, any>) {
-    if (isSourceTransformerOne(src)) 
-    return genereateFile(prj, src.filePath, src.transformations, app, cfg)
-    
+    if (isSourceTransformerOne(src))
+      return genereateFile(prj, src.filePath, src.transformations, app, cfg)
+
     const wnll = codeWriter([src.transformations], {
       ws,
       prj: {},
-      src: { requireDefault: deny, require:deny, chip:deny},
+      src: { requireDefault: deny, require: deny, chip: deny },
       node: {},
       stack: createStack(),
       transformFile: transformFileInt,
       cfg
     })
     let codenull = wnll.transform(app)
-    const srcnull=wnll.resolveCode(codenull)
-    if (srcnull)    ws.fatal('multiple files cant return code', ws.sourceRef)
+    const srcnull = wnll.resolveCode(codenull)
+    if (srcnull) ws.fatal('multiple files cant return code', ws.sourceRef)
 
     function deny(): any {
       ws.fatal('transform multiple sources dont support that', ws.sourceRef)
@@ -179,89 +179,92 @@ export async function generateApplication<CFG extends object, SW extends GenNode
 
     function transformFileInt<CFGsub extends object, STsub extends GenNodes<CFGsub>>(
       subfilePath: string,
-      subtransformations: NodeTransformer<CFGsub, STsub>        
-      ): void  {
-        genereateFile<CFGsub, STsub>(prj, subfilePath, subtransformations.transformations, subtransformations.transformNode, subtransformations.transformCFG)
-      }    
-  
-
-  function genereateFile<CFG extends object, ST extends GenNodes<CFG>>(
-    prj: ProjectTransformer<any, any>, 
-    filePath: string, 
-    srctransformations: ST,
-    startNode: SourceNode<any>,
-    cfg: CFG
+      subtransformations: NodeTransformer<CFGsub, STsub>
     ): void {
-    const srcUsed: { [id: string]: TsNode } = {}
-    let srcIdentifiers: {
-      [id: string]: {
-        transform(): NodeTransformer<any, any>
-      }
-    } = {}
-    const srcRequires: {
-      [module: string]: {
-        def?: string
-        ids: string[]
-      }
-    } = {}
+      genereateFile<CFGsub, STsub>(prj, subfilePath, subtransformations.transformations, subtransformations.transformNode, subtransformations.transformCFG)
+    }
 
-    const srcfile = openSourceFile(prj.projectPath, filePath)
-    const w = codeWriter([srctransformations, prj.transformations, wstransformations], {
-      ws,
-      prj: {},
-      src: { requireDefault, require, chip },
-      node: {},
-      stack: createStack(),
-      transformFile: transformFileInt,
-      cfg
-    })
-    let rest = w.transform(startNode)
 
-    while (Object.keys(srcIdentifiers).length) {
-      const srcids = srcIdentifiers
-      srcIdentifiers = {}
-      mapObjectToArray(srcids, (val, key) => {
-        rest = rest.concat(w.statements([val.transform()], false))
+    function genereateFile<CFG extends object, ST extends GenNodes<CFG>>(
+      prj: ProjectTransformer<any, any>,
+      filePath: string,
+      srctransformations: ST,
+      startNode: SourceNode<any>,
+      cfg: CFG
+    ): void {
+      const srcUsed: { [id: string]: TsNode } = {}
+      let srcIdentifiers: {
+        [id: string]: {
+          transform(): NodeTransformer<any, any>
+        }
+      } = {}
+      const srcRequires: {
+        [module: string]: {
+          def?: string
+          ids: string[]
+        }
+      } = {}
+
+      if (!filePath.startsWith('~/app/')) ws.fatal('genereateFile precisa começar com ~/app', ws.sourceRef)
+      const srcfile = openSourceFile(prj.projectPath, filePath.substr(2))
+      const w = codeWriter([srctransformations, prj.transformations, wstransformations], {
+        ws,
+        prj: {},
+        src: { requireDefault: requireDefaultImport, require: requireImport, chip },
+        node: {},
+        stack: createStack(),
+        transformFile: transformFileInt,
+        cfg
       })
-    }
+      let rest = w.transform(startNode)
 
-    const res = w.resolveCode(rest)
-    mapObjectToArray(srcRequires, (val, key) => {
-      const preq: string[] = [];
-      if (val.def) preq.push(val.def)
-      if (val.ids.length) preq.push('{ ' + val.ids.join(', ') + ' }')
-      srcfile.addStatements('import ' + preq.join(', ') + ' from "' + key + '"')
-    })
+      while (Object.keys(srcIdentifiers).length) {
+        const srcids = srcIdentifiers
+        srcIdentifiers = {}
+        mapObjectToArray(srcids, (val, key) => {
+          rest = rest.concat(w.statements([val.transform()], false))
+        })
+      }
 
-    srcfile.addStatements(res)
-    function initReq() {
-      return {
-        ids: []
+      const res = w.resolveCode(rest)
+      mapObjectToArray(srcRequires, (val, key) => {
+        const preq: string[] = [];
+        if (val.def) preq.push(val.def)
+        if (val.ids.length) preq.push('{ ' + val.ids.join(', ') + ' }')
+        debugger
+        const fname = tildeExpand(filePath, key)
+        srcfile.addStatements('import ' + preq.join(', ') + ' from "' + fname + '"')
+      })
+
+      srcfile.addStatements(res)
+      function initReq() {
+        return {
+          ids: []
+        }
       }
-    }
-    function useId(id: string, sourceRef: TsNode) {
-      // if (srcUsed[id]) throw ws.fatal(id + ' identificar duplicado', [srcUsed[id], sourceRef])
-      srcUsed[id] = sourceRef
-    }
-    function require(id: string, module: string, sourceRef: TsNode): void {
-      useId(id, sourceRef)
-      const req = srcRequires[module] || (srcRequires[module] = initReq())
-      if (!req.ids.includes(id)) req.ids.push(id)
-    }
-    function requireDefault(id: string, module: string, sourceRef: TsNode): void {
-      useId(id, sourceRef)
-      const req = srcRequires[module] || (srcRequires[module] = initReq())
-      req.def = id
-    }
-    function chip<CFG2 extends object>(id: string, sourceRef: TsNode, nt: () => NodeTransformer<CFG2, any>): string {
-      useId(id, sourceRef)
-      srcIdentifiers[id] = {
-        transform: nt
+      function useId(id: string, sourceRef: TsNode) {
+        // if (srcUsed[id]) throw ws.fatal(id + ' identificar duplicado', [srcUsed[id], sourceRef])
+        srcUsed[id] = sourceRef
       }
-      return id
+      function requireImport(id: string, module: string, sourceRef: TsNode): void {
+        useId(id, sourceRef)
+        const req = srcRequires[module] || (srcRequires[module] = initReq())
+        if (!req.ids.includes(id)) req.ids.push(id)
+      }
+      function requireDefaultImport(id: string, module: string, sourceRef: TsNode): void {
+        useId(id, sourceRef)
+        const req = srcRequires[module] || (srcRequires[module] = initReq())
+        req.def = id
+      }
+      function chip<CFG2 extends object>(id: string, sourceRef: TsNode, nt: () => NodeTransformer<CFG2, any>): string {
+        useId(id, sourceRef)
+        srcIdentifiers[id] = {
+          transform: nt
+        }
+        return id
+      }
     }
   }
-}
   function createStack(): GenFuncStack {
     const items: Array<SourceNode<any>> = []
     return {

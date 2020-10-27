@@ -1,3 +1,5 @@
+import { resolve, join } from 'path'
+
 export interface DeferredPromise<T> {
   promise: Promise<T>
   resolve(value: T | PromiseLike<T> | undefined): void
@@ -75,4 +77,32 @@ export function mergeObjWith(...objs: any[]) {
     })
   })
   return r
+}
+
+
+export function tildeExpand(src: string, imp: string) {
+  if (!imp.startsWith("~/")) return imp;
+  const srcparts = src.split("/");
+  const impparts = imp.split("/");
+  deleteStart();
+  if (imp.startsWith("~/app/")) {
+    const s1 = new Array(srcparts.length - 1).fill("../").join("");
+    const t1 = join(s1, imp.replace("~/app/", ""));
+    return t1;
+  }
+  const s2 = new Array(srcparts.length - 1).fill("../").join("");
+  const t2 = join(s2, imp.replace("~/", ""));
+  return t2;
+  function deleteStart() {
+    let i = 0;
+    while (
+      i < srcparts.length &&
+      i < impparts.length &&
+      srcparts[i] === impparts[i]
+    ) {
+      i++;
+    }
+    srcparts.splice(0, i);
+    impparts.splice(0, i);
+  }
 }

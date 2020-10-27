@@ -4,5 +4,5 @@ import { generateDeclaration } from './wsdecl';
 import { generateMuiDeepStream } from './mui-deepstream';
 
 export async function generateApp(ws: Workspace, app: Application) {
-  await generateMuiDeepStream(ws,app)
+  return generateMuiDeepStream(ws, app)
 }
