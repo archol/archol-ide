@@ -339,12 +339,12 @@ declare type ${pkgid}_view_${viewName}_DeclWidgget = {
   type: ${pkgid}_TypeName
 } | { markdown: I18N } 
 declare interface ${pkgid}_view_${viewName}_DeclData {
-  ${view.refs.fields.items.map((f) => {
-    return `${f.path}: ${f.ref.type ? f.ref.type.base(null): 'invalid type'}`
+  ${view.refs.fields.props.map((f) => {
+    return `${f.key.str}: ${f.val.type ? f.val.type.base(null): 'invalid type'}`
   })}
 }
 declare interface ${pkgid}_view_${viewName}_DeclBind<S> {
-  ${view.refs.fields.items.map((f) => `${f.path}: S`)}
+  ${view.refs.fields.props.map((f) => `${f.val}: S`)}
 }
 `.trimStart())
     }

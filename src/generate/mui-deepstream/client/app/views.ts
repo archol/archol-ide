@@ -1,4 +1,4 @@
-import { CodePartL } from 'generate/lib/codeWriter'
+import { CodeLines, CodePartL } from 'generate/lib/codeWriter'
 import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
 import { isWidgetContent, isWidgetEntry, isWidgetMarkdown, WidgetContent, WidgetEntry, WidgetMarkdown } from 'load/types'
 
@@ -15,7 +15,7 @@ export const generateClientViews = sourceTransformer({
       const pkguri = pkg.uri.id.str
       pkg.views.props.forEach((v) => {
         debugger
-        transformFile('app/'+pkg.uri.id.str + '/views/' + v.key.str + '.tsx', genView.make(v.val, { pkguri }))
+        transformFile('app/' + pkg.uri.id.str + '/views/' + v.key.str + '.tsx', genView.make(v.val, { pkguri }))
       })
       return ''
     },
@@ -25,45 +25,46 @@ export const generateClientViews = sourceTransformer({
 const genView = nodeTransformer({
   View(w, v, { ws, src, cfg }) {
 
-    src.require('ArcholView', '../../lib/archol/types', v)
+    src.requireDefault('React', 'react', v)
+
     const fields = v.refs.fields
-    const hasfields = fields.items.length
+    const hasfields = fields.props.length
+    const render = renderContent(v.content)
     const body: CodePartL[] = [
-      hasfields ? [
-        'const {', fields.items.map((f) => f.ref.name), '} = TODO'
-      ] : '',
-      ['return ', renderContent(v.content)]
+      ['return ', render]
     ]
-    if (hasfields) 
-      src.require(cfg.pkguri + '_'+ v.name.str + 'ViewInstace', '../../types', v);
+    const vinst = cfg.pkguri + '_view_' + v.name.str + 'Instance'
+    if (hasfields)
+      src.require(vinst, '../../types', v);
 
     return w.statements([
       [
         'export function View' + v.name.str, w.funcDecl(
           hasfields ?
-            ['{ proc }: {vars: cvv_org_br_dashboard_bemvindoInstance }'] : [],
-          'ArcholView', body
+            ['{ vinst }: { vinst: ' + vinst + ' }'] : [],
+          'React.ReactElement', body
         )
       ]
     ], false)
-    function renderContent(content: WidgetContent): CodePartL[] {
-      const ret: CodePartL[] = []
-      content.widgets.items.forEach((itm) => {
-        if (isWidgetContent(itm)) ret.push(renderContent(itm))
-        else if (isWidgetEntry(itm)) ret.push(renderEntry(itm))
-        else if (isWidgetMarkdown(itm)) ret.push(renderMarkdown(itm))
-        else ws.fatal('unsupported widget', itm)
-      })
-      return ret
+
+    function renderContent(content: WidgetContent): CodeLines {
+      src.require('ContentWidget', '../../../lib/components/widgets/content', content)
+      return w.lines(
+        content.widgets.items.map((itm) => {
+        if (isWidgetContent(itm)) return renderContent(itm)
+        else if (isWidgetEntry(itm)) return renderEntry(itm)
+        else if (isWidgetMarkdown(itm)) return renderMarkdown(itm)
+        throw ws.fatal('unsupported widget', itm)
+      }), '<ContentWidget>', '</ContentWidget>', '')
     }
     function renderEntry(entry: WidgetEntry): CodePartL {
-      src.require('EntryWidget', '../../lib/components/widgets/entry', entry)
+      src.require('EntryWidget', '../../../lib/components/widgets/entry', entry)
       return [
-        '<EntryWidget TODOtext="x" />'
+        '<EntryWidget vars={vinst.vars} path=',entry.field,' />'
       ]
     }
     function renderMarkdown(md: WidgetMarkdown): CodePartL {
-      src.require('MarkdownWidget', '../../lib/components/widgets/markdown', md)
+      src.require('MarkdownWidget', '../../../lib/components/widgets/markdown', md)
       return [
         '<MarkdownWidget text={', md.markdown, '} />'
       ]

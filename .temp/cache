@@ -402,12 +402,12 @@
         "affectsGlobalScope": false
       },
       "../src/load/types.ts": {
-        "version": "81a52041b3f16ab265132b2fc097e4c5851fab5c2edc759e9f549b2c949d86e0",
-        "signature": "e1db351a6eeaaabfed38a8849f8bcb04489a11a2c768749410e49c27dbe42ad7",
+        "version": "3bfb1ad08ca4aec040c808cbbedb1554f6c87e02eebd22386840ee503dab09a0",
+        "signature": "9358a224a494ee824f29691b89adc1db24482005d343dc030faf03040c8c2982",
         "affectsGlobalScope": false
       },
       "../src/load/app.ts": {
-        "version": "be39ffb050cdce0293e0a7a49a54ae841094fc606f87aaf07a7918a5fbafc2a3",
+        "version": "55c68e2a5dd49a2896884b92007d06d98425f0a9735b3ebd3531b33f989e4e5d",
         "signature": "6dbdfe485aabd0b94b2bfb6908d1277ad675a2856a39fd5341f43b7580513ae6",
         "affectsGlobalScope": false
       },
@@ -427,8 +427,8 @@
         "affectsGlobalScope": false
       },
       "../src/generate/lib/generator.ts": {
-        "version": "f27288babc0bb3f54effc15c44a35c28221510a0da5ccb25d36520d6a43c49d7",
-        "signature": "5efedcf559e9ef17a5ec61e6aaa586cb65f0f340e285e1e6eb908dfa62c36b33",
+        "version": "6aca183f943de597515f8d74fa56e4a0507cd08fee9e83645cebfa103c3751d2",
+        "signature": "329ea8a8427a7d7a19cec8af570217c416a962a2183f4928f90d613c06c4c1e4",
         "affectsGlobalScope": false
       },
       "../src/generate/wsdecl/materialuiicons.ts": {
@@ -437,7 +437,7 @@
         "affectsGlobalScope": false
       },
       "../src/generate/wsdecl/index.ts": {
-        "version": "679a2ccea20c569272aa3197900408bf7c13138a0c35149a88927e6017d2aa07",
+        "version": "99842631210deea6e0279f1c087b50a0a304d78164cde7a5759438aaea5ee71a",
         "signature": "544ef4123b7a3b8233523f79c22181d1420e324af2cccbee25720bf0d605c5f2",
         "affectsGlobalScope": false
       },
@@ -466,13 +466,18 @@
         "signature": "2c445982ea08924dd4318c1b5b37f18cac16cf5d37ac82939788a8f3f5209350",
         "affectsGlobalScope": false
       },
+      "../src/generate/mui-deepstream/client/app/fields.ts": {
+        "version": "c706b46de848ba11d1bddb7be26dd6102b15e15ca75f2450373b379d6e9a91c4",
+        "signature": "33c5cec416132895e1722048cdc092a860539a5be5564c230e5894ff9f98f28b",
+        "affectsGlobalScope": false
+      },
       "../src/generate/mui-deepstream/client/app/types.ts": {
-        "version": "026a358b9e7f027fe6e91d1c290ee30c4cc9211404246b2c593c3ca489b8eddc",
+        "version": "068812b8044af3ffad7eb9ba2df2229ecf257a273abcdf2b3237dc406064f337",
         "signature": "ebdfbe3f5ee11027aa0e82b6ee2f3fd7d90fa2af09f2083180dab9cc5d4bd639",
         "affectsGlobalScope": false
       },
       "../src/generate/mui-deepstream/client/app/views.ts": {
-        "version": "de3c3d9cec0198b33812b56e9f9270fca89f51331e911d562ee02d1981d29474",
+        "version": "7797e54f22925a07f0dd85bddb6611cb6ceac8261da14e764c8e73b108924c39",
         "signature": "1c6c7335039caff404b52a1a120a0d4756db4c9543c5a9cd1b1e39415d02e612",
         "affectsGlobalScope": false
       },
@@ -745,6 +750,9 @@
         "../src/load/types.ts",
         "../src/utils.ts"
       ],
+      "../src/generate/mui-deepstream/client/app/fields.ts": [
+        "../src/generate/lib/generator.ts"
+      ],
       "../src/generate/mui-deepstream/client/app/i18n.ts": [
         "../src/generate/lib/generator.ts"
       ],
@@ -770,7 +778,8 @@
         "../src/generate/lib/generator.ts"
       ],
       "../src/generate/mui-deepstream/client/app/types.ts": [
-        "../src/generate/lib/generator.ts"
+        "../src/generate/lib/generator.ts",
+        "../src/generate/mui-deepstream/client/app/fields.ts"
       ],
       "../src/generate/mui-deepstream/client/app/views.ts": [
         "../src/generate/lib/codeWriter.ts",
@@ -1025,6 +1034,11 @@
         "../src/generate/lib/codeWriter.ts",
         "../src/load/types.ts"
       ],
+      "../src/generate/mui-deepstream/client/app/fields.ts": [
+        "../src/generate/lib/codeWriter.ts",
+        "../src/generate/lib/generator.ts",
+        "../src/load/types.ts"
+      ],
       "../src/generate/mui-deepstream/client/app/i18n.ts": [
         "../src/generate/lib/codeWriter.ts",
         "../src/generate/lib/generator.ts",
@@ -1176,6 +1190,7 @@
       "../src/generate/index.ts",
       "../src/generate/lib/codeWriter.ts",
       "../src/generate/lib/generator.ts",
+      "../src/generate/mui-deepstream/client/app/fields.ts",
       "../src/generate/mui-deepstream/client/app/i18n.ts",
       "../src/generate/mui-deepstream/client/app/icon.ts",
       "../src/generate/mui-deepstream/client/app/menu.ts",

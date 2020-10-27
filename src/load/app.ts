@@ -1575,17 +1575,17 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       })
       return ret
     }
-    function refViewFields(view: View) {
-      const ret = packageRefs<Field>([])
+    function refViewFields(view: View):Fields {
+      const ret = objectConst<'Fields', Field>('Fields', ws.getRef(view)) 
 
       view.content.widgets.items.forEach(add)
       function add(w: WidgetContent | WidgetItem<any>) {
         if (isWidgetContent(w)) w.widgets.items.forEach(add)
         else {
           w.widgetFields().props.forEach((field) => {
-            if (!ret.items.some((i) => i.path === field.key.str)) {
-              ret.items.push({
-                path: field.key.str, ref: {
+            if (!ret.props.some((i) => i.key.str === field.key.str)) {
+              ret.add(field.key,
+                {                
                   kind: 'Field',
                   sourceRef: w.sourceRef,
                   name: field.key,
@@ -1603,8 +1603,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
                     base(s2) {
                       return basicTypes3.string.base().base
                     }
-                  }
-                }
+                  }                
               })
             }
           })

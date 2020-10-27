@@ -44,6 +44,7 @@ export interface NodeTransformerFactory<CFG extends object, NT extends GenNodes<
 export interface NodeTransformer<CFG extends object, NT extends GenNodes<CFG>> {
   transformations:  NT
   transformNode: SourceNode<any>
+  transformCFG: CFG
   transform(parent: Array<GenNodes<CFG>>, info: GenInfo<CFG>): CodePartL
 }
 
@@ -55,6 +56,7 @@ export function nodeTransformer<CFG extends object, NT extends GenNodes<CFG>>(
       const r2: NodeTransformer<CFG, NT> = {
         transformations: transforms as any as CFG & NT,
         transformNode: node,
+        transformCFG: cfg,
         transform(parent: Array<GenNodes<CFG>>, info: GenInfo<CFG>): CodePartL {
           const w2 = codeWriter([transforms, ...parent], { ...info, cfg: { ...info.cfg, ...cfg } })
           return w2.transform(node)
@@ -156,7 +158,7 @@ export async function generateApplication<CFG extends object, SW extends GenNode
   function transformFileDecl<CFG extends object, ST extends GenNodes<CFG>>(
     prj: ProjectTransformer<any, any>, src: SourceTransformer<any, any>) {
     if (isSourceTransformerOne(src)) 
-    return genereateFile(prj, src.filePath, src.transformations, app)
+    return genereateFile(prj, src.filePath, src.transformations, app, cfg)
     
     const wnll = codeWriter([src.transformations], {
       ws,
@@ -179,7 +181,7 @@ export async function generateApplication<CFG extends object, SW extends GenNode
       subfilePath: string,
       subtransformations: NodeTransformer<CFGsub, STsub>        
       ): void  {
-        genereateFile<CFGsub, STsub>(prj, subfilePath, subtransformations.transformations, subtransformations.transformNode)
+        genereateFile<CFGsub, STsub>(prj, subfilePath, subtransformations.transformations, subtransformations.transformNode, subtransformations.transformCFG)
       }    
   
 
@@ -187,7 +189,8 @@ export async function generateApplication<CFG extends object, SW extends GenNode
     prj: ProjectTransformer<any, any>, 
     filePath: string, 
     srctransformations: ST,
-    startNode: SourceNode<any>
+    startNode: SourceNode<any>,
+    cfg: CFG
     ): void {
     const srcUsed: { [id: string]: TsNode } = {}
     let srcIdentifiers: {

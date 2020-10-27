@@ -1,4 +1,5 @@
 import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
+import { genFields } from './fields'
 
 export const generateClientTypes = sourceTransformer({
   filePath: 'app/types.ts',
@@ -35,17 +36,20 @@ const genPkgRef = nodeTransformer({
       'export interface ', pkguri, 'Ref',
       w.object({
         process: w.mapObj(pkg.processes, (val, key) =>
-          src.chip(pkguri + '_' + key.str + 'Ref', pkg, () => genProcessRef.make(val, { pkguri }))
+          src.chip(pkguri + '_proc_' + key.str + 'Ref', pkg, () => genProcessRefTypes.make(val, { pkguri }))
+        ),
+        view: w.mapObj(pkg.views, (val, key) =>
+          src.chip(pkguri + '_view_' + key.str + 'Instance', pkg, () => genViewInstanceType.make(val, { pkguri }))
         )
       })
     ]
   },
 }, {})
 
-const genProcessRef = nodeTransformer({
+const genProcessRefTypes = nodeTransformer({
   Process(w, proc, info) {
-    const procuri = info.cfg.pkguri + '_' + proc.name.str
-    info.src.chip(procuri + 'Instance', proc, () => genProcessInstance.make(proc, { procuri }))
+    const procuri = info.cfg.pkguri + '_proc_' + proc.name.str
+    info.src.chip(procuri + 'Instance', proc, () => genProcessInstanceType.make(proc, { procuri }))
     return [
       'export interface ' + procuri + 'Ref',
       w.object({
@@ -55,7 +59,7 @@ const genProcessRef = nodeTransformer({
   },
 }, { pkguri: '' })
 
-const genProcessInstance = nodeTransformer({
+const genProcessInstanceType = nodeTransformer({
   Process(w, proc, info) {
     return w.statements([
       [
@@ -76,14 +80,6 @@ const genProcessInstance = nodeTransformer({
   },
 }, { procuri: '' })
 
-const genFields = nodeTransformer({
-  Fields(w, fields, info) {
-    return w.mapObj(fields, (f) => {
-      return f.type.base(f)
-    })
-  },
-}, {})
-
 const genType = nodeTransformer({
   NormalType() {
     return ""
@@ -96,12 +92,25 @@ const genType = nodeTransformer({
   },
   ComplexType(w, t, info) {
     return [
-      'export type TODO_', info.cfg.pkguri, '_complex_', t.name.str, ' = TODO',      
+      'export type TODO_', info.cfg.pkguri, '_complex_', t.name.str, ' = TODO',
     ]
   },
   ArrayType(w, t, info) {
     return [
-      'export type TODO_', info.cfg.pkguri, '_arr_', t.name.str, ' = TODO',      
+      'export type TODO_', info.cfg.pkguri, '_arr_', t.name.str, ' = TODO',
+    ]
+  },
+}, { pkguri: '' })
+
+const genViewInstanceType = nodeTransformer({
+  View(w, view, info) {
+    info.src.require('ArcholVars', '../../../lib/archol/types', view)
+    const viewuri = info.cfg.pkguri + '_view_' + view.name.str
+    return [
+      'export interface ' + viewuri + 'Instance',
+      w.object({
+        vars: ['ArcholVars<',genFields.make(view.refs.fields, {}), '>']        
+      })
     ]
   },
 }, { pkguri: '' })

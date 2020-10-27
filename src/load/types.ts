@@ -522,7 +522,7 @@ export interface View extends SourceNodeMapped<'View'> {
   otherActions?: ArrayConst<'otherActions', ViewAction>
   allActions?: ArrayConst<'allActions', ViewAction>
   refs: {
-    fields: PackageRefs<Field>
+    fields: Fields
   }
 }
 
