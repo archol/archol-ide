@@ -18,64 +18,62 @@ export const generateClientTypes = sourceTransformer({
       return [w.mapObj(pkgs, (val, key) => val)]
     },
     PackageUse(w, pkg, { src }) {
-      const pkguri = pkg.ref(pkg).uri.id.str
-      return src.chip('T' + pkguri + 'Ref', pkg, 1, () => genPkgRef.make(pkg, { pkguri }))
+      return src.chip(1, genPkgRef.make(pkg.ref(pkg), {}))
     },
   },
 })
 
 const genPkgRef = nodeTransformer({
-  PackageUses(w, pkgs) {
-    return w.statements(pkgs.props, false)
-  },
-  PackageUse(w, pkg) {
-    return pkg.ref(pkg)
-  },
   Package(w, pkg, { src }) {
     const pkguri = pkg.uri.id.str
     pkg.types.props.forEach(t => src.chip(
-      '', t.val, 1,
-      () => genType.make(t.val, { pkguri }))
+      1,
+      genType.make(t.val, { pkguri })) && ''
     )
-    return [
-      'export interface T', pkguri, 'Ref',
+    const id = 'T' + pkguri + 'Ref'
+    return w.chipResult(id, [
+      ['export interface ' + id,
       w.object({
         process: w.mapObj(pkg.processes, (val, key) =>
-          src.chip('T' + pkguri + '_proc_' + key.str + 'Ref', pkg, 1, () => genProcessRefTypes.make(val, { pkguri }))
+          src.chip(1, genProcessRefTypes.make(val, { pkguri }))
         ),
         view: w.mapObj(pkg.views, (val, key) =>
-          src.chip('T' + pkguri + '_view_' + key.str + 'Instance', pkg, 1, () => genViewInstanceType.make(val, { pkguri }))
+          src.chip(1,
+            genViewInstanceType.make(val, { pkguri }))
         )
-      })
-    ]
+      })]
+    ], false)
   },
 }, {})
 
 const genProcessRefTypes = nodeTransformer({
   Process(w, proc, info) {
-    const procuri = info.cfg.pkguri + '_proc_' + proc.name.str
-    info.src.chip('T' + procuri + 'Instance', proc, 1, () => genProcessInstanceType.make(proc, { procuri }))
-    return [
-      'export interface T' + procuri + 'Ref',
+    const id = 'T' + info.cfg.pkguri + '_proc_' + proc.name.str + 'Ref'
+
+    const inst = info.src.chip(1, genProcessInstanceType.make(proc, { pkguri: info.cfg.pkguri }))
+
+    return w.chipResult(id, [
+      ['export interface ' + id,
       w.object({
         start: w.funcDecl(proc.vars.input.props
-          .map((v) => v.key.str + ':' + v.val.type.base(v.val)), 'T' + procuri + 'Instance', null)
-      })
-    ]
+          .map((v) => v.key.str + ':' + v.val.type.base(v.val)), inst.id, null)
+      })]
+    ], false)
   },
 }, { pkguri: '' })
 
 const genProcessInstanceType = nodeTransformer({
   Process(w, proc, info) {
-    return w.statements([
+    const id = 'T' + info.cfg.pkguri + '_proc_' + proc.name.str + 'Instance'
+    return w.chipResult(id, [
       [
-        'export interface T', info.cfg.procuri, 'Instance',
+        'export interface ', id,
         w.object({
-          vars: ['T', info.cfg.procuri, 'InstanceVars']
+          vars: [id, 'Vars']
         })
       ],
       [
-        'export interface T', info.cfg.procuri, 'InstanceVars',
+        'export interface ', id, 'Vars',
         w.object({
           local: genFields.make(proc.vars.local, {}),
           input: genFields.make(proc.vars.input, {}),
@@ -84,39 +82,48 @@ const genProcessInstanceType = nodeTransformer({
       ],
     ], false)
   },
-}, { procuri: '' })
+}, { pkguri: '' })
 
 const genType = nodeTransformer({
-  NormalType() {
-    return ""
+  NormalType(w) {
+    return w.chipResult('', [''], false)
   },
   EnumType(w, t, info) {
-    return [
-      'export type T', info.cfg.pkguri, '_enum_', t.name.str, ' = ',
-      t.options.props.map((o) => w.string(o.key.str)).join(' | ')
-    ]
+    const id = 'T' + info.cfg.pkguri + '_enum_' + t.name.str
+    return w.chipResult(id, [
+      [
+        'export type ', id, ' = ',
+        t.options.props.map((o) => w.string(o.key.str)).join(' | ')
+      ]
+    ], false)
   },
   ComplexType(w, t, info) {
-    return [
-      'export type TODO_', info.cfg.pkguri, '_complex_', t.name.str, ' = TODO',
-    ]
+    const id = 'T' + info.cfg.pkguri + '_complex_' + t.name.str
+    return w.chipResult(id, [
+      [
+        'export type ', id, t.name.str, ' = TODO',
+      ]
+    ], false)
   },
   ArrayType(w, t, info) {
-    return [
-      'export type TODO_', info.cfg.pkguri, '_arr_', t.name.str, ' = TODO',
-    ]
+    const id = 'T' + info.cfg.pkguri + '_array_' + t.name.str
+    return w.chipResult(id, [
+      'export type ', id, ' = TODO',
+    ], false)
   },
 }, { pkguri: '' })
 
 const genViewInstanceType = nodeTransformer({
   View(w, view, info) {
     info.src.require('ArcholVars', '~/lib/archol/types', view)
-    const viewuri = info.cfg.pkguri + '_view_' + view.name.str
-    return [
-      'export interface T' + viewuri + 'Instance',
-      w.object({
-        vars: ['ArcholVars<', genFields.make(view.refs.fields, {}), '>']
-      })
-    ]
+    const id = 'T' + info.cfg.pkguri + '_view_' + view.name.str + 'Instance'
+    return w.chipResult(id, [
+      [
+        'export interface ' + id,
+        w.object({
+          vars: ['ArcholVars<', genFields.make(view.refs.fields, {}), '>']
+        })
+      ]
+    ], false)
   },
 }, { pkguri: '' })

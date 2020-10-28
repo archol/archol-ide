@@ -422,13 +422,13 @@
         "affectsGlobalScope": false
       },
       "../src/generate/lib/codeWriter.ts": {
-        "version": "a9426c7cbf2033334cee1480370c3d9e47c51d09be23a4c6612cca301522d892",
-        "signature": "a15cf31ea4cdf07be3352d142b955ce34f58ef5f03298c644b9b6aaa8b2036fc",
+        "version": "8ad91dba34c67a5d853a062305967029ddfbac93811949dea32ce45acec0bb39",
+        "signature": "a569f2628485484f6dcc8b7fe368cd361ab956cd9ebf15e05c3ebc9786490824",
         "affectsGlobalScope": false
       },
       "../src/generate/lib/generator.ts": {
-        "version": "be1fff888a080e36003b9a64c3d5123bf530b1fd9ac9a7c2a4a3486f12340e33",
-        "signature": "4409afe7276795e90a415e706e56f7a5476df188ae96779dcc43e9144e679dc6",
+        "version": "492ac9764a4ffbff26a530c6f8f545ba34e3435163b4a4c096897b96c4fa4eb1",
+        "signature": "f81739ec0a63af463d3e667ce21d311bbbdd53f9b34744dc20599dbdc64693d9",
         "affectsGlobalScope": false
       },
       "../src/generate/wsdecl/materialuiicons.ts": {
@@ -472,8 +472,8 @@
         "affectsGlobalScope": false
       },
       "../src/generate/mui-deepstream/client/app/types.ts": {
-        "version": "834059039be1d1d147797af32497e77ac6c502784a2f3a75f00d12a7b1c99da9",
-        "signature": "ebdfbe3f5ee11027aa0e82b6ee2f3fd7d90fa2af09f2083180dab9cc5d4bd639",
+        "version": "c7dc925522eef3e7c63ccfbe17a008f98a1f8d68463ce7c7f60c42e37bb3b7f5",
+        "signature": "6029a4acaf973f1bdd974af7440dfc7369acacfcfea55a065d67fbdfc2b47a98",
         "affectsGlobalScope": false
       },
       "../src/generate/mui-deepstream/client/app/views.ts": {
@@ -482,8 +482,8 @@
         "affectsGlobalScope": false
       },
       "../src/generate/mui-deepstream/client/app/app.ts": {
-        "version": "370ddf8d30ec8d4ba8a4930f2f1c63a23b63be587e2ec2f36c23457c7221415f",
-        "signature": "4fd60007cb2c74a32652e99073baba393e95313a261b659e9ab13c2eda35c78d",
+        "version": "fc5b150417e0c6466e76ea1670424f4e1557ab475647e94e02b0eed36207aed7",
+        "signature": "c89898bb9a458e1b9fc2480efebbd03cd86b7ee059db7f446c8d80b917db8ba1",
         "affectsGlobalScope": false
       },
       "../src/generate/mui-deepstream/client/index.ts": {
@@ -754,6 +754,7 @@
         "../src/utils.ts"
       ],
       "../src/generate/lib/generator.ts": [
+        "../node_modules/@types/node/console.d.ts",
         "../node_modules/@types/node/path.d.ts",
         "../node_modules/ts-morph/lib/ts-morph.d.ts",
         "../src/generate/lib/codeWriter.ts",

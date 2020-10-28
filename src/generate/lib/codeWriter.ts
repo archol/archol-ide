@@ -11,7 +11,9 @@ import {
 
 export interface CodeWriter {
   statements(lines: CodePartL[], block: boolean): CodeLines
+  chipResult(id: string, lines: CodePartL[], block: boolean): ChipRes
   lines(lines: CodePartL[], start: string, end: string, separator: string): CodeLines
+  transform(transformer: NodeTransformer<any, any>): CodePartR[]
   transform(node: SourceNode<any>): CodePartR[]
   map(nodes: Array<ObjectConst<any> | ArrayConst<any>>): CodeLines
   mapObj<KIND extends SourceNodeObjectKind, T extends SourceNode<any>>(
@@ -29,7 +31,7 @@ export interface CodeWriter {
   resolveCode(code: CodePartR[]): string
 }
 
-export type CodePartR = string | string[] | CodeLines
+export type CodePartR = string | string[] | CodeLines | ChipRes | ChipDecl1<any> | ChipDecl2
 export type CodePartLb = CodePartR | SourceNode<any> | CodePartL[] | FuncDecl |
   NodeTransformer<any, any> | Array<ObjectConstProp<any, any>> | ObjectConstProp<any, any>
 export type CodePartL = CodePartLb | (() => CodePartL)
@@ -67,6 +69,28 @@ export function isFuncDecl(o: any): o is FuncDecl {
   return o && (o as any).$func$
 }
 
+export interface ChipDecl1<CFG2 extends object> {
+  $ChipDecl1$: true
+  transform(node: SourceNode<any>, info: GenInfo<CFG2>): ChipRes
+}
+
+export interface ChipDecl2 {
+  transform(): ChipRes
+}
+
+export interface ChipRes {
+  id: string
+  $chip$: CodeLines
+  pos: number
+}
+
+export function isChipRes(o: any): o is ChipRes {
+  return o && (o as any).$chip$
+}
+export function isChipDecl1<CFG2 extends object>(o: any): o is ChipDecl1<CFG2> {
+  return o && (o as any).$ChipDecl1$
+}
+
 export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>, info: GenInfo<CFG>): CodeWriter {
   const wSelf: CodeWriter = {
     statements(statements: CodePartL[], block: boolean): CodeLines {
@@ -75,8 +99,10 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
     lines(lines: CodePartL[], start: string, end: string, separator: string): CodeLines {
       return { $lines$: flatLines(lines), start, end, separator }
     },
-    transform(node) {
-      return transformNode(node)
+    transform(n: any) {
+      if (isNodeTransformer(n))
+        return flatPartL(n.transform(transforms, { ...info, cfg: n.transformCFG }))
+      return transformNode(n)
     },
     map(nodes: Array<ObjectConst<any> | ArrayConst<any>>): CodeLines {
       const lines = nodes.reduce<CodePartR[]>((p, c) => {
@@ -137,7 +163,9 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
         if (node) {
           const vnode = (isObjectConst(node)) ? node.get(key) : (node as any)[key]
           if (!vnode) throw info.ws.error('propriedade ' + key + ' não existe em ' + node.kind, node)
-          if (isNodeTransformerFactory(val)) {
+          if (isChipDecl1(val))
+            return propv(key, val.transform(vnode, info))
+          else if (isNodeTransformerFactory(val)) {
             return () => propv(key, val.make(vnode, info.cfg))
           } else if (typeof val === 'function') {
             return propv(key, (val as any)(vnode))
@@ -152,6 +180,12 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
       if (isStringConst(node)) return quote(node.str)
       if (Array.isArray(node)) return quote(node.join(''))
       return quote(node)
+    },
+    chipResult(id, lines, block) {
+      return {
+        id, pos: 0,
+        $chip$: wSelf.statements(lines, block)
+      }
     },
     resolveCode(code) {
       return resolveCode(code, transformNode)
@@ -180,6 +214,7 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
       info.stack.items.pop()
     }
   }
+
   function defaultTransformer(n: SourceNode<any>) {
     if (isStringConst(n)) return wSelf.string(n)
     if (isCode(n)) return wSelf.code(n)
@@ -222,6 +257,7 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
       else if (Array.isArray(p)) return p.forEach(flat)
       else if (isObjectConstProp(p)) flat(p.val)
       else if (isSourceNode(p)) flat(transformNode(p))
+      else if (isChipRes(p)) fres.push(p)
       else if (isNodeTransformer(p)) {
         flat(p.transform(transforms, info))
       }
@@ -287,6 +323,7 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
         resolveCodePart(c.transform(transforms, info))
       }
       else if (typeof c === 'function') resolveCodePart(c())
+      else if (isChipRes(c)) write(c.id)
       else {
         throw new Error('cant resolveCodePart ' + typeof c)
       }
