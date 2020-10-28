@@ -1,6 +1,7 @@
 import { CodePartL } from 'generate/lib/codeWriter'
 import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
 import { format } from 'path'
+import { TypeAliasDeclaration } from 'ts-morph'
 import { genFields } from './fields'
 
 // const cadastrarVoluntario: cvv_org_br_cadastro_proc_cadastrarVoluntarioRef = {
@@ -61,18 +62,18 @@ const genPkgRef = nodeTransformer({
             )
           ),
           process: w.mapObj(pkg.processes, (val, key) =>
-            src.chip(-10, genProcessRefTypes.make(val, { pkguri }))
+            src.chip(-10, genProcess.make(val, { pkguri }))
           ),
-          view: w.mapObj(pkg.views, (val, key) =>
-            src.chip(-10, genViewInstanceType.make(val, { pkguri }))
-          )
+          // view: w.mapObj(pkg.views, (val, key) =>
+          //   src.chip(-10, genViewInstanceType.make(val, { pkguri }))
+          // )
         })
       ]
     ], false)
   },
 }, {})
 
-const genProcessRefTypes = nodeTransformer({
+const genProcess = nodeTransformer({
   Process(w, proc, info) {
     const procuripref = info.cfg.pkguri + '_proc_' + proc.name.str
     const procrefid = procuripref + 'Ref'
@@ -93,13 +94,55 @@ const genProcessRefTypes = nodeTransformer({
                   proc.vars.input.props.map((v) => v.key.str)).join(','),
               ')'
             ]
-          ])
+          ]),
+          task: w.mapObj(proc.tasks, (val, key) =>
+            info.src.chip(-10, genProcessTask.make(val, { pkguri: info.cfg.pkguri, procname: proc.name.str }))
+          ),
         })
       ]
     ], false)
   },
 }, { pkguri: '' })
 
+const genProcessTask = nodeTransformer({
+  UITask(w, task, info) {
+    info.src.require('TUITaskRef', '~/lib/archol/process', task)
+    const procuripref = info.cfg.pkguri + '_proc_' + info.cfg.procname
+    const taskuripref = procuripref + "_task_" + task.name.str
+    // const taskrefid = taskuripref + 'Ref'
+    const taskinst = taskuripref + 'Instance'
+    // info.src.require('instanciateProcess', '~/lib/archol/process', proc)
+    // info.src.require('T' + procrefid, '~/app/types', proc)
+    // info.src.require(procinst, '~/app/types', proc)
+    return w.chipResult(taskinst, [
+      [
+        ['export const ', taskinst, ': TUITaskRef<T', procuripref, 'InstanceVars> = '],
+        w.object({
+          packageId: w.string(info.cfg.pkguri),
+          processId: w.string(info.cfg.procname),
+          taskId: w.string(task.name.str)
+        })
+      ]
+    ], false)
+  },
+  SystemTask(w, task, info) {
+    const procuripref = info.cfg.pkguri + '_proc_' + info.cfg.procname
+    const taskuripref = procuripref + "_task_" + task.name.str
+    // const taskrefid = taskuripref + 'Ref'
+    const taskinst = taskuripref + 'Instance'
+    // info.src.require('instanciateProcess', '~/lib/archol/process', proc)
+    // info.src.require('T' + procrefid, '~/app/types', proc)
+    // info.src.require(procinst, '~/app/types', proc)
+    return w.chipResult(taskinst, [
+      [
+        'export const ' + taskinst + ': T' + taskinst + ' = ',
+        w.object({
+
+        })
+      ]
+    ], false)
+  },
+}, { pkguri: '', procname: '' })
 
 const genType = nodeTransformer({
   NormalType(w, t, info) {
@@ -180,20 +223,29 @@ const genType = nodeTransformer({
   },
 }, { pkguri: '' })
 
-const genViewInstanceType = nodeTransformer({
-  View(w, view, info) {
-    const viewuri = info.cfg.pkguri + '_view_' + view.name.str
-    info.src.requireDefault('React', 'react', view)
-    info.src.require('ArcholViewInstance', '~/lib/archol/types', view)
-    info.src.require('T' + viewuri + 'Instance', '~/app/types', view)
-    return w.chipResult(viewuri, [
-      [
-        'export function ' + viewuri + 'Render',
-        w.funcDecl(['p: {data: ArcholViewData<T' + viewuri + 'Data> }'], 'React.ReactElement', [
-          // 'return render binded'
-          'return <div>todo</div>'
-        ])
-      ]
-    ], false)
-  },
-}, { pkguri: '' })
+// const genViewInstanceType = nodeTransformer({
+//   View(w, view, info) {
+//     const viewuri = info.cfg.pkguri + '_view_' + view.name.str
+//     info.src.require('ArcholViewInstance', '~/lib/archol/types', view)
+//     info.src.require('T' + viewuri + 'Binder', '~/app/types', view)
+//     return w.chipResult(viewuri + 'Binder', [
+//       [
+//         'export function ' + viewuri + 'Binder',
+//         w.funcDecl(['from: any', 'to: any'], 'T' + viewuri + 'Binder', [
+//           'return'
+//         ])
+//       ]
+//     ], false)
+//   },
+// }, { pkguri: '' })
+
+/*
+cadastro/telaBadosBasicos
+  cof, nome, email
+
+            bind: {
+              cpf: 'input.cpf',
+              nome: 'local.nome',
+              email: 'local.email',
+            }
+*/

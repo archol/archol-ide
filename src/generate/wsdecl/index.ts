@@ -307,10 +307,16 @@ declare type ${pkgid}_process_${procName}_NextTask = ${pkgid}_process_${procName
       const funcName = func.name.str
       w.writeLine(`
 declare interface ${pkgid}_function_${funcName}_Decl {
+  cancelabled?: boolean
   level: FunctionLevel
   input: ${pkgid}_DeclFields,
   output: ${pkgid}_DeclFields,
-  code (vars: { input: ${pkgid}_function_${funcName}_InputRef, output: ${pkgid}_function_${funcName}_OutputRef }): void
+  code (args: { 
+    input: ${pkgid}_function_${funcName}_InputRef, 
+    output: ${pkgid}_function_${funcName}_OutputRef, 
+    progress: (percent: number, msg?: string)=>void,
+    ${func.cancelabled ? 'canceled()=>boolean' : ''}
+  }): void
 }
 declare type ${pkgid}_function_${funcName}_Ref = (input: ${pkgid}_function_${funcName}_InputRef, output: ${pkgid}_function_${funcName}_OutputRef) => Promise<void>
 declare interface ${pkgid}_function_${funcName}_InputRef {

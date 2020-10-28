@@ -11,8 +11,8 @@ import {
   DocumentStates, DocActions, DocAction, DocField, DocIndex, DocumentState, UseDocStates, Routes, Pagelets,
   Pagelet, Menu, MenuItem, MenuItemSeparator, SourceNodeMapped, SourceNodeRefsKind, isPackage, RouteRedirect,
   RouteCode, RoleGroup, TsNode, basicTypes3, PackageRefs, PackageRef, isView, EnumOption, ComplexType, ArrayType,
-  UseTypeAsArray, Types, SourceNodeKind, SourceNodeObjectKind, SourceNodeArrayKind, BuilderConfig, AppMappings, 
-  RoleDefs, RoleGroups,  WidgetEntry, WidgetMarkdown, WidgetContent, AnyRole, ProcessUse, SourceRef, WidgetItem, 
+  UseTypeAsArray, Types, SourceNodeKind, SourceNodeObjectKind, SourceNodeArrayKind, BuilderConfig, AppMappings,
+  RoleDefs, RoleGroups, WidgetEntry, WidgetMarkdown, WidgetContent, AnyRole, ProcessUse, SourceRef, WidgetItem,
 } from './types'
 
 export async function loadApp(ws: Workspace, appName: string): Promise<Application> {
@@ -1099,10 +1099,11 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       pkg.functions = parseColObjArg('Functions', argsFunctions[0], (itmFunction, functionName) => {
         const fprops = parseObjArg(itmFunction, {
           level: parseFunctionLevel,
+          cancelabled: parseBolArg,
           input: parseFields,
           output: parseFields,
           code: parserForCode(),
-        }, [])
+        }, ['cancelabled'])
         const func: Function = {
           kind: 'Function',
           sourceRef: ws.getRef(argsFunctions[0]),
@@ -1162,7 +1163,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       function parseWidgetContent(argWidget: ts.Node): WidgetContent {
         const cwprops: {
           caption?: I18N,
-          widgets: ArrayConst<'Widgets',WidgetContent  | WidgetItem<any>>
+          widgets: ArrayConst<'Widgets', WidgetContent | WidgetItem<any>>
         } = isArrArg(argWidget) ? {
           widgets: parserForArrArg('Widgets', parseWidget)(argWidget)
         } : parseObjArg(argWidget, {
@@ -1575,8 +1576,8 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       })
       return ret
     }
-    function refViewFields(view: View):Fields {
-      const ret = objectConst<'Fields', Field>('Fields', ws.getRef(view)) 
+    function refViewFields(view: View): Fields {
+      const ret = objectConst<'Fields', Field>('Fields', ws.getRef(view))
 
       view.content.widgets.items.forEach(add)
       function add(w: WidgetContent | WidgetItem<any>) {
@@ -1585,7 +1586,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           w.widgetFields().props.forEach((field) => {
             if (!ret.props.some((i) => i.key.str === field.key.str)) {
               ret.add(field.key,
-                {                
+                {
                   kind: 'Field',
                   sourceRef: w.sourceRef,
                   name: field.key,
@@ -1603,8 +1604,8 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
                     base(s2) {
                       return basicTypes3.string.base().base
                     }
-                  }                
-              })
+                  }
+                })
             }
           })
         }

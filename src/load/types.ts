@@ -549,7 +549,7 @@ export function isWidgetItem<KIND extends SourceNodeWidgetKind>(node: any): node
 
 export interface WidgetContent extends SourceNode<'WidgetContent'> {
   caption?: I18N,
-  widgets: ArrayConst<'Widgets',WidgetContent  | WidgetItem<any>>
+  widgets: ArrayConst<'Widgets', WidgetContent | WidgetItem<any>>
 }
 
 export function isWidgetEntry(node: any): node is WidgetEntry {
@@ -579,6 +579,7 @@ export interface FunctionLevel extends SourceNode<'FunctionLevel'> {
 
 export interface Function extends SourceNodeMapped<'Function'> {
   level: FunctionLevel
+  cancelabled: BooleanConst
   input: Fields
   output: Fields
   code: Code
