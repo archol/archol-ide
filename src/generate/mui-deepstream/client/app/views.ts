@@ -14,7 +14,6 @@ export const generateClientViews = sourceTransformer({
     Package(w, pkg, { transformFile }) {
       const pkguri = pkg.uri.id.str
       pkg.views.props.forEach((v) => {
-        debugger
         transformFile('~/app/' + pkg.uri.id.str + '/views/' + v.key.str + '.tsx', genView.make(v.val, { pkguri }))
       })
       return ''
@@ -60,7 +59,7 @@ const genView = nodeTransformer({
     function renderEntry(entry: WidgetEntry): CodePartL {
       src.require('EntryWidget', '~/lib/components/widgets/entry', entry)
       return [
-        '<EntryWidget vars={vinst.vars} path=', entry.field, ' />'
+        '<EntryWidget view={vinst} path=', entry.field, ' />'
       ]
     }
     function renderMarkdown(md: WidgetMarkdown): CodePartL {

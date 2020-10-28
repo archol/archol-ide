@@ -240,6 +240,7 @@ export async function generateApplication<CFG extends object, SW extends GenNode
         if (val.def) preq.push(val.def)
         if (val.ids.length) preq.push('{ ' + val.ids.join(', ') + ' }')
         const fname = tildeExpand(filePath, key)
+        // console.log('tildeExpand(', filePath, ', ', key, ')=', fname)
         srcfile.addStatements('import ' + preq.join(', ') + ' from "' + fname + '";')
       })
 
@@ -254,11 +255,13 @@ export async function generateApplication<CFG extends object, SW extends GenNode
         srcUsed[id] = sourceRef
       }
       function requireImport(id: string, module: string, sourceRef: TsNode): void {
+        if (module.startsWith('.')) throw ws.fatal('use tilde', sourceRef)
         useId(id, sourceRef)
         const req = srcRequires[module] || (srcRequires[module] = initReq())
         if (!req.ids.includes(id)) req.ids.push(id)
       }
       function requireDefaultImport(id: string, module: string, sourceRef: TsNode): void {
+        if (module.startsWith('.')) throw ws.fatal('use tilde', sourceRef)
         useId(id, sourceRef)
         const req = srcRequires[module] || (srcRequires[module] = initReq())
         req.def = id

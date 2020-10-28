@@ -85,8 +85,14 @@ const genProcessInstanceType = nodeTransformer({
 }, { pkguri: '' })
 
 const genType = nodeTransformer({
-  NormalType(w) {
-    return w.chipResult('', [''], false)
+  NormalType(w, t, info) {
+    const id = 'T' + info.cfg.pkguri + '_base_' + t.name.str
+    return w.chipResult(id, [
+      [
+        'export type ', id, ' = ',
+        t.base().base
+      ]
+    ], false)
   },
   EnumType(w, t, info) {
     const id = 'T' + info.cfg.pkguri + '_enum_' + t.name.str
@@ -115,15 +121,13 @@ const genType = nodeTransformer({
 
 const genViewInstanceType = nodeTransformer({
   View(w, view, info) {
-    info.src.require('ArcholVars', '~/lib/archol/types', view)
-    const id = 'T' + info.cfg.pkguri + '_view_' + view.name.str + 'Instance'
-    return w.chipResult(id, [
-      [
-        'export interface ' + id,
-        w.object({
-          vars: ['ArcholVars<', genFields.make(view.refs.fields, {}), '>']
-        })
-      ]
+    info.src.require('ArcholViewRef', '~/lib/archol/types', view)
+    info.src.require('ArcholViewInstance', '~/lib/archol/types', view)
+    const id = 'T' + info.cfg.pkguri + '_view_' + view.name.str
+    return w.chipResult(id + 'Ref', [
+      ['export interface ', id, 'Data', genFields.make(view.refs.fields, {})],
+      ['export type ', id, 'Ref = ArcholViewRef<', id, 'Data>'],
+      ['export type ', id, 'Instance = ArcholViewInstance<', id, 'Data>']
     ], false)
   },
 }, { pkguri: '' })
