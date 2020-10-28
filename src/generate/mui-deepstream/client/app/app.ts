@@ -106,24 +106,66 @@ const genProcess = nodeTransformer({
 
 const genProcessTask = nodeTransformer({
   UITask(w, task, info) {
-    info.src.require('TUITaskRef', '~/lib/archol/process', task)
     const procuripref = info.cfg.pkguri + '_proc_' + info.cfg.procname
     const taskuripref = procuripref + "_task_" + task.name.str
     // const taskrefid = taskuripref + 'Ref'
     const taskinst = taskuripref + 'Instance'
+    const usedView = task.useView.ref(task)
+    const hasfields = usedView.refs.fields.props.length
+    const usedViewId = 'View' + usedView.name.str
     // info.src.require('instanciateProcess', '~/lib/archol/process', proc)
     // info.src.require('T' + procrefid, '~/app/types', proc)
     // info.src.require(procinst, '~/app/types', proc)
+    info.src.requireDefault('React', 'react', task)
+    info.src.require('TUITaskRef', '~/lib/archol/process', task)
+    info.src.require('getProcessVarsDoc', '~/lib/archol/process', task)
+    info.src.require('archolDocBinding', '~/lib/archol/process', task)
+    info.src.require('ArcholDocumentState', '~/lib/archol/type', task)
+    info.src.require('T' + procuripref + 'Instance', '~/app/types', task)
+    info.src.require('T' + procuripref + 'InstanceVars', '~/app/types', task)
+    info.src.require(usedViewId, '~/app/' + info.cfg.pkguri + '/views/' + usedView.name.str, task)
     return w.chipResult(taskinst, [
       [
         ['export const ', taskinst, ': TUITaskRef<T', procuripref, 'InstanceVars> = '],
         w.object({
           packageId: w.string(info.cfg.pkguri),
           processId: w.string(info.cfg.procname),
-          taskId: w.string(task.name.str)
+          taskId: w.string(task.name.str),
+          getInstance: w.funcDecl(['processInstanceId'], '', [
+            ['const packageId = ', w.string(info.cfg.pkguri)],
+            ['const processId = ', w.string(info.cfg.procname)],
+            ['const taskId = ', w.string(task.name.str)],
+            hasfields ?
+              ['const doc = getProcessVarsDoc<', 'T' + procuripref + 'InstanceVars', '>(packageId, processId, taskId, processInstanceId)']
+              : ['const doc: ArcholDocumentState<', 'T' + procuripref + 'InstanceVars> = undefined as any'],
+            hasfields ?
+              ['const binding = ', 'archolDocBinding(doc, ', task.useView.bind, ')']
+              : [],
+            ['const view = ', w.funcDecl([''], '', [
+              hasfields ?
+                ['return <', usedViewId, ' binding={binding} />',]
+                : ['return <', usedViewId, ' />',]
+            ], true)],
+            [
+              'const self = ', w.object({
+                packageId: '',
+                processId: '',
+                taskId: '',
+                processInstanceId: '',
+                doc: '',
+                view: ''
+              })
+            ],
+            'return self'
+          ])
         })
       ]
     ], false)
+  },
+  BindVars(w, vars) {
+    return w.mapObj(vars, (v) => {
+      return v.fieldpath
+    })
   },
   SystemTask(w, task, info) {
     const procuripref = info.cfg.pkguri + '_proc_' + info.cfg.procname

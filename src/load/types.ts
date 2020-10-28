@@ -727,6 +727,7 @@ export type SourceNodeType<KIND extends SourceNodeKind> = KIND extends 'Applicat
   KIND extends 'UseView' ? UseView :
   KIND extends 'SystemTask' ? SystemTask :
   KIND extends 'UseFunction' ? UseFunction :
+  KIND extends 'BindVars' ? BindVars :
   KIND extends 'BindVar' ? BindVar :
   KIND extends 'View' ? View :
   KIND extends 'ViewAction' ? ViewAction :

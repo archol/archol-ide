@@ -23,7 +23,7 @@ export interface CodeWriter {
     heading?: CodePartL[]
   ): CodeLines
   code(node: Code, opts?: { after?: CodePartL[], forceRetType?: string }): FuncDecl
-  funcDecl(args: string[], ret: string, statements: null | CodePartL[]): FuncDecl
+  funcDecl(args: string[], ret: string, statements: null | CodePartL[], arrow?: boolean): FuncDecl
   array(arr: CodePartL[]): CodeLines
   object(obj: { [name: string]: CodePartL }): CodeLines
   object(obj: { [name: string]: CodePartLo }, objNode: SourceNode<any>): CodeLines
@@ -62,6 +62,7 @@ export interface FuncDecl {
     args: string[]
     ret: string
     body: null | CodeLines
+    arrow?: boolean
   }
 }
 
@@ -147,11 +148,11 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
         body
       )
     },
-    funcDecl(args: string[], ret: string, statements: null | CodePartL[]): FuncDecl {
+    funcDecl(args: string[], ret: string, statements: null | CodePartL[], arrow?: boolean): FuncDecl {
       const body = statements && wSelf.statements(statements, true)
       return {
         $func$: {
-          args, ret, body
+          args, ret, body, arrow
         }
       }
     },
@@ -197,7 +198,9 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
     const sk = isStringConst(key) ? key.str : key
     const k = /^\w+$/.test(sk) ? sk : wSelf.string(sk)
     if (isFuncDecl(v)) return [k, v]
-    return [k, ':', v]
+    if (v)
+      return [k, ':', v]
+    return k
   }
 
   function transformNode(n: SourceNode<any>): CodePartR[] {
@@ -246,6 +249,8 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
           fres.push(':')
           fres.push(p.$func$.ret)
         }
+        if (p.$func$.arrow)
+          fres.push(' => ')
         if (p.$func$.body)
           fres.push(p.$func$.body)
       }

@@ -73,6 +73,7 @@ const genProcessInstanceType = nodeTransformer({
       [
         'export interface ', id,
         w.object({
+          instanceId: 'string',
           vars: [id, 'Vars']
         })
       ],
