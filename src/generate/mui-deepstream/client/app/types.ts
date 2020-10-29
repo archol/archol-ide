@@ -1,6 +1,6 @@
 import { strict } from 'assert'
 import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
-import { genFields } from './fields'
+import { genFieldsWithBase, genFieldsWithType } from './fields'
 
 export const generateClientTypes = sourceTransformer({
   filePath: '~/app/types.ts',
@@ -41,7 +41,11 @@ const genPkgRef = nodeTransformer({
         view: w.mapObj(pkg.views, (val, key) =>
           src.chip(1,
             genViewInstanceType.make(val, { pkguri }))
-        )
+        ),
+        func: w.mapObj(pkg.functions, (val, key) =>
+          src.chip(1,
+            genFuncInstanceType.make(val, { pkguri }))
+        ),
       })]
     ], false)
   },
@@ -64,14 +68,13 @@ const genProcessRef = nodeTransformer({
     ], false)
   },
   UITask(w, task, info) {
-    const procurivars = info.cfg.pkguri + '_proc_' + info.stack.get('Process').name.str + 'InstanceVars'
     info.src.require('TUITaskRef', '~/lib/archol/process', task)
-    return ['TUITaskRef<T', procurivars, '>']
+    return ['TUITaskRef']
   },
   SystemTask(w, task, info) {
-    const procurivars = info.cfg.pkguri + '_proc_' + info.stack.get('Process').name.str + 'InstanceVars'
+    const usedfunc = 'T' + info.cfg.pkguri + '_func_' + task.useFunction.function.str
     info.src.require('TSystemTaskRef', '~/lib/archol/process', task)
-    return ['TSystemTaskRef<T', procurivars, '>']
+    return ['TSystemTaskRef<', usedfunc, 'Output>']
   },
 }, { pkguri: '' })
 
@@ -89,9 +92,9 @@ const genProcessInstanceType = nodeTransformer({
       [
         'export interface ', id, 'Vars',
         w.object({
-          local: genFields.make(proc.vars.local, {}),
-          input: genFields.make(proc.vars.input, {}),
-          output: genFields.make(proc.vars.output, {}),
+          local: genFieldsWithBase.make(proc.vars.local, {}),
+          input: genFieldsWithBase.make(proc.vars.input, {}),
+          output: genFieldsWithBase.make(proc.vars.output, {}),
         })
       ],
     ], false)
@@ -139,9 +142,21 @@ const genViewInstanceType = nodeTransformer({
     info.src.require('ArcholViewInstance', '~/lib/archol/types', view)
     const id = 'T' + info.cfg.pkguri + '_view_' + view.name.str
     return w.chipResult(id + 'Binder', [
-      ['export interface ', id, 'Data', genFields.make(view.refs.fields, {})],
+      ['export interface ', id, 'Data', genFieldsWithBase.make(view.refs.fields, {})],
       ['export type ', id, 'Binder = ArcholViewBinder<', id, 'Data>'],
       ['export type ', id, 'Instance = ArcholViewInstance<', id, 'Data>']
+    ], false)
+  },
+}, { pkguri: '' })
+
+const genFuncInstanceType = nodeTransformer({
+  Function(w, func, info) {
+    const id = 'T' + info.cfg.pkguri + '_func_' + func.name.str
+    info.src.require('FunctionContext', '~/lib/archol/functions', func)
+    return w.chipResult(id + 'Exec', [
+      ['export interface ', id, 'Input', genFieldsWithType.make(func.input, {})],
+      ['export interface ', id, 'Output', genFieldsWithType.make(func.output, {})],
+      ['export type ', id, 'Exec = ( input: ', id, 'Input ) => FunctionContext<', id, 'Output>'],
     ], false)
   },
 }, { pkguri: '' })

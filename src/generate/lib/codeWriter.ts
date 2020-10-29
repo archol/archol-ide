@@ -23,7 +23,7 @@ export interface CodeWriter {
     heading?: CodePartL[]
   ): CodeLines
   code(node: Code, opts?: { after?: CodePartL[], forceRetType?: string }): FuncDecl
-  funcDecl(args: string[], ret: string, statements: null | CodePartL[], arrow?: boolean): FuncDecl
+  funcDecl(args: string[], ret: string, statements: null | CodePartL[], opts?: { arrow?: boolean, async?: boolean }): FuncDecl
   array(arr: CodePartL[]): CodeLines
   object(obj: { [name: string]: CodePartL }): CodeLines
   object(obj: { [name: string]: CodePartLo }, objNode: SourceNode<any>): CodeLines
@@ -63,6 +63,7 @@ export interface FuncDecl {
     ret: string
     body: null | CodeLines
     arrow?: boolean
+    async?: boolean
   }
 }
 
@@ -113,24 +114,6 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
       }, [])
       return wSelf.lines(lines, '[', ']', ',')
     },
-    mapObj<KIND extends SourceNodeObjectKind, T extends SourceNode<any>>(
-      objs: ObjectConst<KIND, T> | Array<ObjectConst<KIND, any>>,
-      fn?: (val: T, name: StringConst) => CodePartL,
-      filter?: (val: T, name: StringConst) => boolean,
-      heading?: CodePartL[]
-    ): CodeLines {
-      if (isObjectConst(objs)) objs = [objs]
-      const allprops = objs.reduce<Array<ObjectConstProp<KIND, any>>>
-        ((ret, o) => ret.concat(o.props), [])
-      return wSelf.lines(
-        (heading || []).concat(
-          allprops
-            .filter((i) => filter ? filter(i.val as any, i.key) : true)
-            .map((i) => [
-              propv(i.key, (fn || transformNode)(i.val as any, i.key))
-            ])),
-        '{', '}', ',')
-    },
     code(node, opts): FuncDecl {
       const body: CodePartL[] = node.body.map(b => b.getText())
       let retType = node.ret.getText()
@@ -148,16 +131,34 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
         body
       )
     },
-    funcDecl(args: string[], ret: string, statements: null | CodePartL[], arrow?: boolean): FuncDecl {
+    funcDecl(args: string[], ret: string, statements: null | CodePartL[], opts?): FuncDecl {
       const body = statements && wSelf.statements(statements, true)
       return {
         $func$: {
-          args, ret, body, arrow
+          args, ret, body, ...opts
         }
       }
     },
     array(arr: CodePartL[]): CodeLines {
       return wSelf.lines(arr, '[', ']', ',')
+    },
+    mapObj<KIND extends SourceNodeObjectKind, T extends SourceNode<any>>(
+      objs: ObjectConst<KIND, T> | Array<ObjectConst<KIND, any>>,
+      fn?: (val: T, name: StringConst) => CodePartL,
+      filter?: (val: T, name: StringConst) => boolean,
+      heading?: CodePartL[]
+    ): CodeLines {
+      if (isObjectConst(objs)) objs = [objs]
+      const allprops = objs.reduce<Array<ObjectConstProp<KIND, any>>>
+        ((ret, o) => ret.concat(o.props), [])
+      return wSelf.lines(
+        (heading || []).concat(
+          allprops
+            .filter((i) => filter ? filter(i.val as any, i.key) : true)
+            .map((i) => [
+              propv(i.key, (fn || transformNode)(i.val as any, i.key))
+            ])),
+        '{', '}', ',')
     },
     object(obj: { [name: string]: CodePartL | NodeTransformerFactory<any, any> }, node?: SourceNode<any>): CodeLines {
       return wSelf.lines(mapObjectToArray(obj, (val, key) => {
@@ -197,7 +198,7 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
   function propv(key: string | StringConst, v: CodePartL) {
     const sk = isStringConst(key) ? key.str : key
     const k = /^\w+$/.test(sk) ? sk : wSelf.string(sk)
-    if (isFuncDecl(v)) return [k, v]
+    if (isFuncDecl(v)) return [v.$func$.async ? 'async ' : '', k, v]
     if (v)
       return [k, ':', v]
     return k
@@ -242,6 +243,8 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
     function flat(p: CodePartL) {
       if (isCodeLines(p)) fres.push(p)
       else if (isFuncDecl(p)) {
+        if (p.$func$.arrow && p.$func$.async)
+          fres.push('async ')
         fres.push('(')
         fres.push(p.$func$.args.join(', '))
         fres.push(')')

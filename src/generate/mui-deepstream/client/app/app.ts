@@ -1,31 +1,5 @@
 import { CodePartL } from 'generate/lib/codeWriter'
 import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
-import { format } from 'path'
-import { TypeAliasDeclaration } from 'ts-morph'
-import { genFields } from './fields'
-
-// const cadastrarVoluntario: cvv_org_br_cadastro_proc_cadastrarVoluntarioRef = {
-//     start(cpf) {
-
-//     }
-//   }
-//   const appInstance: AppRef = {
-//     cadastro: {
-//       process: {
-//         cadastrarVoluntario
-//       }
-//     },
-//     secretaria: {},
-//     dashboard: {},
-//   }
-
-
-//   start() {
-//     contentDoc.start({
-//       title: 'x',
-
-//     })
-//   }
 
 export const generateClientApp = sourceTransformer({
   filePath: '~/app/app.tsx',
@@ -51,7 +25,7 @@ export const generateClientApp = sourceTransformer({
 const genPkgRef = nodeTransformer({
   Package(w, pkg, { src }) {
     const pkguri = pkg.uri.id.str
-    return w.chipResult(pkguri, [
+    return w.chipResult(pkguri + 'Instance', [
       [
         'export const ', pkguri, 'Instance = ',
         w.object({
@@ -63,6 +37,9 @@ const genPkgRef = nodeTransformer({
           ),
           process: w.mapObj(pkg.processes, (val, key) =>
             src.chip(-10, genProcess.make(val, { pkguri }))
+          ),
+          func: w.mapObj(pkg.functions, (val, key) =>
+            src.chip(-10, genFunction.make(val, { pkguri }))
           ),
           // view: w.mapObj(pkg.views, (val, key) =>
           //   src.chip(-10, genViewInstanceType.make(val, { pkguri }))
@@ -125,7 +102,7 @@ const genProcessTask = nodeTransformer({
     info.src.require(usedViewId, '~/app/' + info.cfg.pkguri + '/views/' + usedView.name.str, task)
     return w.chipResult(taskrefid, [
       [
-        ['export const ', taskrefid, ': TUITaskRef<T', procuripref, 'InstanceVars> = '],
+        ['export const ', taskrefid, ': TUITaskRef = '],
         w.object({
           packageId: w.string(info.cfg.pkguri),
           processId: w.string(info.cfg.procname),
@@ -144,14 +121,13 @@ const genProcessTask = nodeTransformer({
               hasfields ?
                 ['return <', usedViewId, ' bindings={bindings} />',]
                 : ['return <', usedViewId, ' />',]
-            ], true)],
+            ], { arrow: true })],
             [
               'const self = ', w.object({
                 packageId: '',
                 processId: '',
                 taskId: '',
                 processInstanceId: '',
-                doc: '',
                 view: ''
               })
             ],
@@ -167,63 +143,71 @@ const genProcessTask = nodeTransformer({
     })
   },
   SystemTask(w, task, info) {
-    return w.chipResult('TODO', [], false)
-    // const procuripref = info.cfg.pkguri + '_proc_' + info.cfg.procname
-    // const taskuripref = procuripref + "_task_" + task.name.str
-    // const taskrefid = taskuripref + 'Ref'
-    // const usedFunc = task.useFunction.ref(task)
-    // const hasfields = usedView.refs.fields.props.length
-    // const usedFuncId = 'Function' + usedView.name.str
-    // const usedFuncData = 'T' + info.cfg.pkguri + '_view_' + usedView.name.str + 'Data'
-    // info.src.requireDefault('React', 'react', task)
-    // info.src.require('TUITaskRef', '~/lib/archol/process', task)
-    // info.src.require('getProcessVarsDoc', '~/lib/archol/process', task)
-    // info.src.require('archolDocBinding', '~/lib/archol/process', task)
-    // info.src.require('ArcholDocumentState', '~/lib/archol/types', task)
-    // info.src.require('ArcholViewInstance', '~/lib/archol/types', task)
-    // info.src.require('T' + procuripref + 'Instance', '~/app/types', task)
-    // info.src.require('T' + procuripref + 'InstanceVars', '~/app/types', task)
-    // info.src.require(usedViewData, '~/app/types', task)
-    // info.src.require(usedViewId, '~/app/' + info.cfg.pkguri + '/views/' + usedView.name.str, task)
-    // return w.chipResult(taskrefid, [
-    //   [
-    //     ['export const ', taskrefid, ': TUITaskRef<T', procuripref, 'InstanceVars> = '],
-    //     w.object({
-    //       packageId: w.string(info.cfg.pkguri),
-    //       processId: w.string(info.cfg.procname),
-    //       taskId: w.string(task.name.str),
-    //       getInstance: w.funcDecl(['processInstanceId'], '', [
-    //         ['const packageId = ', w.string(info.cfg.pkguri)],
-    //         ['const processId = ', w.string(info.cfg.procname)],
-    //         ['const taskId = ', w.string(task.name.str)],
-    //         hasfields ?
-    //           ['const doc = getProcessVarsDoc<', 'T' + procuripref + 'InstanceVars', '>(packageId, processId, taskId, processInstanceId)']
-    //           : ['const doc: ArcholDocumentState<', 'T' + procuripref + 'InstanceVars> = undefined as any'],
-    //         hasfields ?
-    //           ['const bindings: ArcholViewInstance<', usedViewData, '>', ' = ', 'archolDocBinding(doc, ', task.useView.bind, ')']
-    //           : [],
-    //         ['const view = ', w.funcDecl([''], '', [
-    //           hasfields ?
-    //             ['return <', usedViewId, ' bindings={bindings} />',]
-    //             : ['return <', usedViewId, ' />',]
-    //         ], true)],
-    //         [
-    //           'const self = ', w.object({
-    //             packageId: '',
-    //             processId: '',
-    //             taskId: '',
-    //             processInstanceId: '',
-    //             doc: '',
-    //             view: ''
-    //           })
-    //         ],
-    //         'return self'
-    //       ])
-    //     })
-    //   ]
-    // ], false)
+    const procuripref = info.cfg.pkguri + '_proc_' + info.cfg.procname
+    const taskuripref = procuripref + "_task_" + task.name.str
+    const taskrefid = taskuripref + 'Ref'
+    const usedFunc = task.useFunction.ref(task)
+    const usedFuncId = 'Function' + usedFunc.name.str
+    const usedFuncInput = 'T' + info.cfg.pkguri + '_func_' + usedFunc.name.str + 'Input'
+    const usedFuncOutput = 'T' + info.cfg.pkguri + '_func_' + usedFunc.name.str + 'Output'
+
+    info.src.requireDefault('React', 'react', task)
+    info.src.require('TSystemTaskRef', '~/lib/archol/process', task)
+    info.src.require('copyVarsFromDoc', '~/lib/archol/process', task)
+    info.src.require('copyVarsToDoc', '~/lib/archol/process', task)
+    info.src.require(usedFuncInput, '~/app/types', task)
+    info.src.require(usedFuncOutput, '~/app/types', task)
+
+    return w.chipResult(taskrefid, [
+      [
+        ['export const ', taskrefid, ': TSystemTaskRef<', usedFuncOutput, '> = '],
+        w.object({
+          packageId: w.string(info.cfg.pkguri),
+          processId: w.string(info.cfg.procname),
+          taskId: w.string(task.name.str),
+          exec: w.funcDecl(['processInstanceId'], '', [
+            ['const packageId = ', w.string(info.cfg.pkguri)],
+            ['const processId = ', w.string(info.cfg.procname)],
+            ['const taskId = ', w.string(task.name.str)],
+            ['const doc = getProcessVarsDoc<', 'T' + procuripref + 'InstanceVars', '>(packageId, processId, taskId, processInstanceId)'],
+            [
+              'const input = copyVarsFromDoc<' + usedFuncInput + '>(doc,', task.useFunction.input, ' )'
+            ],
+            ['const output = executeFunction<' + usedFuncInput + ', ' + usedFuncOutput + '>(input)'],
+            ['const result = await output.result'],
+            ['copyVarsToDoc(result, doc, ', task.useFunction.output, ' )'],
+            ['return result']
+          ], { async: true })
+        })
+      ]
+    ], false)
   },
 }, { pkguri: '', procname: '' })
+
+const genFunction = nodeTransformer({
+  Function(w, f, { ws, src, cfg }) {
+
+
+    const body: CodePartL[] = [
+      ['return executeFunction(input)']
+    ]
+    const fid = 'T' + cfg.pkguri + '_func_' + f.name.str
+    src.require('FunctionContext', '~/lib/archol/functions', f)
+    src.require('executeFunction', '~/lib/archol/functions', f)
+    src.require(fid + 'Exec', '~/app/types', f);
+    src.require(fid + 'Output', '~/app/types', f);
+    src.require(fid + 'Output', '~/app/types', f);
+
+    return w.chipResult(fid + 'Exec', [
+      [
+        'export function ', fid + 'Exec', w.funcDecl([
+          'input: ' + fid + 'Input'
+        ], 'FunctionContext<' + fid + 'Output>', body
+        )
+      ]
+    ], false)
+  },
+}, { pkguri: '' })
 
 const genType = nodeTransformer({
   NormalType(w, t, info) {
