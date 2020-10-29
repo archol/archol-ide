@@ -1,3 +1,4 @@
+import { strict } from 'assert'
 import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
 import { genFields } from './fields'
 
@@ -58,11 +59,19 @@ const genProcessRef = nodeTransformer({
       w.object({
         start: w.funcDecl(proc.vars.input.props
           .map((v) => v.key.str + ':' + v.val.type.base(v.val)), inst.id, null),
-        //   task: w.mapObj(proc.tasks, (val, key) =>
-        //   info.src.chip(-10, genProcessTask.make(val, { pkguri: info.cfg.pkguri, procuripref }))
-        // ),          
+        task: w.mapObj(proc.tasks, (val, key) => val),
       })]
     ], false)
+  },
+  UITask(w, task, info) {
+    const procurivars = info.cfg.pkguri + '_proc_' + info.stack.get('Process').name.str + 'InstanceVars'
+    info.src.require('TUITaskRef', '~/lib/archol/process', task)
+    return ['TUITaskRef<T', procurivars, '>']
+  },
+  SystemTask(w, task, info) {
+    const procurivars = info.cfg.pkguri + '_proc_' + info.stack.get('Process').name.str + 'InstanceVars'
+    info.src.require('TSystemTaskRef', '~/lib/archol/process', task)
+    return ['TSystemTaskRef<T', procurivars, '>']
   },
 }, { pkguri: '' })
 
@@ -88,41 +97,6 @@ const genProcessInstanceType = nodeTransformer({
     ], false)
   },
 }, { pkguri: '' })
-
-// const genProcessTask = nodeTransformer({
-//   UITask(w, task, info) {
-//     const taskuripref = info.cfg.procuripref + "_task_" + task.name.str
-//     // const taskrefid = taskuripref + 'Ref'
-//     const taskinst = taskuripref + 'Instance'
-//     // info.src.require('instanciateProcess', '~/lib/archol/process', proc)
-//     // info.src.require('T' + procrefid, '~/app/types', proc)
-//     // info.src.require(procinst, '~/app/types', proc)
-//     return w.chipResult(taskinst, [
-//       [
-//         'export const ' + taskinst + ': T' + taskinst + ' = ',
-//         w.object({
-
-//         })
-//       ]
-//     ], false)
-//   },
-//   SystemTask(w, task, info) {
-//     const taskuripref = info.cfg.procuripref + "_task_" + task.name.str
-//     // const taskrefid = taskuripref + 'Ref'
-//     const taskinst = taskuripref + 'Instance'
-//     // info.src.require('instanciateProcess', '~/lib/archol/process', proc)
-//     // info.src.require('T' + procrefid, '~/app/types', proc)
-//     // info.src.require(procinst, '~/app/types', proc)
-//     return w.chipResult(taskinst, [
-//       [
-//         'export const ' + taskinst + ': T' + taskinst + ' = ',
-//         w.object({
-
-//         })
-//       ]
-//     ], false)
-//   },
-// }, { pkguri: '', procuripref: '' })
 
 const genType = nodeTransformer({
   NormalType(w, t, info) {

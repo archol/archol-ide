@@ -108,8 +108,7 @@ const genProcessTask = nodeTransformer({
   UITask(w, task, info) {
     const procuripref = info.cfg.pkguri + '_proc_' + info.cfg.procname
     const taskuripref = procuripref + "_task_" + task.name.str
-    // const taskrefid = taskuripref + 'Ref'
-    const taskinst = taskuripref + 'Instance'
+    const taskrefid = taskuripref + 'Ref'
     const usedView = task.useView.ref(task)
     const hasfields = usedView.refs.fields.props.length
     const usedViewId = 'View' + usedView.name.str
@@ -120,13 +119,14 @@ const genProcessTask = nodeTransformer({
     info.src.require('TUITaskRef', '~/lib/archol/process', task)
     info.src.require('getProcessVarsDoc', '~/lib/archol/process', task)
     info.src.require('archolDocBinding', '~/lib/archol/process', task)
-    info.src.require('ArcholDocumentState', '~/lib/archol/type', task)
+    info.src.require('ArcholDocumentState', '~/lib/archol/types', task)
+    info.src.require('ArcholViewInstance', '~/lib/archol/types', task)
     info.src.require('T' + procuripref + 'Instance', '~/app/types', task)
     info.src.require('T' + procuripref + 'InstanceVars', '~/app/types', task)
     info.src.require(usedViewId, '~/app/' + info.cfg.pkguri + '/views/' + usedView.name.str, task)
-    return w.chipResult(taskinst, [
+    return w.chipResult(taskrefid, [
       [
-        ['export const ', taskinst, ': TUITaskRef<T', procuripref, 'InstanceVars> = '],
+        ['export const ', taskrefid, ': TUITaskRef<T', procuripref, 'InstanceVars> = '],
         w.object({
           packageId: w.string(info.cfg.pkguri),
           processId: w.string(info.cfg.procname),
@@ -139,11 +139,11 @@ const genProcessTask = nodeTransformer({
               ['const doc = getProcessVarsDoc<', 'T' + procuripref + 'InstanceVars', '>(packageId, processId, taskId, processInstanceId)']
               : ['const doc: ArcholDocumentState<', 'T' + procuripref + 'InstanceVars> = undefined as any'],
             hasfields ?
-              ['const binding = ', 'archolDocBinding(doc, ', task.useView.bind, ')']
+              ['const bindings: ArcholViewInstance<T' + procuripref + 'InstanceVars>', ' = ', 'archolDocBinding(doc, ', task.useView.bind, ')']
               : [],
             ['const view = ', w.funcDecl([''], '', [
               hasfields ?
-                ['return <', usedViewId, ' binding={binding} />',]
+                ['return <', usedViewId, ' bindings={bindings} />',]
                 : ['return <', usedViewId, ' />',]
             ], true)],
             [

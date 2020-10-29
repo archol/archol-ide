@@ -25,6 +25,7 @@ const genView = nodeTransformer({
   View(w, v, { ws, src, cfg }) {
 
     src.requireDefault('React', 'react', v)
+    src.require('ArcholViewInstance', '~/lib/archol/types', v)
 
     const fields = v.refs.fields
     const hasfields = fields.props.length
@@ -40,7 +41,7 @@ const genView = nodeTransformer({
       [
         'export function View' + v.name.str, w.funcDecl(
           hasfields ?
-            ['{ vinst }: { vinst: ' + vinst + ' }'] : [],
+            ['{ bindings }: { bindings: ArcholViewInstance<' + vinst + '> }'] : [],
           'React.ReactElement', body
         )
       ]
@@ -59,7 +60,7 @@ const genView = nodeTransformer({
     function renderEntry(entry: WidgetEntry): CodePartL {
       src.require('EntryWidget', '~/lib/components/widgets/entry', entry)
       return [
-        '<EntryWidget view={vinst} path=', entry.field, ' />'
+        '<EntryWidget bindings={bindings} path=', entry.field, ' />'
       ]
     }
     function renderMarkdown(md: WidgetMarkdown): CodePartL {
