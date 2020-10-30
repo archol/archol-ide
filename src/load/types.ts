@@ -428,7 +428,7 @@ export function isProcess(node: any): node is Process {
 }
 
 export interface Process extends SourceNodeMapped<'Process'> {
-  title: I18N
+  title: I18N | Code
   caption: I18N
   icon: Icon
   start: UseTask
@@ -517,7 +517,7 @@ export function isView(node: any): node is View {
 }
 
 export interface View extends SourceNodeMapped<'View'> {
-  title: StringConst | Code
+  title: I18N | Code
   content: WidgetContent
   primaryAction?: ViewAction
   secondaryAction?: ViewAction

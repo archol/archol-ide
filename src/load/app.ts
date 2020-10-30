@@ -12,7 +12,7 @@ import {
   Pagelet, Menu, MenuItem, MenuItemSeparator, SourceNodeMapped, SourceNodeRefsKind, isPackage, RouteRedirect,
   RouteCode, RoleGroup, TsNode, basicTypes3, PackageRefs, PackageRef, isView, EnumOption, ComplexType, ArrayType,
   UseTypeAsArray, Types, SourceNodeKind, SourceNodeObjectKind, SourceNodeArrayKind, BuilderConfig, AppMappings,
-  RoleDefs, RoleGroups, WidgetEntry, WidgetMarkdown, WidgetContent, AnyRole, ProcessUse, SourceRef, WidgetItem,
+  RoleDefs, RoleGroups, WidgetEntry, WidgetMarkdown, WidgetContent, AnyRole, ProcessUse, SourceRef, WidgetItem, isCode,
 } from './types'
 
 export async function loadApp(ws: Workspace, appName: string): Promise<Application> {
@@ -152,6 +152,12 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     }
     else ws.error(arg.getSourceFile().getFilePath() + ' ' + arg.getText() + ' boolean é esperada', arg)
     return ret
+  }
+
+  function isCodeArg(argCode: ts.Node) {
+    return (argCode instanceof ts.MethodDeclaration)
+      || (argCode instanceof ts.FunctionDeclaration) ||
+      (argCode instanceof ts.FunctionExpression)
   }
 
   function parserForCode(validate?: (params: ts.ParameterDeclaration[], retType: ts.Type) => boolean) {
@@ -348,6 +354,11 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       } else ws.error(arg.getSourceFile().getFilePath() + ' ' + arg.getText() + ' Array é esperado', arg)
       return ret
     }
+  }
+
+  function parseTitle(titArg: ts.Node) {
+    if (isCodeArg(titArg)) return parserForCode()(titArg)
+    return parseI18N(titArg)
   }
 
   function parseI18N(arg: ts.Node): I18N {
@@ -974,7 +985,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       parseObjArg(argsProc[0], {
         '*'(val, processName) {
           const pprops = parseObjArg(val, {
-            title: parseI18N,
+            title: parseTitle,
             caption: parseI18N,
             icon: parseIcon,
             start: parseUseTask,
@@ -983,6 +994,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             allow: parseAllowRoles,
             volatile: parseBolArg,
           }, [])
+          pprops.title
           const process: Process = {
             kind: 'Process',
             sourceRef: ws.getRef(processName),
@@ -1149,10 +1161,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       if (argsview.length !== 1) ws.error(expr1View.getSourceFile().getFilePath() + ' views precisa de um parametro', expr1View)
       pkg.views = parseColObjArg('Views', argsview[0], (itmView, viewName) => {
         const vprops = parseObjArg(itmView, {
-          title(titArg) {
-            if (isStrArg(titArg)) return parseStrArg(titArg)
-            return parserForCode()(titArg)
-          },
+          title: parseTitle,
           content: parseWidgetContent,
           primaryAction: parseAction,
           secondaryAction: parseAction,

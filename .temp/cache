@@ -402,12 +402,12 @@
         "affectsGlobalScope": false
       },
       "../src/load/types.ts": {
-        "version": "ab6e070f8856a5c12302a59617c3d42e1e2e72b2fe500cf264a4d1ad21ffe8ab",
-        "signature": "0cf6b7886624cc5401f5106078087382c5c43f1621f4fce551ed3547046b47f7",
+        "version": "a91e539aabad2c89b1145a9583c050d056a0484ffceea59c80f98bdd3c9010b9",
+        "signature": "dfd0f9075aaf16de854590b21f29efdde25e213842fdf1e604eef090caf45b83",
         "affectsGlobalScope": false
       },
       "../src/load/app.ts": {
-        "version": "ffe9d742254201e6c6d157feb996096696943ffe9dab7368d5af5dbcc8cd2470",
+        "version": "f610734bfe5d527d1e2b20dce3e659998793a77acde70cb884f2234ec626856e",
         "signature": "6dbdfe485aabd0b94b2bfb6908d1277ad675a2856a39fd5341f43b7580513ae6",
         "affectsGlobalScope": false
       },
@@ -437,7 +437,7 @@
         "affectsGlobalScope": false
       },
       "../src/generate/wsdecl/index.ts": {
-        "version": "d05e6ef9ce2c10e583c479ade6dbd239a585c73d563f1bd8b3e9063b44012c27",
+        "version": "e72e98fa0c873565642763557c4172b65b627b22a8f8f7aa02612d87d4d417b5",
         "signature": "544ef4123b7a3b8233523f79c22181d1420e324af2cccbee25720bf0d605c5f2",
         "affectsGlobalScope": false
       },

@@ -239,7 +239,7 @@ interface ${pkgid}_DeclDocFields {
       const procName = process.name.str
       w.writeLine(`
 declare interface ${pkgid}_process_${procName}_Decl {
-  title: I18N,
+  title: I18N | ((vars: ${pkgid}_process_${procName}_InstanceVars)=>I18N),
   caption: I18N,
   icon: Icon,
   start: ${pkgid}_process_${procName}_Tasknames,
@@ -315,7 +315,7 @@ declare interface ${pkgid}_function_${funcName}_Decl {
     input: ${pkgid}_function_${funcName}_InputRef, 
     output: ${pkgid}_function_${funcName}_OutputRef, 
     progress: (percent: number, msg?: string)=>void,
-    ${func.cancelabled ? 'canceled()=>boolean' : ''}
+    ${func.cancelabled ? 'canceled: ()=>boolean' : ''}
   }): void
 }
 declare type ${pkgid}_function_${funcName}_Ref = (input: ${pkgid}_function_${funcName}_InputRef, output: ${pkgid}_function_${funcName}_OutputRef) => Promise<void>
