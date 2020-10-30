@@ -61,8 +61,10 @@ const genProcessRef = nodeTransformer({
     return w.chipResult(id, [
       ['export interface ' + id,
       w.object({
+        packageId: w.string(info.cfg.pkguri),
+        processId: w.string(proc.name.str),
         start: w.funcDecl(proc.vars.input.props
-          .map((v) => v.key.str + ':' + v.val.type.base(v.val)), inst.id, null),
+          .map((v) => v.key.str + ':' + v.val.type.base(v.val)), 'Promise<' + inst.id + '>', null),
         task: w.mapObj(proc.tasks, (val, key) => val),
       })]
     ], false)
@@ -81,17 +83,21 @@ const genProcessRef = nodeTransformer({
 const genProcessInstanceType = nodeTransformer({
   Process(w, proc, info) {
     const id = 'T' + info.cfg.pkguri + '_proc_' + proc.name.str + 'Instance'
+    info.src.require('ProcessExecutionStacks', '~/lib/archol/process', proc)
     return w.chipResult(id, [
       [
         'export interface ', id,
         w.object({
-          instanceId: 'string',
+          packageId: w.string(info.cfg.pkguri),
+          processId: w.string(proc.name.str),
+          instanceId: info.src.require('ArcholGUID', '~/lib/archol/types', proc),
           vars: [id, 'Vars']
         })
       ],
       [
         'export interface ', id, 'Vars',
         w.object({
+          stacks: 'ProcessExecutionStacks',
           local: genFieldsWithBase.make(proc.vars.local, {}),
           input: genFieldsWithBase.make(proc.vars.input, {}),
           output: genFieldsWithBase.make(proc.vars.output, {}),

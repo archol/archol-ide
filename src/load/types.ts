@@ -70,7 +70,7 @@ export function isStringConst(node: any): node is StringConst {
 }
 
 export interface StringConst<T extends string = string> extends SourceNode<'StringConst'> {
-  str: T
+  str: string
 }
 
 export interface NumberConst extends SourceNode<'NumberConst'> {
@@ -437,6 +437,7 @@ export interface Process extends SourceNodeMapped<'Process'> {
   allow: AllowRoles
   volatile: BooleanConst
   refs: {
+    package: Package
     vars: PackageRefs<Field>
   }
 }
@@ -516,6 +517,7 @@ export function isView(node: any): node is View {
 }
 
 export interface View extends SourceNodeMapped<'View'> {
+  title: StringConst | Code
   content: WidgetContent
   primaryAction?: ViewAction
   secondaryAction?: ViewAction

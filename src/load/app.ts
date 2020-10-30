@@ -33,6 +33,19 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     if (expr1 instanceof ts.CallExpression) {
       const app = await tsCallExpr<Application>(expr1, 'declareApplication')
       await Promise.all(mappingPending)
+      app.start.ref = (sourceRef) => {
+        const [pkgaliasstart, procnstart] = app.start.str.split('/')
+        const pkgstart = app.uses.get(pkgaliasstart)
+        if (!pkgstart)
+          throw ws.fatal('package do app.start não definido', app.start)
+        const pkgstartref = pkgstart.ref(app.start)
+        const procstart = pkgstartref.processes.get(procnstart)
+        if (!procstart)
+          throw ws.fatal('processo do app.start não definido', app.start)
+        return procstart
+      }
+      if (app.start.ref(app.start).vars.input.props.length)
+        throw ws.fatal('processo do app.start não deve ter INPUT', app.start)
       return app
     }
   }
@@ -467,7 +480,12 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     const ret: ProcessUse = {
       ...procuri,
       ref(sourceRef) {
-        return sourceRef as any
+        const [pkgn, procn] = procuri.str.split('/')
+        const pkg = appPackages[pkgn]
+        if (!pkg) throw ws.fatal('pkg not found ' + pkgn, sourceRef)
+        const proc = pkg.processes.get(procn)
+        if (!proc) throw ws.fatal('proc not found ' + procuri.str, sourceRef)
+        return proc
       }
     }
     return ret
@@ -1131,11 +1149,15 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       if (argsview.length !== 1) ws.error(expr1View.getSourceFile().getFilePath() + ' views precisa de um parametro', expr1View)
       pkg.views = parseColObjArg('Views', argsview[0], (itmView, viewName) => {
         const vprops = parseObjArg(itmView, {
+          title(titArg) {
+            if (isStrArg(titArg)) return parseStrArg(titArg)
+            return parserForCode()(titArg)
+          },
           content: parseWidgetContent,
           primaryAction: parseAction,
           secondaryAction: parseAction,
           otherActions: parserForArrArg('otherActions', parseAction)
-        }, ['secondaryAction', 'otherActions'])
+        }, ['title', 'secondaryAction', 'otherActions'])
         const allActions = arrayConst<'allActions', ViewAction>('allActions', ws.getRef(itmView))
         allActions.items.push(vprops.primaryAction)
         if (vprops.secondaryAction)
@@ -1532,6 +1554,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           }
           if (isProcess(iref)) {
             iref.refs = {
+              package: finishedPkg,
               vars: refProcessVars(iref.vars)
             }
           }

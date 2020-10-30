@@ -9,22 +9,25 @@ import {
   GenNodes, GenInfo, GenFunc
 } from './generator'
 
+export type CodePartLines = Array<CodePartL | null>
+
 export interface CodeWriter {
-  statements(lines: CodePartL[], block: boolean): CodeLines
-  chipResult(id: string, lines: CodePartL[], block: boolean): ChipRes
-  lines(lines: CodePartL[], start: string, end: string, separator: string): CodeLines
+  statements(lines: CodePartLines, block: boolean): CodeLines
+  chipResult(id: string, lines: CodePartLines, block: boolean): ChipRes
+  lines(lines: Array<null | CodePartL>, start: string, end: string, separator: string): CodeLines
   transform(transformer: NodeTransformer<any, any>): CodePartR[]
   transform(node: SourceNode<any>): CodePartR[]
   map(nodes: Array<ObjectConst<any> | ArrayConst<any>>): CodeLines
+  code(node: Code, opts?: { after?: CodePartLines, forceRetType?: string }): FuncDecl
+  funcDecl(args: string[], ret: string, statements: null | CodePartLines, opts?: { arrow?: boolean, async?: boolean }): FuncDecl
+  array(arr: CodePartLines): CodeLines
+  property(name: string, val: CodePartL): CodeProperty
   mapObj<KIND extends SourceNodeObjectKind, T extends SourceNode<any>>(
     objs: ObjectConst<KIND, T> | Array<ObjectConst<KIND, any>>,
     fn?: (val: T, name: StringConst) => CodePartL,
     filter?: (val: T, name: StringConst) => boolean,
-    heading?: CodePartL[]
+    heading?: CodePartLines
   ): CodeLines
-  code(node: Code, opts?: { after?: CodePartL[], forceRetType?: string }): FuncDecl
-  funcDecl(args: string[], ret: string, statements: null | CodePartL[], opts?: { arrow?: boolean, async?: boolean }): FuncDecl
-  array(arr: CodePartL[]): CodeLines
   object(obj: { [name: string]: CodePartL }): CodeLines
   object(obj: { [name: string]: CodePartLo }, objNode: SourceNode<any>): CodeLines
   string(node: StringConst | string): string
@@ -32,11 +35,16 @@ export interface CodeWriter {
 }
 
 export type CodePartR = string | string[] | CodeLines | ChipRes | ChipDecl1<any> | ChipDecl2
-export type CodePartLb = CodePartR | SourceNode<any> | CodePartL[] | FuncDecl |
-  NodeTransformer<any, any> | Array<ObjectConstProp<any, any>> | ObjectConstProp<any, any>
+export type CodePartLb = CodePartR | SourceNode<any> | CodePartLines | FuncDecl |
+  NodeTransformer<any, any> | Array<ObjectConstProp<any, any>> | ObjectConstProp<any, any> | CodeProperty
 export type CodePartL = CodePartLb | (() => CodePartL)
 export type CodePartLo = CodePartLb | (<T extends SourceNodeKind>(n: SourceNode<T>) => CodePartL)
   | NodeTransformerFactory<any, any>
+
+export interface CodeProperty {
+  $property$: string
+  val: CodePartL
+}
 
 export interface CodeLine {
   $parts$: CodePartR[]
@@ -55,6 +63,10 @@ export function isCodeLines(o: any): o is CodeLines {
 
 export function isCodeLine(o: any): o is CodeLine {
   return o && (o as any).$parts$
+}
+
+export function isCodeProperty(o: any): o is CodeProperty {
+  return o && (o as any).$property$
 }
 
 export interface FuncDecl {
@@ -95,10 +107,10 @@ export function isChipDecl1<CFG2 extends object>(o: any): o is ChipDecl1<CFG2> {
 
 export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>, info: GenInfo<CFG>): CodeWriter {
   const wSelf: CodeWriter = {
-    statements(statements: CodePartL[], block: boolean): CodeLines {
+    statements(statements: CodePartLines, block: boolean): CodeLines {
       return wSelf.lines(statements, block ? '{' : '', block ? '}' : '', ';')
     },
-    lines(lines: CodePartL[], start: string, end: string, separator: string): CodeLines {
+    lines(lines: CodePartLines, start: string, end: string, separator: string): CodeLines {
       return { $lines$: flatLines(lines), start, end, separator }
     },
     transform(n: any) {
@@ -115,7 +127,7 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
       return wSelf.lines(lines, '[', ']', ',')
     },
     code(node, opts): FuncDecl {
-      const body: CodePartL[] = node.body.map(b => b.getText())
+      const body: CodePartLines = node.body.map(b => b.getText())
       let retType = node.ret.getText()
       if (opts) {
         if (opts.after) body.push(opts.after)
@@ -131,7 +143,7 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
         body
       )
     },
-    funcDecl(args: string[], ret: string, statements: null | CodePartL[], opts?): FuncDecl {
+    funcDecl(args: string[], ret: string, statements: null | CodePartLines, opts?): FuncDecl {
       const body = statements && wSelf.statements(statements, true)
       return {
         $func$: {
@@ -139,14 +151,19 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
         }
       }
     },
-    array(arr: CodePartL[]): CodeLines {
+    array(arr: CodePartLines): CodeLines {
       return wSelf.lines(arr, '[', ']', ',')
+    },
+    property(name, val) {
+      return {
+        $property$: name, val
+      }
     },
     mapObj<KIND extends SourceNodeObjectKind, T extends SourceNode<any>>(
       objs: ObjectConst<KIND, T> | Array<ObjectConst<KIND, any>>,
       fn?: (val: T, name: StringConst) => CodePartL,
       filter?: (val: T, name: StringConst) => boolean,
-      heading?: CodePartL[]
+      heading?: CodePartLines
     ): CodeLines {
       if (isObjectConst(objs)) objs = [objs]
       const allprops = objs.reduce<Array<ObjectConstProp<KIND, any>>>
@@ -196,8 +213,9 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
   return wSelf
 
   function propv(key: string | StringConst, v: CodePartL) {
-    const sk = isStringConst(key) ? key.str : key
+    const sk = isCodeProperty(v) ? v.$property$ : isStringConst(key) ? key.str : key
     const k = /^\w+$/.test(sk) ? sk : wSelf.string(sk)
+    if (isCodeProperty(v)) v = v.val
     if (isFuncDecl(v)) return [v.$func$.async ? 'async ' : '', k, v]
     if (v)
       return [k, ':', v]
@@ -230,18 +248,19 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
       , n)
   }
 
-  function flatLines(lines: CodePartL[]): CodeLine[] {
-    return lines.map(l => ({
+  function flatLines(lines: CodePartLines): CodeLine[] {
+    return lines.filter(l => l !== null).map(l => ({
       $parts$: flatPartL(l)
     }))
   }
 
-  function flatPartL(p1: CodePartL): CodePartR[] {
+  function flatPartL(p1: CodePartL | null): CodePartR[] {
     const fres: CodePartR[] = []
     flat(p1)
     return fres
-    function flat(p: CodePartL) {
-      if (isCodeLines(p)) fres.push(p)
+    function flat(p: CodePartL | null) {
+      if (p === null) return
+      else if (isCodeLines(p)) fres.push(p)
       else if (isFuncDecl(p)) {
         if (p.$func$.arrow && p.$func$.async)
           fres.push('async ')
@@ -322,8 +341,9 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
       } else resolveCodePart(c)
     }
 
-    function resolveCodePart(c: CodePartL) {
-      if (typeof c === 'string') write(c)
+    function resolveCodePart(c: CodePartL | null) {
+      if (c === null) return
+      else if (typeof c === 'string') write(c)
       else if (isCodeLines(c)) resolveCodeLines(c)
       else if (Array.isArray(c)) c.forEach(resolveCodePart)
       else if (isSourceNode(c)) resolveCodePart(resolveNode(c))

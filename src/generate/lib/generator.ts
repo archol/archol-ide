@@ -85,8 +85,8 @@ export interface GenInfo<CFG extends object> {
   ws: Workspace
   prj: {}
   src: {
-    require(identifier: string, module: string, sourceRef: TsNode): void
-    requireDefault(identifier: string, module: string, sourceRef: TsNode): void
+    require(identifier: string, module: string, sourceRef: TsNode): string
+    requireDefault(identifier: string, module: string, sourceRef: TsNode): string
     // chip<CFG2 extends object>(pos: number, nt: () => NodeTransformerFactory<CFG2, any>): ChipForNodeTransformerFactory<CFG2>
     chip<CFG2 extends object>(pos: number, nt: NodeTransformer<CFG2, any>): ChipRes
   }
@@ -99,6 +99,7 @@ export interface GenInfo<CFG extends object> {
     filePath: string,
     transformations: NodeTransformer<CFG, ST>
   ): void
+  fileIsEmpty(file: string): boolean
 }
 
 export type GenFunc<name extends SourceNodeKind, CFG extends object> =
@@ -169,6 +170,9 @@ export async function generateApplication<CFG extends object, SW extends GenNode
       node: {},
       stack: createStack(),
       transformFile: transformFileInt,
+      fileIsEmpty(file) {
+        return !srcs[file]
+      },
       cfg
     })
     let codenull = wnll.transform(app)
@@ -217,7 +221,10 @@ export async function generateApplication<CFG extends object, SW extends GenNode
         node: {},
         stack: createStack(),
         transformFile: transformFileInt,
-        cfg
+        cfg,
+        fileIsEmpty(file) {
+          return !srcs[file]
+        }
       })
 
       srcChipsRes['part$0'] = {
@@ -254,17 +261,19 @@ export async function generateApplication<CFG extends object, SW extends GenNode
         // if (srcUsed[id]) throw ws.fatal(id + ' identificar duplicado', [srcUsed[id], sourceRef])
         srcUsed[id] = sourceRef
       }
-      function requireImport(id: string, module: string, sourceRef: TsNode): void {
+      function requireImport(id: string, module: string, sourceRef: TsNode): string {
         if (module.startsWith('.')) throw ws.fatal('use tilde', sourceRef)
         useId(id, sourceRef)
         const req = srcRequires[module] || (srcRequires[module] = initReq())
         if (!req.ids.includes(id)) req.ids.push(id)
+        return id
       }
-      function requireDefaultImport(id: string, module: string, sourceRef: TsNode): void {
+      function requireDefaultImport(id: string, module: string, sourceRef: TsNode): string {
         if (module.startsWith('.')) throw ws.fatal('use tilde', sourceRef)
         useId(id, sourceRef)
         const req = srcRequires[module] || (srcRequires[module] = initReq())
         req.def = id
+        return id
       }
 
       // function chip<CFG2 extends object>(pos: number, nt: () => NodeTransformerFactory<CFG2, any>): ChipForNodeTransformerFactory<CFG2>

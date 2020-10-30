@@ -25,7 +25,6 @@ const genView = nodeTransformer({
   View(w, v, { ws, src, cfg }) {
 
     src.requireDefault('React', 'react', v)
-    src.require('ArcholViewInstance', '~/lib/archol/types', v)
 
     const fields = v.refs.fields
     const hasfields = fields.props.length
@@ -34,8 +33,10 @@ const genView = nodeTransformer({
       ['return ', render]
     ]
     const vinst = 'T' + cfg.pkguri + '_view_' + v.name.str + 'Data'
-    if (hasfields)
+    if (hasfields) {
+      src.require('ArcholViewInstance', '~/lib/archol/types', v)
       src.require(vinst, '~/app/types', v);
+    }
 
     return w.statements([
       [

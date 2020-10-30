@@ -79,7 +79,6 @@ export function mergeObjWith(...objs: any[]) {
   return r
 }
 
-
 export function tildeExpand(src: string, imp: string) {
   if (!imp.startsWith("~/")) return imp;
   const srcparts = src.split("/");
@@ -87,7 +86,7 @@ export function tildeExpand(src: string, imp: string) {
   deleteStart();
   if (imp.startsWith("~/app/")) {
     let s1 = new Array(srcparts.length - 1).fill("../").join("").trim();
-    const t1 = join(s1, imp.replace("~/app/", ""));
+    const t1 = join(s1, impparts.join('/'));
     return s1 ? t1 : './' + t1
   }
   const s2 = new Array(srcparts.length - 1).fill("../").join("");
