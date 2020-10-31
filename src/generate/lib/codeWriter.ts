@@ -14,7 +14,7 @@ export type CodePartLines = Array<CodePartL | null>
 export interface CodeWriter {
   statements(lines: CodePartLines, block: boolean): CodeLines
   chipResult(id: string, lines: CodePartLines, block: boolean): ChipRes
-  lines(lines: Array<null | CodePartL>, start: string, end: string, separator: string): CodeLines
+  lines(lines: CodePartLines, start: string, end: string, separator: string): CodeLines
   transform(transformer: NodeTransformer<any, any>): CodePartR[]
   transform(node: SourceNode<any>): CodePartR[]
   map(nodes: Array<ObjectConst<any> | ArrayConst<any>>): CodeLines
@@ -185,7 +185,7 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
           if (isChipDecl1(val))
             return propv(key, val.transform(vnode, info))
           else if (isNodeTransformerFactory(val)) {
-            return () => propv(key, val.make(vnode, info.cfg))
+            return propv(key, val.make(vnode, info.cfg))
           } else if (typeof val === 'function') {
             return propv(key, (val as any)(vnode))
           }
@@ -212,10 +212,13 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
   }
   return wSelf
 
-  function propv(key: string | StringConst, v: CodePartL) {
+  function propv(key: string | StringConst, v: CodePartL): CodePartL | null {
     const sk = isCodeProperty(v) ? v.$property$ : isStringConst(key) ? key.str : key
     const k = /^\w+$/.test(sk) ? sk : wSelf.string(sk)
-    if (isCodeProperty(v)) v = v.val
+    if (isCodeProperty(v)) {
+      v = v.val
+      if (v === undefined) return null
+    }
     if (isFuncDecl(v)) return [v.$func$.async ? 'async ' : '', k, v]
     if (v)
       return [k, ':', v]

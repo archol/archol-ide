@@ -144,13 +144,14 @@ const genType = nodeTransformer({
 
 const genViewInstanceType = nodeTransformer({
   View(w, view, info) {
-    info.src.require('ArcholViewBinder', '~/lib/archol/types', view)
-    info.src.require('ArcholViewInstance', '~/lib/archol/types', view)
+    info.src.require('SingletonBinder', '~/lib/archol/singleton', view)
+    info.src.require('SingletonBinding', '~/lib/archol/singleton', view)
+
     const id = 'T' + info.cfg.pkguri + '_view_' + view.name.str
     return w.chipResult(id + 'Binder', [
       ['export interface ', id, 'Data', genFieldsWithBase.make(view.refs.fields, {})],
-      ['export type ', id, 'Binder = ArcholViewBinder<', id, 'Data>'],
-      ['export type ', id, 'Instance = ArcholViewInstance<', id, 'Data>']
+      ['export type ', id, 'Binder = SingletonBinder<', id, 'Data>'],
+      ['export type ', id, 'Instance = SingletonBinding<', id, 'Data>']
     ], false)
   },
 }, { pkguri: '' })

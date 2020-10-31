@@ -34,7 +34,7 @@ const genView = nodeTransformer({
     ]
     const vinst = 'T' + cfg.pkguri + '_view_' + v.name.str + 'Data'
     if (hasfields) {
-      src.require('ArcholViewInstance', '~/lib/archol/types', v)
+      src.require('SingletonBinding', '~/lib/archol/singleton', v)
       src.require(vinst, '~/app/types', v);
     }
 
@@ -42,7 +42,7 @@ const genView = nodeTransformer({
       [
         'export function View' + v.name.str, w.funcDecl(
           hasfields ?
-            ['{ bindings }: { bindings: ArcholViewInstance<' + vinst + '> }'] : [],
+            ['{ bindings }: { bindings: SingletonBinding<' + vinst + '> }'] : [],
           'React.ReactElement', body
         )
       ]

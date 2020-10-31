@@ -1,5 +1,6 @@
 import { CodePartL } from 'generate/lib/codeWriter'
 import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
+import { isCode } from 'load/types'
 
 export const generatePkgUses = nodeTransformer({
   PackageUses(w, pkgs, { src }) {
@@ -98,17 +99,21 @@ const genProcessTask = nodeTransformer({
     info.src.requireDefault('React', 'react', task)
     info.src.require('TUITaskRef', '~/lib/archol/process', task)
     info.src.require('TUITaskInstance', '~/lib/archol/process', task)
-    info.src.require('getProcessVars', '~/lib/archol/process', task)
-    if (hasfields)
+    if (hasfields) {
+      info.src.require('getProcessVars', '~/lib/archol/process', task)
+      info.src.require('proxifySingleton', '~/lib/archol/singleton', task)
+      info.src.require('SingletonProxy', '~/lib/archol/singleton', task)
       info.src.require(info.cfg.storage, '~/lib/archol/storage', task)
+      info.src.require('T' + procuripref + 'Instance', '~/app/types', task)
+      info.src.require('T' + procuripref + 'InstanceVars', '~/app/types', task)
+    }
 
-    info.src.require('T' + procuripref + 'Instance', '~/app/types', task)
-    info.src.require('T' + procuripref + 'InstanceVars', '~/app/types', task)
+    info.src.require('ArcholGUID', '~/lib/archol/types', task)
     info.src.require(usedViewData, '~/app/types', task)
     info.src.require(usedViewId, '~/app/' + info.cfg.pkguri + '/views/' + usedView.name.str, task)
     return w.chipResult(taskrefid, [
       [
-        ['export const ', taskrefid, ': TUITaskRef = '],
+        ['export const ', taskrefid, ': TUITaskRef<', usedViewData, '> = '],
         w.object({
           packageId: w.string(info.cfg.pkguri),
           processId: w.string(info.cfg.procname),
@@ -118,10 +123,10 @@ const genProcessTask = nodeTransformer({
             ['const processId = ', w.string(info.cfg.procname)],
             ['const taskId = ', w.string(task.name.str)],
             hasfields ?
-              ['const varsPub = getProcessVars<', 'T' + procuripref + 'InstanceVars', '>(packageId, processId, taskId, processInstanceId, ', info.cfg.storage, ')']
+              ['const varsPub = getProcessVars<', usedViewData, '>(packageId, processId, processInstanceId, ', info.cfg.storage, ')']
               : null,
             hasfields ?
-              ['const bindings: ArcholViewInstance<', usedViewData, '>', ' = ', 'archolDocBinding(doc, ', task.useView.bind, ')']
+              ['const bindings: SingletonProxy<', usedViewData, '>', ' = ', 'proxifySingleton(varsPub, ', task.useView.bind, ')']
               : null,
             ['const view = ', w.funcDecl([''], '', [
               hasfields ?
@@ -129,15 +134,15 @@ const genProcessTask = nodeTransformer({
                 : ['return <', usedViewId, ' />',]
             ], { arrow: true })],
             [
-              'const self: TUITaskInstance = ', w.object({
+              'const self: TUITaskInstance<' + usedViewData + '> = ', w.object({
+                uid: ['(', w.string(info.cfg.pkguri + '_' + info.cfg.procname + '_' + task.name.str) + ' + processInstanceId) as ArcholGUID'],
                 packageId: '',
                 processId: '',
                 taskId: '',
                 processInstanceId: '',
-                id: w.string(info.cfg.pkguri + '_' + info.cfg.procname + '_' + task.name.str) + ' + processInstanceId',
                 view: '',
                 search: 'null as any',
-                title: task.name
+                title: w.property('title', isCode(usedView.title) ? w.code(usedView.title) : usedView.title),
               })
             ],
             'return self'
@@ -162,8 +167,8 @@ const genProcessTask = nodeTransformer({
 
     info.src.requireDefault('React', 'react', task)
     info.src.require('TSystemTaskRef', '~/lib/archol/process', task)
-    info.src.require('copyVarsFromDoc', '~/lib/archol/process', task)
-    info.src.require('copyVarsToDoc', '~/lib/archol/process', task)
+    info.src.require('copyVarsFromDoc', '~/lib/archol/singleton', task)
+    info.src.require('copyVarsToDoc', '~/lib/archol/singleton', task)
     info.src.require(usedFuncInput, '~/app/types', task)
     info.src.require(usedFuncOutput, '~/app/types', task)
 
@@ -178,7 +183,7 @@ const genProcessTask = nodeTransformer({
             ['const packageId = ', w.string(info.cfg.pkguri)],
             ['const processId = ', w.string(info.cfg.procname)],
             ['const taskId = ', w.string(task.name.str)],
-            ['const doc = getProcessVarsDoc<', 'T' + procuripref + 'InstanceVars', '>(packageId, processId, taskId, processInstanceId)'],
+            ['const doc = getProcessVars<', 'T' + procuripref + 'InstanceVars', '>(packageId, processId, processInstanceId)'],
             [
               'const input = copyVarsFromDoc<' + usedFuncInput + '>(doc,', task.useFunction.input, ' )'
             ],

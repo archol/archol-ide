@@ -18,7 +18,7 @@ export const generateClientRoutes = sourceTransformer({
       })
     },
     RouteRedirect(w, route, { src }) {
-      src.require('appWindowDoc', '~/docs/app/appwindow', route)
+      src.require('appWindowDoc', '~/rx/app/appwindow', route)
       return w.object({
         path: route.path,
         run: [

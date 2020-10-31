@@ -70,11 +70,11 @@ export function nodeTransformer<CFG extends object, NT extends GenNodes<CFG>>(
 }
 
 export function isNodeTransformerFactory(obj: any): obj is NodeTransformerFactory<any, any> {
-  return (obj as any).transformerFactory
+  return obj && (obj as any).transformerFactory
 }
 
 export function isNodeTransformer(obj: any): obj is NodeTransformer<any, any> {
-  return (obj as any).transformNode
+  return obj && (obj as any).transformNode
 }
 
 export type GenNodes<CFG extends object> = {
@@ -155,7 +155,7 @@ export async function generateApplication<CFG extends object, SW extends GenNode
   }
 
   function isSourceTransformerOne<CFG extends object, ST extends GenNodes<CFG>>(o: SourceTransformer<CFG, ST>): o is SourceTransformerOne<CFG, ST> {
-    return (o as any).filePath
+    return o && (o as any).filePath
   }
 
   function transformFileDecl<CFG extends object, ST extends GenNodes<CFG>>(

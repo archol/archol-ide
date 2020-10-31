@@ -209,7 +209,7 @@ export interface Package extends SourceNode<'Package'> {
 export type RoleDefs = ObjectConst<'RoleDefs', RoleDef>
 
 export function isRoleDef(o: any): o is RoleDef {
-  return o.kind === 'RoleDef'
+  return o && o.kind === 'RoleDef'
 }
 
 export interface RoleDef extends SourceNodeMapped<'RoleDef'> {

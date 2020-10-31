@@ -457,12 +457,12 @@
         "affectsGlobalScope": false
       },
       "../src/generate/mui-deepstream/client/app/menu.ts": {
-        "version": "2d63cf254c1d151d8ea3cf27d7bcab7c308f2a53b970c44a7e15549fdee4390f",
+        "version": "87edcd782a59d2de4313747b7a91c0b1699fa14639da281e6ba8fd169627a600",
         "signature": "c5080ce9cb9e5465b0cf5eb58e13ca0848d47e109cbe4d558afd547f96d22fe5",
         "affectsGlobalScope": false
       },
       "../src/generate/mui-deepstream/client/app/routes.ts": {
-        "version": "691e35412925c0f2b8304cdc7376cee35f5ef612d6f8699c0649d008a542511f",
+        "version": "65e5b370618b5cca6f4858f1ad19a4ae3b2145a1bc9a485e500fef4556356529",
         "signature": "2c445982ea08924dd4318c1b5b37f18cac16cf5d37ac82939788a8f3f5209350",
         "affectsGlobalScope": false
       },
@@ -482,7 +482,7 @@
         "affectsGlobalScope": false
       },
       "../src/generate/mui-deepstream/client/app/pkguses.ts": {
-        "version": "37788c9a102f8bcc809832c0160057f2b10b3f86bd51e16f1e73a76638e14843",
+        "version": "8f62e0953608df271fa4cee12279e244ce67f3f638b8f8dc38b0c9c78f2e49f4",
         "signature": "a3c401ed36d809f7f4b67d40f044be24a6436cd704e143cb48b7431a837fa453",
         "affectsGlobalScope": false
       },
