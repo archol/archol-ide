@@ -250,7 +250,7 @@ declare interface ${pkgid}_process_${procName}_Decl {
 }
 declare type ${pkgid}_process_${procName}_Tasknames = ${typePipeStr(process.tasks.props.map((t) => t.key.str))}
 declare interface ${pkgid}_process_${procName}_Ref {
-  start(${process.vars.input.props.map((v) => v.key.str + ': ' + v.val.type.base(v.val)).join(',')}): ${pkgid}_process_${procName}_Instance;
+  start(${process.vars.input.props.map((v) => v.key.str + ': ' + v.val.type.base(v.val)).join(',')}): Promise<${pkgid}_process_${procName}_Instance>;
 }
 declare interface ${pkgid}_process_${procName}_Instance {
   vars: ${pkgid}_process_${procName}_InstanceVars,
@@ -307,6 +307,7 @@ declare type ${pkgid}_process_${procName}_NextTask = ${pkgid}_process_${procName
       const funcName = func.name.str
       w.writeLine(`
 declare interface ${pkgid}_function_${funcName}_Decl {
+  title: I18N
   cancelabled?: boolean
   level: FunctionLevel
   input: ${pkgid}_DeclFields,

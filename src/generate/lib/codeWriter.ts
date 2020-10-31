@@ -140,7 +140,8 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
       return wSelf.funcDecl(
         node.params.map(p => p.getText()),
         retType,
-        body
+        body,
+        { async: node.async }
       )
     },
     funcDecl(args: string[], ret: string, statements: null | CodePartLines, opts?): FuncDecl {

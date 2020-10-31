@@ -168,21 +168,25 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           argCode.getTypeParameters(),
           argCode.getParameters(),
           argCode.getReturnType(),
-          argCode.getStatements())
+          argCode.getStatements(),
+          argCode.isAsync()
+        )
       }
       else if (argCode instanceof ts.FunctionDeclaration) {
         rcode(
           argCode.getTypeParameters(),
           argCode.getParameters(),
           argCode.getReturnType(),
-          argCode.getStatements())
+          argCode.getStatements(),
+          argCode.isAsync())
       }
       else if (argCode instanceof ts.FunctionExpression) {
         rcode(
           argCode.getTypeParameters(),
           argCode.getParameters(),
           argCode.getReturnType(),
-          argCode.getStatements())
+          argCode.getStatements(),
+          argCode.isAsync())
       }
       else ws.error(argCode.getSourceFile().getFilePath() + ' ' + argCode.getText() + ' boolean é esperada', argCode)
       return ret
@@ -191,7 +195,9 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         typedParams: ts.TypeParameterDeclaration[],
         params: ts.ParameterDeclaration[],
         retType: ts.Type,
-        body: ts.Statement[]): void {
+        body: ts.Statement[],
+        async: boolean
+      ): void {
         if (typedParams?.length) ws.error('não suporta typedparams ', argCode)
         if (validate) ws.fatal('TODO', argCode)
         ret = {
@@ -199,7 +205,8 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           sourceRef: ws.getRef(argCode),
           params,
           ret: retType,
-          body
+          body,
+          async
         }
       }
     }
@@ -1128,6 +1135,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       if (argsFunctions.length !== 1) ws.error(expr1Functions.getSourceFile().getFilePath() + ' functions precisa de um parametro', expr1Functions)
       pkg.functions = parseColObjArg('Functions', argsFunctions[0], (itmFunction, functionName) => {
         const fprops = parseObjArg(itmFunction, {
+          title: parseI18N,
           level: parseFunctionLevel,
           cancelabled: parseBolArg,
           input: parseFields,

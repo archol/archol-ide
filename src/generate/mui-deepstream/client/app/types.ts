@@ -71,12 +71,15 @@ const genProcessRef = nodeTransformer({
   },
   UITask(w, task, info) {
     info.src.require('TUITaskRef', '~/lib/archol/process', task)
-    return ['TUITaskRef']
+
+    const usedView = task.useView.ref(task)
+    const usedViewData = 'T' + info.cfg.pkguri + '_view_' + usedView.name.str + 'Data'
+
+    return ['TUITaskRef<' + usedViewData + '>']
   },
   SystemTask(w, task, info) {
-    const usedfunc = 'T' + info.cfg.pkguri + '_func_' + task.useFunction.function.str
     info.src.require('TSystemTaskRef', '~/lib/archol/process', task)
-    return ['TSystemTaskRef<', usedfunc, 'Output>']
+    return ['TSystemTaskRef']
   },
 }, { pkguri: '' })
 

@@ -580,6 +580,7 @@ export interface FunctionLevel extends SourceNode<'FunctionLevel'> {
 }
 
 export interface Function extends SourceNodeMapped<'Function'> {
+  title: I18N
   level: FunctionLevel
   cancelabled: BooleanConst
   input: Fields
@@ -592,6 +593,7 @@ export function isCode(node: any): node is Code {
 }
 
 export interface Code extends SourceNode<'Code'> {
+  async: boolean
   params: ts.ParameterDeclaration[],
   ret: ts.Type,
   body: ts.Statement[]

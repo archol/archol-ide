@@ -169,33 +169,32 @@ const genProcessTask = nodeTransformer({
     info.src.require('TSystemTaskRef', '~/lib/archol/process', task)
     info.src.require('TSystemTaskInstance', '~/lib/archol/process', task)
     info.src.require('getExecutionContext', '~/lib/archol/functions', task)
-    // info.src.require('copyVarsFromDoc', '~/lib/archol/singleton', task)
-    // info.src.require('copyVarsToDoc', '~/lib/archol/singleton', task)
-    info.src.require('ArcholGUID', '~/app/types', task)
+    info.src.require('ExecuteFunctionRenderer', '~/layout/app/executeFunctionRenderer', task)
+    info.src.require('ArcholGUID', '~/lib/archol/types', task)
     info.src.require(usedFuncInput, '~/app/types', task)
     info.src.require(usedFuncOutput, '~/app/types', task)
 
     return w.chipResult(taskrefid, [
       [
-        ['export const ', taskrefid, ': TSystemTaskRef<T', procuripref, 'InstanceVars, ', usedFuncOutput, '> = '],
+        ['export const ', taskrefid, ': TSystemTaskRef = '],
         w.object({
           packageId: w.string(info.cfg.pkguri),
           processId: w.string(info.cfg.procname),
           taskId: w.string(task.name.str),
           getInstance: w.funcDecl(['processInstanceId'], '', [
-            ['const uid = (', w.string(info.cfg.pkguri + '_' + info.cfg.procname + '_' + task.name.str) + ' + processInstanceId) as ArcholGUID'],
             ['const packageId = ', w.string(info.cfg.pkguri)],
             ['const processId = ', w.string(info.cfg.procname)],
             ['const taskId = ', w.string(task.name.str)],
-            ['const ctx = getExecutionContext<TSystemTaskInstance<T', procuripref, 'InstanceVars>>(packageId,processId,processInstanceId,taskId)'],
+            ['const uid = (', w.string(info.cfg.pkguri + '_' + info.cfg.procname + '_' + task.name.str) + ' + processInstanceId) as ArcholGUID'],
+            ['const ctx = getExecutionContext<', usedFuncOutput, '>(packageId,processId,processInstanceId,taskId)'],
             [
               'const view = ', w.funcDecl([''], '', [
-                ['return ExecuteFunctionRenderer',]
+                ['return <ExecuteFunctionRenderer ctx={ctx} />',]
               ], { arrow: true })
             ],
             [
-              'const self: TUITaskInstance<usedViewData> = ', w.object({
-                uid: ['(', w.string(info.cfg.pkguri + '_' + info.cfg.procname + '_' + task.name.str) + ' + processInstanceId) as ArcholGUID'],
+              'const taskInstance: TSystemTaskInstance = ', w.object({
+                uid: '',
                 packageId: '',
                 processId: '',
                 taskId: '',
@@ -203,8 +202,9 @@ const genProcessTask = nodeTransformer({
                 view: '',
                 search: 'null as any',
                 // title: w.property('title', isCode(usedView.title) ? w.code(usedView.title) : usedView.title),
-              })
-            ]
+              }),
+            ],
+            ['return taskInstance']
             // []
 
             //             ['const varsPub = getProcessVars<', 'T' + procuripref + 'InstanceVars', '>(packageId, processId, processInstanceId, volatileStorage)'],
@@ -215,8 +215,7 @@ const genProcessTask = nodeTransformer({
             //             ['const result = await output.result'],
             //             ['copyVarsToDoc(result, varsPub, ', task.useFunction.output, ' )'],
             //             ['return result']
-          ], { async: true }),
-          search: 'null as any',
+          ]),
           // title: w.property('titlex', isCode(usedView.title) ? w.code(usedView.title) : usedView.title),
         })
       ]
