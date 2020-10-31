@@ -53,59 +53,58 @@ const genPkgRef = nodeTransformer({
 
 const genProcessRef = nodeTransformer({
   Process(w, proc, info) {
-    const procuripref = info.cfg.pkguri + '_proc_' + proc.name.str
-    const id = 'T' + procuripref + 'Ref'
+    const procpref = info.cfg.pkguri + '_proc_' + proc.name.str
+    const procDecl = 'T' + procpref + 'Decl'
+    const procInst = 'T' + procpref + 'Instance'
+    const procInput = 'T' + procpref + 'Input'
+    const procLocal = 'T' + procpref + 'Local'
+    const procOutput = 'T' + procpref + 'Output'
+    const procTask = 'T' + procpref + 'Task'
+    const procTyping = procInput + ', ' + procLocal + ', ' + procOutput + ', ' + procTask
 
-    const inst = info.src.chip(1, genProcessInstanceType.make(proc, { pkguri: info.cfg.pkguri }))
+    info.src.require('ArcholGUID', '~/lib/archol/types', proc)
+    info.src.require('ProcessDecl', '~/lib/archol/process', proc)
+    info.src.require('ProcesInstance', '~/lib/archol/process', proc)
 
-    return w.chipResult(id, [
-      ['export interface ' + id,
-      w.object({
-        packageId: w.string(info.cfg.pkguri),
-        processId: w.string(proc.name.str),
-        start: w.funcDecl(proc.vars.input.props
-          .map((v) => v.key.str + ':' + v.val.type.base(v.val)), 'Promise<' + inst.id + '>', null),
-        task: w.mapObj(proc.tasks, (val, key) => val),
-      })]
+    return w.chipResult(procDecl, [
+      ['export interface ', procInput, genFieldsWithBase.make(proc.vars.input, {})],
+      ['export interface ', procLocal, genFieldsWithBase.make(proc.vars.local, {})],
+      ['export interface ', procOutput, genFieldsWithBase.make(proc.vars.output, {})],
+      ['export interface ', procTask, w.mapObj(proc.tasks, (val) => val)],
+      ['export type ' + procDecl, ' = ProcessDecl<', procTyping, '>'],
+      ['export type ', procInst, ' = ProcesInstance<', procTyping, '>'],
     ], false)
   },
   UITask(w, task, info) {
-    info.src.require('TUITaskRef', '~/lib/archol/process', task)
+    info.src.require('TaskDecl', '~/lib/archol/process', task)
 
-    const usedView = task.useView.ref(task)
-    const usedViewData = 'T' + info.cfg.pkguri + '_view_' + usedView.name.str + 'Data'
+    // const usedView = task.useView.ref(task)
+    // const usedViewData = 'T' + info.cfg.pkguri + '_view_' + usedView.name.str + 'Data'
 
-    return ['TUITaskRef<' + usedViewData + '>']
+    return ['TaskDecl']
   },
   SystemTask(w, task, info) {
-    info.src.require('TSystemTaskRef', '~/lib/archol/process', task)
-    return ['TSystemTaskRef']
+    info.src.require('TaskDecl', '~/lib/archol/process', task)
+    return ['TaskDecl']
   },
 }, { pkguri: '' })
 
-const genProcessInstanceType = nodeTransformer({
+const genProcessInstanceTypeX = nodeTransformer({
   Process(w, proc, info) {
-    const id = 'T' + info.cfg.pkguri + '_proc_' + proc.name.str + 'Instance'
-    info.src.require('ProcessExecutionStacks', '~/lib/archol/process', proc)
+    const procpref = 'T' + info.cfg.pkguri + '_proc_' + proc.name.str
+    const id = procpref + 'Instance'
+    info.src.require('ProcesInstance', '~/lib/archol/process', proc)
     return w.chipResult(id, [
-      [
-        'export interface ', id,
-        w.object({
-          packageId: w.string(info.cfg.pkguri),
-          processId: w.string(proc.name.str),
-          instanceId: info.src.require('ArcholGUID', '~/lib/archol/types', proc),
-          vars: [id, 'Vars']
-        })
-      ],
-      [
-        'export interface ', id, 'Vars',
-        w.object({
-          stacks: 'ProcessExecutionStacks',
-          local: genFieldsWithBase.make(proc.vars.local, {}),
-          input: genFieldsWithBase.make(proc.vars.input, {}),
-          output: genFieldsWithBase.make(proc.vars.output, {}),
-        })
-      ],
+      // [
+      //   'export interface ', id,
+      //   w.object({
+      //     packageId: w.string(info.cfg.pkguri),
+      //     processId: w.string(proc.name.str),
+      //     instanceId: info.src.require('ArcholGUID', '~/lib/archol/types', proc),
+      //     vars: [id, 'Vars']
+      //   })
+      // ],
+
     ], false)
   },
 }, { pkguri: '' })

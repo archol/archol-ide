@@ -18,10 +18,10 @@ export interface CodeWriter {
   transform(transformer: NodeTransformer<any, any>): CodePartR[]
   transform(node: SourceNode<any>): CodePartR[]
   map(nodes: Array<ObjectConst<any> | ArrayConst<any>>): CodeLines
-  code(node: Code, opts?: { after?: CodePartLines, forceRetType?: string }): FuncDecl
+  code(node: Code, opts?: { before?: CodePartLines, after?: CodePartLines, forceParams?: string[], forceRetType?: string, arrow?: boolean, forceParamType?: (param: string, idx: number) => string | undefined }): FuncDecl
   funcDecl(args: string[], ret: string, statements: null | CodePartLines, opts?: { arrow?: boolean, async?: boolean }): FuncDecl
   array(arr: CodePartLines): CodeLines
-  property(name: string, val: CodePartL): CodeProperty
+  property(name: string, val: CodePartL | null): CodeProperty
   mapObj<KIND extends SourceNodeObjectKind, T extends SourceNode<any>>(
     objs: ObjectConst<KIND, T> | Array<ObjectConst<KIND, any>>,
     fn?: (val: T, name: StringConst) => CodePartL,
@@ -43,7 +43,7 @@ export type CodePartLo = CodePartLb | (<T extends SourceNodeKind>(n: SourceNode<
 
 export interface CodeProperty {
   $property$: string
-  val: CodePartL
+  val: CodePartL | null
 }
 
 export interface CodeLine {
@@ -130,6 +130,7 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
       const body: CodePartLines = node.body.map(b => b.getText())
       let retType = node.ret.getText()
       if (opts) {
+        if (opts.before) body.unshift(opts.before)
         if (opts.after) body.push(opts.after)
         if (typeof opts.forceRetType === 'string') retType = opts.forceRetType
       }
@@ -138,10 +139,16 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
       // ], '', '', '')
       wSelf.lines(body, '', '', '')
       return wSelf.funcDecl(
-        node.params.map(p => p.getText()),
+        (opts && opts.forceParams) || node.params.map((p, pidx) => {
+          if (opts && opts.forceParamType) {
+            const s = opts.forceParamType(p.getName(), pidx)
+            if (s) return p.getName() + ': ' + s
+          }
+          return p.getText()
+        }),
         retType,
         body,
-        { async: node.async }
+        { async: node.async, arrow: opts && opts.arrow }
       )
     },
     funcDecl(args: string[], ret: string, statements: null | CodePartLines, opts?): FuncDecl {
@@ -217,8 +224,9 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
     const sk = isCodeProperty(v) ? v.$property$ : isStringConst(key) ? key.str : key
     const k = /^\w+$/.test(sk) ? sk : wSelf.string(sk)
     if (isCodeProperty(v)) {
-      v = v.val
+      v = v.val as any
       if (v === undefined) return null
+      if (v === null) return null
     }
     if (isFuncDecl(v)) return [v.$func$.async ? 'async ' : '', k, v]
     if (v)
