@@ -120,9 +120,7 @@ const genProcessTask = nodeTransformer({
     info.src.requireDefault('React', 'react', task)
     // info.src.require('TaskDecl', '~/lib/archol/process', task)
     if (hasfields) {
-      info.src.require('getProcessVars', '~/lib/archol/process', task)
       info.src.require('bindSingleton', '~/lib/archol/singleton', task)
-      info.src.require('proxifySingleton', '~/lib/archol/singleton', task)
       info.src.require(info.cfg.storage, '~/lib/archol/storage', task)
     }
     info.src.require(procInput, '~/app/types', task)
