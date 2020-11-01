@@ -61,7 +61,7 @@ const genView = nodeTransformer({
     function renderEntry(entry: WidgetEntry): CodePartL {
       src.require('EntryWidget', '~/lib/components/widgets/entry', entry)
       return [
-        '<EntryWidget bindings={bindings} path=', entry.field, ' />'
+        '<EntryWidget bindings={bindings} path=', entry.field, ' caption={', entry.caption, '()} type=URIYPE_PKG_TYPE', entry.type.ref(entry).name, ' />'
       ]
     }
     function renderMarkdown(md: WidgetMarkdown): CodePartL {
