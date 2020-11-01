@@ -333,7 +333,7 @@ declare interface ${pkgid}_function_${funcName}_OutputRef {
       const viewName = view.name.str
       w.writeLine(`
 declare interface ${pkgid}_view_${viewName}_Decl {
-  title?: I18N ${view.refs.fields.props.length ? `| ((data: ${pkgid}_view_${viewName}_DeclData) => I18N)` : ''}
+  title: I18N ${view.refs.fields.props.length ? `| ((data: ${pkgid}_view_${viewName}_DeclData) => I18N)` : ''}
   content: ${pkgid}_view_${viewName}_DeclContent
   primaryAction?: IAction<${pkgid}_view_${viewName}_DeclData>
   secondaryAction?: IAction<${pkgid}_view_${viewName}_DeclData>

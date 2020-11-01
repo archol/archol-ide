@@ -184,7 +184,7 @@ const genProcessTask = nodeTransformer({
                 task: w.string(task.name.str),
                 view: '',
                 search: 'null as any',
-                title: w.property('title', usedView.title ? '' : null),
+                title: '',
                 modify: 'varsPub.modify',
               })
             ],
@@ -250,8 +250,7 @@ const genProcessTask = nodeTransformer({
                 view: '',
                 search: 'null as any',
                 modify: 'varsPub.modify',
-                // title: w.property('title', usedView.title ? ''x : null),
-                // vars: ''
+                title: usedFunc.title,
               })
             ],
             ['return content']
