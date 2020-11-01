@@ -1,5 +1,5 @@
 import { sourceTransformer } from 'generate/lib/generator'
-import { Code, isCode, isStringConst, SourceNode, StringConst } from 'load/types'
+import { Code, isCodeNode, isStringConst, SourceNode, StringConst } from 'load/types'
 import { isTemplateExpression } from 'typescript'
 import { genI18N } from './i18n'
 import { genIcon } from './icon'
@@ -29,7 +29,7 @@ export const generateClientMenu = sourceTransformer({
         icon: genIcon,
         allow: genUseRoles,
         run(v) {
-          if (isCode(v)) return w.code(v)
+          if (isCodeNode(v)) return w.code(v)
           if (isStringConst(v)) {
             info.src.require('appWindowDoc', '~/rx/app/appwindow', v)
             return w.funcDecl([], '', [

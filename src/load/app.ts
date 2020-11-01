@@ -12,7 +12,7 @@ import {
   Pagelet, Menu, MenuItem, MenuItemSeparator, SourceNodeMapped, SourceNodeRefsKind, isPackage, RouteRedirect,
   RouteCode, RoleGroup, TsNode, basicTypes3, PackageRefs, PackageRef, isView, EnumOption, ComplexType, ArrayType,
   UseTypeAsArray, Types, SourceNodeKind, SourceNodeObjectKind, SourceNodeArrayKind, BuilderConfig, AppMappings,
-  RoleDefs, RoleGroups, WidgetEntry, WidgetMarkdown, WidgetContent, AnyRole, ProcessUse, SourceRef, WidgetItem, isCode,
+  RoleDefs, RoleGroups, WidgetEntry, WidgetMarkdown, WidgetContent, AnyRole, ProcessUse, SourceRef, WidgetItem, isCodeNode as isCodeNode,
 } from './types'
 
 export async function loadApp(ws: Workspace, appName: string): Promise<Application> {
@@ -1064,11 +1064,10 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
               return task
             })
           }
-          function parseUseTask(argUseTask: ts.Node): UseTask {
-            const taskname = parseStrArg(argUseTask)
+          function mountUseTask(taskname: StringConst) {
             const ret: UseTask = {
               kind: 'UseTask',
-              sourceRef: ws.getRef(argUseTask),
+              sourceRef: taskname.sourceRef,
               task: taskname,
               ref() {
                 const r = process.tasks.get(taskname)
@@ -1078,18 +1077,36 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             }
             return ret
           }
-          function parseNextTask(argNextTask: ts.Node)
-            : UseTask | ArrayConst<'UseTasknames', UseTask> | ObjectConst<'UseTaskForks', Code | UseTask> {
+          function parseUseTask(argUseTask: ts.Node): UseTask {
+            const taskname = parseStrArg(argUseTask)
+            return mountUseTask(taskname)
+          }
+          function parseNextTask(argNextTask: ts.Node): ArrayConst<'UseTaskForks', UseTask> {
             if (argNextTask instanceof ts.ArrayLiteralExpression) {
-              return parserForArrArg('UseTasknames', parseUseTask)(argNextTask)
+              return parserForArrArg('UseTaskForks', parseUseTask)(argNextTask)
             }
-            else if (argNextTask instanceof ts.ObjectLiteralExpression) {
-              return parseColObjArg('UseTaskForks', argNextTask, (itmNextTask) => {
-                if (itmNextTask instanceof ts.MethodDeclaration) return parserForCode()(itmNextTask)
-                else return parseUseTask(itmNextTask)
-              })
+            const ret = arrayConst<'UseTaskForks', UseTask>("UseTaskForks", ws.getRef(argNextTask))
+            if (argNextTask instanceof ts.ObjectLiteralExpression) {
+              parseObjArg(argNextTask, {
+                '*'(val, name) {
+                  const useTask = mountUseTask(name)
+                  if (isCodeArg(val)) {
+                    useTask.condition = parserForCode()(val)
+                  } else {
+                    const v = parseBolArg(val)
+                    if (v.kind === 'BooleanConst' && v.bool !== true) ws.error('deve ser true ou Code', val)
+                  }
+                  ret.items.push(useTask)
+                  return undefined as any
+                }
+              }, ['*'])
+              // parseColObjArg('UseTaskForks', argNextTask, (itmNextTask) => {
+              //   if (itmNextTask instanceof ts.MethodDeclaration) return parserForCode()(itmNextTask)
+              //   else return parseUseTask(itmNextTask)
+              // })
             }
-            else return parseUseTask(argNextTask)
+            else ret.items.push(parseUseTask(argNextTask))
+            return ret
           }
           function parseUseView(argUseView: ts.Node): UseView {
             const puseview = parseObjArg(argUseView, {

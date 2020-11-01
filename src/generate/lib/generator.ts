@@ -1,5 +1,5 @@
 import ts, { CodeBlockWriter, Project, SourceFile } from 'ts-morph'
-import { Application, ArrayConst, isArrayConst, isCode, isObjectConst, isStringConst, ObjectConst, SourceNode, SourceNodeKind, SourceNodeType, SourceRef, StringConst, TsNode, Workspace } from 'load/types'
+import { Application, ArrayConst, isArrayConst, isCodeNode, isObjectConst, isStringConst, ObjectConst, SourceNode, SourceNodeKind, SourceNodeType, SourceRef, StringConst, TsNode, Workspace } from 'load/types'
 import { ChipDecl1 as ChipForNodeTransformerFactory, ChipDecl2 as ChipForNodeTransformer, ChipRes, CodePartL, CodePartR, CodeWriter, codeWriter, isChipRes } from './codeWriter'
 import { join, resolve, dirname } from 'path'
 import { mapObject, mapObjectToArray, mergeObjWith, tildeExpand } from 'utils'

@@ -1,7 +1,7 @@
 import {
   ArrayConst, ObjectConst,
   SourceNode, SourceNodeKind, SourceNodeType, StringConst,
-  isObjectConst, isSourceNode, isStringConst, Code, isCode, isArrayConst, SourceNodeObjectKind, Workspace, ObjectConstProp, isObjectConstProp
+  isObjectConst, isSourceNode, isStringConst, Code, isCodeNode, isArrayConst, SourceNodeObjectKind, Workspace, ObjectConstProp, isObjectConstProp
 } from "load/types"
 import { mapObjectToArray } from 'utils'
 import {
@@ -251,7 +251,7 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
 
   function defaultTransformer(n: SourceNode<any>) {
     if (isStringConst(n)) return wSelf.string(n)
-    if (isCode(n)) return wSelf.code(n)
+    if (isCodeNode(n)) return wSelf.code(n)
     if (isArrayConst(n)) return wSelf.map([n])
     if (isObjectConst(n)) return wSelf.map([n])
     throw info.ws.fatal('Gerador não suporta: ' + n.kind +

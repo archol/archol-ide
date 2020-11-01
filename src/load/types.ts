@@ -1,15 +1,15 @@
 import * as ts from 'ts-morph'
 
 export type SourceNodeArrayKind = 'AppLanguages' | 'RoleGroup' | 'DocIndexFields' |
-  'UsedDocStates' | 'AllowLocRoleList' | 'UseTasknames' | 'Widgets' | 'otherActions' | 'allActions' |
-  'Menu'
+  'UsedDocStates' | 'AllowLocRoleList' | 'Widgets' | 'otherActions' | 'allActions' |
+  'UseTaskForks' | 'Menu'
 
 export type SourceNodeRefsKind = 'RefTypes' | 'RefDocuments' | 'RefProcesses' | 'RefRoles' | 'RefViews' |
   'RefFunctions' | 'RefPrimaryFields' | 'RefSecondaryFields' | 'RefDocIndexes' | 'RefDocStates' | 'RefDocAction'
 
 export type SourceNodeObjectKind = 'AppBuilders' | 'Pagelets' | 'AppMappings' |
   'I18NMsg' | 'PackageUses' | 'RoleDefs' | 'RoleGroups' | 'Types' | 'EnumOptions' | 'Fields' | 'Documents' |
-  'DocActions' | 'DocFields' | 'DocIndexes' | 'DocumentStates' | 'Processes' | 'Tasks' | 'UseTaskForks' |
+  'DocActions' | 'DocFields' | 'DocIndexes' | 'DocumentStates' | 'Processes' | 'Tasks' |
   'BindVars' | 'Views' | 'Functions' | 'Routes' |
   SourceNodeRefsKind
 
@@ -468,6 +468,7 @@ export interface AllowSysRole extends SourceNode<'AllowSysRole'> {
 
 export interface UseTask extends SourceNode<'UseTask'> {
   task: StringConst
+  condition?: Code
   ref(sourceRef: TsNode): Task
 }
 
@@ -479,8 +480,10 @@ export interface BaseTask<KIND extends SourceNodeKind> extends SourceNodeMapped<
   pool?: StringConst,
   lane?: StringConst,
   allow: AllowRoles,
-  next: UseTask | ArrayConst<'UseTasknames', UseTask> | ObjectConst<'UseTaskForks', Code | UseTask>
+  next: UseTaskForks
 }
+
+export type UseTaskForks = ArrayConst<'UseTaskForks', UseTask>
 
 export interface UITask extends BaseTask<'UITask'> {
   useView: UseView,
@@ -588,7 +591,7 @@ export interface Function extends SourceNodeMapped<'Function'> {
   code: Code
 }
 
-export function isCode(node: any): node is Code {
+export function isCodeNode(node: any): node is Code {
   return node && node.kind === 'Code'
 }
 
@@ -727,6 +730,7 @@ export type SourceNodeType<KIND extends SourceNodeKind> = KIND extends 'Applicat
   KIND extends 'AllowLocRoles' ? AllowLocRoles :
   KIND extends 'AllowSysRole' ? AllowSysRole :
   KIND extends 'UseTask' ? UseTask :
+  KIND extends 'UseTaskForks' ? UseTaskForks :
   KIND extends 'UITask' ? UITask :
   KIND extends 'UseView' ? UseView :
   KIND extends 'SystemTask' ? SystemTask :
