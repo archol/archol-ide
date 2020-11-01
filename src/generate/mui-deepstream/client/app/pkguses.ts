@@ -155,28 +155,31 @@ const genProcessTask = nodeTransformer({
               ['const bindings = ', 'bindSingleton<', usedViewData, '>(varsPub, ', task.useView.bind, ')']
               : null,
             [
-              'const view = ', w.funcDecl([''], '', [
-                hasfields ?
+              'const view = ',
+              hasfields
+                ? w.funcDecl([''], '', [
                   ['return <', usedViewId, ' bindings={bindings} />',]
-                  : ['return <', usedViewId, ' />',]
-              ], { arrow: true })
+                ], { arrow: true })
+                : usedViewId
             ],
             [
-              usedView.title ?
-                ['const title = ',
-                  isCodeNode(usedView.title) ? w.code(usedView.title, {
+              ['const useTitle = ', isCodeNode(usedView.title) ?
+                (() => {
+                  if (usedView.title.params.length !== 1) throw info.ws.fatal('title como função exige param vars', usedView.title)
+                  return w.code(usedView.title, {
                     arrow: true,
                     forceParams: [],
+                    // forceParams: [usedView.title.params[0].getName() + ' : X'],
                     before: [
-                      ['const ', usedView.title.params[0].getName(), ' = bindings.proxy']
+                      ['const ', usedView.title.params[0].getName(), ' = bindings.useProxy()']
                     ]
                     // () {
                     //   forceParamType(param, idx) {
                     //     if (idx === 0) return usedViewData
                     //   }
                     // }
-                  }) : usedView.title]
-                : null
+                  })
+                })() : usedView.title]
             ],
             [
               'const content: AppContent<' + procTyping + '> = ', w.object({
@@ -184,7 +187,7 @@ const genProcessTask = nodeTransformer({
                 task: w.string(task.name.str),
                 view: '',
                 search: 'null as any',
-                title: '',
+                useTitle: '',
                 modify: 'varsPub.modify',
               })
             ],
@@ -250,7 +253,7 @@ const genProcessTask = nodeTransformer({
                 view: '',
                 search: 'null as any',
                 modify: 'varsPub.modify',
-                title: usedFunc.title,
+                useTitle: usedFunc.title,
               })
             ],
             ['return content']
