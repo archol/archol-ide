@@ -250,7 +250,8 @@ declare interface ${pkgid}_process_${procName}_Decl {
 }
 declare type ${pkgid}_process_${procName}_Tasknames = ${typePipeStr(process.tasks.props.map((t) => t.key.str))}
 declare interface ${pkgid}_process_${procName}_Ref {
-  start(${process.vars.input.props.map((v) => v.key.str + ': ' + v.val.type.base(v.val)).join(',')}): Promise<${pkgid}_process_${procName}_Instance>;
+  instanciate(input: {${process.vars.input.props.map((v) => v.key.str + ': ' + v.val.type.base(v.val)).join(',')}}): Promise<${pkgid}_process_${procName}_Instance>;  
+  open(processInstanceId: GUID): Promise<${pkgid}_process_${procName}_Instance>;  
 }
 declare interface ${pkgid}_process_${procName}_Instance {
   vars: ${pkgid}_process_${procName}_InstanceVars,

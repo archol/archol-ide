@@ -9,14 +9,14 @@ export const generateClientApp = sourceTransformer({
     Application(w, app, { transformFile, src }) {
       const startRef = app.start.ref(app.start)
       const pkguri = startRef.refs.package.uri.id.str
-      const startId = pkguri + '_proc_' + startRef.name.str + 'Ref'
+      const startId = pkguri + '_proc_' + startRef.name.str + 'Decl'
       src.require(startId, '~/app/' + pkguri + '/' + pkguri, app.start)
       return w.statements([
         ['export const appInstance = ', app.uses],
         ['export const ' + app.name.str + '=appInstance'],
         ['export async function appStart', w.funcDecl([], '', [
           [
-            'return ', startId, '.start()'
+            'return ', startId, '.instanciate({})'
           ]
         ])],
       ], false)

@@ -1,6 +1,6 @@
 import ts, { CodeBlockWriter, Project, SourceFile } from 'ts-morph'
 import { Application, ArrayConst, isArrayConst, isCodeNode, isObjectConst, isStringConst, ObjectConst, SourceNode, SourceNodeKind, SourceNodeType, SourceRef, StringConst, TsNode, Workspace } from 'load/types'
-import { ChipDecl1 as ChipForNodeTransformerFactory, ChipDecl2 as ChipForNodeTransformer, ChipRes, CodePartL, CodePartR, CodeWriter, codeWriter, isChipRes } from './codeWriter'
+import { ChipDecl1 as ChipForNodeTransformerFactory, ChipDecl2 as ChipForNodeTransformer, ChipRes, CodePartL, CodePartLines, CodePartR, CodeWriter, codeWriter, isChipRes } from './codeWriter'
 import { join, resolve, dirname } from 'path'
 import { mapObject, mapObjectToArray, mergeObjWith, tildeExpand } from 'utils'
 import { info } from 'console'
@@ -89,6 +89,7 @@ export interface GenInfo<CFG extends object> {
     requireDefault(identifier: string, module: string, sourceRef: TsNode): string
     // chip<CFG2 extends object>(pos: number, nt: () => NodeTransformerFactory<CFG2, any>): ChipForNodeTransformerFactory<CFG2>
     chip<CFG2 extends object>(pos: number, nt: NodeTransformer<CFG2, any>): ChipRes
+    chip<CFG2 extends object>(pos: number, lines: CodePartLines, block: boolean): void
   }
   node: {
 
@@ -118,6 +119,8 @@ export interface generateApplication<CFG extends object, SW extends GenNodes<CFG
   wstransformations: SW,
   projects: Array<ProjectTransformer<any, any>>,
 }
+
+let genid = 0
 
 export async function generateApplication<CFG extends object, SW extends GenNodes<CFG>>(
   { ws, app, wstransformations, projects, cfg }: generateApplication<CFG, SW>): Promise<void> {
@@ -277,7 +280,9 @@ export async function generateApplication<CFG extends object, SW extends GenNode
       }
 
       // function chip<CFG2 extends object>(pos: number, nt: () => NodeTransformerFactory<CFG2, any>): ChipForNodeTransformerFactory<CFG2>
+      function chip<CFG2 extends object>(pos: number, lines: CodePartLines, block: boolean): void
       function chip<CFG2 extends object>(pos: number, nt: NodeTransformer<CFG2, any>): ChipRes
+      function chip(pos: number, nt: CodePartLines | NodeTransformer<any, any>, block?: boolean): ChipRes | void
       // function chip<CFG2 extends object>(pos: number, nt: (() => NodeTransformerFactory<CFG2, any> )| NodeTransformer<CFG2, any>): ChipForNodeTransformerFactory<CFG2> | ChipRes 
       {
         // if (isNodeTransformerFactory(nt)) {
@@ -291,14 +296,23 @@ export async function generateApplication<CFG extends object, SW extends GenNode
         //   }
         //   return declFactory
         // }
-        return getChipRes(nt)
-        function getChipRes(transformer: NodeTransformer<any, any>): ChipRes {
+        if (isNodeTransformer(nt))
+          return getChipTrans(nt)
+        return addChipRes({
+          $chip$: w.statements(nt as any, block || false),
+          id: 'chip$' + genid++,
+          pos
+        })
+        function getChipTrans(transformer: NodeTransformer<any, any>): ChipRes {
           const res2: [ChipRes] = w.transform(transformer) as any
           if (res2.length !== 1 || (!isChipRes(res2[0]))) {
             console.log('chip precisa de resultChip: ', res2)
             throw ws.fatal('chip precisa de resultChip', ws.sourceRef)
           }
           const [res3] = res2
+          return addChipRes(res3)
+        }
+        function addChipRes(res3: ChipRes) {
           useId(res3.id, ws.sourceRef)
           res3.pos = pos
           srcChipsRes[res3.id] = res3

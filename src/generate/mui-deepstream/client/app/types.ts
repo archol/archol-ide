@@ -1,4 +1,5 @@
 import { strict } from 'assert'
+import { scrypt } from 'crypto'
 import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
 import { genFieldsWithBase, genFieldsWithType } from './fields'
 
@@ -36,14 +37,14 @@ const genPkgRef = nodeTransformer({
       ['export interface ' + id,
       w.object({
         process: w.mapObj(pkg.processes, (val, key) =>
-          src.chip(1, genProcessRef.make(val, { pkguri }))
+          src.chip(10, genProcessRef.make(val, { pkguri }))
         ),
         view: w.mapObj(pkg.views, (val, key) =>
-          src.chip(1,
+          src.chip(20,
             genViewInstanceType.make(val, { pkguri }))
         ),
         func: w.mapObj(pkg.functions, (val, key) =>
-          src.chip(1,
+          src.chip(30,
             genFuncInstanceType.make(val, { pkguri }))
         ),
       })]
@@ -55,7 +56,7 @@ const genProcessRef = nodeTransformer({
   Process(w, proc, info) {
     const procpref = info.cfg.pkguri + '_proc_' + proc.name.str
     const procDecl = 'T' + procpref + 'Decl'
-    const procInst = 'T' + procpref + 'Instance'
+    const procContent = 'T' + procpref + 'Content'
     const procInput = 'T' + procpref + 'Input'
     const procLocal = 'T' + procpref + 'Local'
     const procOutput = 'T' + procpref + 'Output'
@@ -63,16 +64,23 @@ const genProcessRef = nodeTransformer({
     const procTyping = procInput + ', ' + procLocal + ', ' + procOutput + ', ' + procTask
 
     info.src.require('ArcholGUID', '~/lib/archol/types', proc)
+    info.src.require('AppContent', '~/lib/archol/types', proc)
     info.src.require('ProcessDecl', '~/lib/archol/process', proc)
-    info.src.require('ProcesInstance', '~/lib/archol/process', proc)
+    info.src.require('TaskDecl', '~/lib/archol/process', proc)
 
     return w.chipResult(procDecl, [
       ['export interface ', procInput, genFieldsWithBase.make(proc.vars.input, {})],
       ['export interface ', procLocal, genFieldsWithBase.make(proc.vars.local, {})],
       ['export interface ', procOutput, genFieldsWithBase.make(proc.vars.output, {})],
-      ['export interface ', procTask, w.mapObj(proc.tasks, (val) => val)],
+      ['export interface ', procTask, w.mapObj(proc.tasks, (v, k) => {
+        const taskdecl = 'T' + procpref + '_task_' + k.str + 'Decl'
+        info.src.chip(11, [
+          ['export type ' + taskdecl, ' = ', 'TaskDecl<', procTyping, ', ', k, '>']
+        ], false)
+        return taskdecl
+      })],
       ['export type ' + procDecl, ' = ProcessDecl<', procTyping, '>'],
-      ['export type ', procInst, ' = ProcesInstance<', procTyping, '>'],
+      ['export type ', procContent, ' = AppContent<', procTyping, '>'],
     ], false)
   },
   UITask(w, task, info) {

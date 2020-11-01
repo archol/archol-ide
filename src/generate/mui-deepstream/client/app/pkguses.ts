@@ -51,7 +51,6 @@ const genProcess = nodeTransformer({
   Process(w, proc, info) {
     const procuripref = info.cfg.pkguri + '_proc_' + proc.name.str
     const procrefid = procuripref + 'Decl'
-    const procinst = 'T' + procuripref + 'Instance'
     const storage = proc.volatile.bool ? 'volatileStorage' : 'remoteStorage'
     info.src.require('ArcholGUID', '~/lib/archol/types', proc)
     info.src.require('instanciateProcess', '~/lib/archol/process', proc)
@@ -61,7 +60,8 @@ const genProcess = nodeTransformer({
     info.src.require('T' + procuripref + 'Local', '~/app/types', proc)
     info.src.require('T' + procuripref + 'Output', '~/app/types', proc)
     info.src.require('T' + procuripref + 'Task', '~/app/types', proc)
-    info.src.require(procinst, '~/app/types', proc)
+    info.src.require(storage, '~/lib/archol/storage', proc)
+    info.src.require('contentDoc', '~/rx/app/content', proc)
     return w.chipResult(procrefid, [
       [
         'export const ' + procrefid + ': T' + procrefid + ' = ',
@@ -72,18 +72,22 @@ const genProcess = nodeTransformer({
           start: w.string(proc.start.task.str) + ' as ArcholGUID',
           instanciate: w.funcDecl(['input: T' + procuripref + 'Input'], '', [
             [
-              'return instanciateProcess(',
+              'const content=await instanciateProcess(',
               procuripref, 'Decl, ', storage, ', input',
               ')'
-            ]
+            ],
+            'contentDoc.show(content)',
+            'return content'
           ], { async: true }),
           open: w.funcDecl(['processInstanceId: ArcholGUID'], '', [
             [
-              'return openProcessInstance(',
+              'const content=await openProcessInstance(',
               procuripref, 'Decl, processInstanceId, ',
               storage,
               ')'
-            ]
+            ],
+            'contentDoc.show(content)',
+            'return content'
           ], { async: true }),
           tasks: w.mapObj(proc.tasks, (val, key) =>
             info.src.chip(-10, genProcessTask.make(val, {
@@ -108,40 +112,44 @@ const genProcessTask = nodeTransformer({
     const usedViewId = 'View' + usedView.name.str
     const usedViewData = 'T' + info.cfg.pkguri + '_view_' + usedView.name.str + 'Data'
     const storage = info.cfg.storage
-    const procInst = 'T' + procuripref + 'Instance'
     const procInput = 'T' + procuripref + 'Input'
     const procLocal = 'T' + procuripref + 'Local'
     const procOutput = 'T' + procuripref + 'Output'
-    const procTyping = '<' + procInput + ', ' + procLocal + ', ' + procOutput + '>'
+    const procTask = 'T' + procuripref + 'Task'
+    const procTyping = procInput + ', ' + procLocal + ', ' + procOutput + ', ' + procTask
     info.src.requireDefault('React', 'react', task)
-    info.src.require('TaskDecl', '~/lib/archol/process', task)
+    // info.src.require('TaskDecl', '~/lib/archol/process', task)
     if (hasfields) {
       info.src.require('getProcessVars', '~/lib/archol/process', task)
       info.src.require('bindSingleton', '~/lib/archol/singleton', task)
+      info.src.require('proxifySingleton', '~/lib/archol/singleton', task)
       info.src.require(info.cfg.storage, '~/lib/archol/storage', task)
-      info.src.require(procInst, '~/app/types', task)
-      info.src.require(procInput, '~/app/types', task)
-      info.src.require(procLocal, '~/app/types', task)
-      info.src.require(procOutput, '~/app/types', task)
     }
+    info.src.require(procInput, '~/app/types', task)
+    info.src.require(procLocal, '~/app/types', task)
+    info.src.require(procOutput, '~/app/types', task)
 
     info.src.require('ArcholGUID', '~/lib/archol/types', task)
     info.src.require('AppContent', '~/lib/archol/types', task)
     info.src.require(usedViewData, '~/app/types', task)
+    info.src.require('T' + taskrefid, '~/app/types', task)
     info.src.require(usedViewId, '~/app/' + info.cfg.pkguri + '/views/' + usedView.name.str, task)
     return w.chipResult(taskrefid, [
       [
-        ['export const ', taskrefid, ': TaskDecl = '],
+        ['export const ', taskrefid, ': T', taskrefid, ' = '],
         w.object({
-          task: w.string(task.name.str) + ' as ArcholGUID',
+          task: w.string(task.name.str),
           next: task.next,
           getInstance: w.funcDecl(['processInstanceId'], '', [
-            ['const packageId = ', w.string(info.cfg.pkguri)],
-            ['const processId = ', w.string(info.cfg.procname)],
-            ['const taskId = ', w.string(task.name.str)],
+            // ['const packageId = ', w.string(info.cfg.pkguri)],
+            // ['const processId = ', w.string(info.cfg.procname)],
+            // ['const taskId = ', w.string(task.name.str)],
             hasfields ?
               ['const varsPub = getProcessVars(', procuripref, 'Decl, processInstanceId, ',
                 info.cfg.storage, ')']
+              : null,
+            hasfields ?
+              ['const vars = proxifySingleton(varsPub)']
               : null,
             hasfields ?
               ['const bindings = ', 'bindSingleton<', usedViewData, '>(varsPub, ', task.useView.bind, ')']
@@ -171,14 +179,17 @@ const genProcessTask = nodeTransformer({
                 : null
             ],
             [
-              'const self: AppContent = ', w.object({
-                uid: ['(', w.string(info.cfg.pkguri + '_' + info.cfg.procname + '/' + task.name.str + '.') + ' + processInstanceId) as ArcholGUID'],
+              'const content: AppContent<' + procTyping + '> = ', w.object({
+                process: procuripref + 'Decl',
+                processInstanceId: '',
+                task: w.string(task.name.str) + ' as ArcholGUID',
                 view: '',
                 search: 'null as any',
-                title: w.property('title', usedView.title ? '' : null)
+                title: w.property('title', usedView.title ? '' : null),
+                vars: hasfields ? '' : '{} as any'
               })
             ],
-            'return self'
+            'return content'
           ]),
         })
       ]
@@ -197,20 +208,28 @@ const genProcessTask = nodeTransformer({
     const usedFuncId = 'Function' + usedFunc.name.str
     const usedFuncInput = 'T' + info.cfg.pkguri + '_func_' + usedFunc.name.str + 'Input'
     const usedFuncOutput = 'T' + info.cfg.pkguri + '_func_' + usedFunc.name.str + 'Output'
+    const procInput = 'T' + procuripref + 'Input'
+    const procLocal = 'T' + procuripref + 'Local'
+    const procOutput = 'T' + procuripref + 'Output'
+    const procTask = 'T' + procuripref + 'Task'
+    const procTyping = procInput + ', ' + procLocal + ', ' + procOutput + ', ' + procTask
 
     info.src.requireDefault('React', 'react', task)
-    info.src.require('TaskDecl', '~/lib/archol/process', task)
     info.src.require('getExecutionContext', '~/lib/archol/functions', task)
     info.src.require('ExecuteFunctionRenderer', '~/layout/app/executeFunctionRenderer', task)
     info.src.require('ArcholGUID', '~/lib/archol/types', task)
     info.src.require(usedFuncInput, '~/app/types', task)
     info.src.require(usedFuncOutput, '~/app/types', task)
+    info.src.require('T' + taskrefid, '~/app/types', task)
+    info.src.require(procInput, '~/app/types', task)
+    info.src.require(procLocal, '~/app/types', task)
+    info.src.require(procOutput, '~/app/types', task)
 
     return w.chipResult(taskrefid, [
       [
-        ['export const ', taskrefid, ': TaskDecl = '],
+        ['export const ', taskrefid, ': T' + taskrefid + ' = '],
         w.object({
-          task: w.string(task.name.str) + ' as ArcholGUID',
+          task: w.string(task.name.str),
           next: task.next,
           getInstance: w.funcDecl(['processInstanceId'], '', [
             // ['const packageId = ', w.string(info.cfg.pkguri)],
@@ -227,14 +246,18 @@ const genProcessTask = nodeTransformer({
               ], { arrow: true })
             ],
             [
-              'const taskInstance: AppContent = ', w.object({
-                uid: ['(', w.string(info.cfg.pkguri + '_' + info.cfg.procname + '/' + task.name.str + '.') + ' + processInstanceId) as ArcholGUID'],
+              'const content: AppContent<' + procTyping + '> = ', w.object({
+                process: procuripref + 'Decl',
+                processInstanceId: '',
+                task: w.string(task.name.str) + ' as ArcholGUID',
                 view: '',
                 search: 'null as any',
-                // title: w.property('title', isCode(usedView.title) ? w.code(usedView.title) : usedView.title),
-              }),
+                vars: 'null as any',
+                // title: w.property('title', usedView.title ? '' : null),
+                // vars: ''
+              })
             ],
-            ['return taskInstance']
+            ['return content']
             // []
 
             //             ['const varsPub = getProcessVars<', 'T' + procuripref + 'InstanceVars', '>(packageId, processId, processInstanceId, volatileStorage)'],
@@ -261,7 +284,6 @@ const genProcessTask = nodeTransformer({
 
 const genFunction = nodeTransformer({
   Function(w, f, { ws, src, cfg }) {
-
 
     const body: CodePartL[] = [
       ['return executeFunction(input)']
