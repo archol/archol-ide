@@ -140,17 +140,17 @@ const genProcessTask = nodeTransformer({
         w.object({
           task: w.string(task.name.str),
           next: task.next,
-          getInstance: w.funcDecl(['processInstanceId'], '', [
+          getContent: w.funcDecl(['varsPub'], '', [
             // ['const packageId = ', w.string(info.cfg.pkguri)],
             // ['const processId = ', w.string(info.cfg.procname)],
             // ['const taskId = ', w.string(task.name.str)],
-            hasfields ?
-              ['const varsPub = getProcessVars(', procuripref, 'Decl, processInstanceId, ',
-                info.cfg.storage, ')']
-              : null,
-            hasfields ?
-              ['const vars = proxifySingleton(varsPub)']
-              : null,
+            // hasfields ?
+            //   ['const varsPub = getProcessVars(', procuripref, 'Decl, processInstanceId, ',
+            //     info.cfg.storage, ')']
+            //   : null,
+            // hasfields ?
+            //   ['const vars = proxifySingleton(varsPub)']
+            //   : null,
             hasfields ?
               ['const bindings = ', 'bindSingleton<', usedViewData, '>(varsPub, ', task.useView.bind, ')']
               : null,
@@ -180,13 +180,12 @@ const genProcessTask = nodeTransformer({
             ],
             [
               'const content: AppContent<' + procTyping + '> = ', w.object({
-                process: procuripref + 'Decl',
-                processInstanceId: '',
-                task: w.string(task.name.str) + ' as ArcholGUID',
+                varsPub: '',
+                task: w.string(task.name.str),
                 view: '',
                 search: 'null as any',
                 title: w.property('title', usedView.title ? '' : null),
-                vars: hasfields ? '' : '{} as any'
+                modify: 'varsPub.modify',
               })
             ],
             'return content'
@@ -231,14 +230,13 @@ const genProcessTask = nodeTransformer({
         w.object({
           task: w.string(task.name.str),
           next: task.next,
-          getInstance: w.funcDecl(['processInstanceId'], '', [
+          getContent: w.funcDecl(['varsPub'], '', [
             // ['const packageId = ', w.string(info.cfg.pkguri)],
             // ['const processId = ', w.string(info.cfg.procname)],
             // ['const taskId = ', w.string(task.name.str)],
             // ['const uid = (', w.string(info.cfg.pkguri + '_' + info.cfg.procname + '/' + task.name.str + '.') + ' + processInstanceId) as ArcholGUID'],
             [
-              'const ctx = getExecutionContext(', procuripref, 'Decl, processInstanceId, ',
-              info.cfg.storage, ', ', w.string(task.name.str), ')'
+              'const ctx = getExecutionContext(varsPub, ', w.string(task.name.str), ')'
             ],
             [
               'const view = ', w.funcDecl([''], '', [
@@ -247,13 +245,12 @@ const genProcessTask = nodeTransformer({
             ],
             [
               'const content: AppContent<' + procTyping + '> = ', w.object({
-                process: procuripref + 'Decl',
-                processInstanceId: '',
-                task: w.string(task.name.str) + ' as ArcholGUID',
+                varsPub: '',
+                task: w.string(task.name.str),
                 view: '',
                 search: 'null as any',
-                vars: 'null as any',
-                // title: w.property('title', usedView.title ? '' : null),
+                modify: 'varsPub.modify',
+                // title: w.property('title', usedView.title ? ''x : null),
                 // vars: ''
               })
             ],

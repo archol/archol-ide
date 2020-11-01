@@ -254,7 +254,7 @@ declare interface ${pkgid}_process_${procName}_Ref {
   open(processInstanceId: GUID): Promise<${pkgid}_process_${procName}_Instance>;  
 }
 declare interface ${pkgid}_process_${procName}_Instance {
-  vars: ${pkgid}_process_${procName}_InstanceVars,
+  modify(fn: (vars?: ${pkgid}_process_${procName}_InstanceVars) => boolean): ${pkgid}_process_${procName}_InstanceVars,
 }
 declare interface ${pkgid}_process_${procName}_DeclVars {
   input: ${pkgid}_DeclFields,
