@@ -402,12 +402,12 @@
         "affectsGlobalScope": false
       },
       "../src/load/types.ts": {
-        "version": "007435db1ceabd56926505c02d25ea8148d946e87524cc0dc92ed6773d39dee2",
-        "signature": "fc382cda834f60cbaf0a19e62efb1b8fbf7b93b60f50cbed37992d304a9113e3",
+        "version": "48840edbf06f4d1c59ce3789555cf4fa4549e7725a5d6b3f23cf1e598d50776f",
+        "signature": "6b36309a319b0c666efc98ddb243c1368a90f94d905e7b63bc5dc8f954848401",
         "affectsGlobalScope": false
       },
       "../src/load/app.ts": {
-        "version": "2281ccc6b92609eb910f2199f24f1a2d6b51bd2da8eb60ab8599b4b4ca3c5c3d",
+        "version": "7580ee543b10aba7d463df8f88bb77b906e5c231a820b26c01496beb4f0da358",
         "signature": "6dbdfe485aabd0b94b2bfb6908d1277ad675a2856a39fd5341f43b7580513ae6",
         "affectsGlobalScope": false
       },
@@ -427,7 +427,7 @@
         "affectsGlobalScope": false
       },
       "../src/generate/lib/generator.ts": {
-        "version": "4d0bf6229f43b59a93e6e114188931cb5e0d055f0a65fce5df5406cd5d6da604",
+        "version": "2debdcad6d5349ce80a93ba0cf6baec0343ddcf2a69713031056ffccba9567c9",
         "signature": "3d4f19f65789848b3411f58eeeab0d2652a62536537d4e327451e6f7b1fc29be",
         "affectsGlobalScope": false
       },
@@ -477,8 +477,8 @@
         "affectsGlobalScope": false
       },
       "../src/generate/mui-deepstream/client/app/useType.ts": {
-        "version": "cfb4ddfb7f7d00056a24c304c3fe1615a79a0fc9a491cf2c366950b2e3ee6d12",
-        "signature": "a3c820350b552737a705976d2ddb723847635d17343431d07c42264376f216c6",
+        "version": "fbee9135db6e0f8a0c57bf37fa51cb6fd1b861468caacbafd080d3f1bdbc7be3",
+        "signature": "003b5a6eeee0b4a18bf0678d827d91e51e8f6c99451d9a2b43ca98a23ebbfd6b",
         "affectsGlobalScope": false
       },
       "../src/generate/mui-deepstream/client/app/views.ts": {
@@ -1340,7 +1340,29 @@
       "../src/generate/mui-deepstream/client/app/roles.ts",
       "../src/generate/mui-deepstream/client/app/routes.ts",
       "../src/generate/mui-deepstream/client/app/types.ts",
-      "../src/generate/mui-deepstream/client/app/useType.ts",
+      [
+        "../src/generate/mui-deepstream/client/app/useType.ts",
+        [
+          {
+            "file": "../src/generate/mui-deepstream/client/app/useType.ts",
+            "start": 568,
+            "length": 5,
+            "code": 2551,
+            "category": 1,
+            "messageText": "Property 'pxath' does not exist on type 'PackageRef<Type>'. Did you mean 'path'?",
+            "relatedInformation": [
+              {
+                "file": "../src/load/types.ts",
+                "start": 19619,
+                "length": 4,
+                "messageText": "'path' is declared here.",
+                "category": 3,
+                "code": 2728
+              }
+            ]
+          }
+        ]
+      ],
       "../src/generate/mui-deepstream/client/app/views.ts",
       "../src/generate/mui-deepstream/client/index.ts",
       "../src/generate/mui-deepstream/index.ts",

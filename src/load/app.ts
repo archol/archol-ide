@@ -602,6 +602,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           sourceRef: ws.getRef(itm),
           nodeMapping: nodeMapping([parent.str, 'role', name.str], () => role),
           name,
+          defPkg: null as any,
           ...rprops
         }
         return role;
@@ -827,7 +828,8 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             sourceRef: ws.getRef(itm),
             nodeMapping: nodeMapping([parent.str, 'role', name.str], () => role),
             name,
-            allow: roles
+            allow: roles,
+            defPkg: null as any
           }
           return role;
         }, (itm) => !isObjArg(itm))
@@ -1008,7 +1010,8 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             name: processName,
             refs: null as any,
             nodeMapping: nodeMapping([pkgid.str, 'process', processName.str], () => process),
-            ...pprops
+            ...pprops,
+            defPkg: null as any
           }
           pkg.processes.props.push({
             key: processName, val: process
@@ -1164,7 +1167,8 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           sourceRef: ws.getRef(argsFunctions[0]),
           name: functionName,
           nodeMapping: nodeMapping([pkgid.str, 'function', functionName.str], () => func),
-          ...fprops
+          ...fprops,
+          defPkg: null as any
         }
         return func
         function parseFunctionLevel(argFuncLevel: ts.Node): FunctionLevel {
@@ -1205,7 +1209,8 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           nodeMapping: nodeMapping([pkgid.str, 'view', viewName.str], () => view),
           allActions,
           refs: null as any,
-          ...vprops
+          ...vprops,
+          defPkg: null as any
         }
         return view
       })
@@ -1342,7 +1347,8 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             name: typeName,
             nodeMapping: nodeMapping([pkgid.str, 'type', typeName.str], () => type),
             ...typeProps,
-            base: fbase
+            base: fbase,
+            defPkg: null as any
           }
           return type
         }
@@ -1362,7 +1368,8 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
                 enumOptions: typeProps.options,
                 complexFields: false, arrayType: false
               }
-            }
+            },
+            defPkg: null as any
           }
           return etype
         }
@@ -1398,7 +1405,8 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
                 complexFields: typeProps.fields,
                 enumOptions: false, arrayType: false
               }
-            }
+            },
+            defPkg: null as any
           }
           return ctype
         }
@@ -1418,7 +1426,8 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
                 arrayType: typeProps.itemType,
                 enumOptions: false, complexFields: false
               }
-            }
+            },
+            defPkg: null as any
           }
           return atype
         }
@@ -1447,7 +1456,8 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           name: docName,
           refs: null as any,
           nodeMapping: nodeMapping([pkgid.str, 'document', docName.str], () => doc),
-          ...dprops
+          ...dprops,
+          defPkg: null as any
         }
         return doc
         function parseDocFields(argFields: ts.Node): DocFields {
@@ -1569,6 +1579,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         items.props.forEach((item) => {
           const ipath = (ppath ? ppath : root || '') + item.key.str
           const iref = item.val
+          if ((iref as any).defPkg === null) (iref as any).defPkg = n
           ret.items.push({
             path: ipath,
             ref: iref
@@ -1738,7 +1749,8 @@ function makeInvalid(ws: Workspace, s: string, sourceRef: SourceRef) {
       kind: 'StringConst',
       sourceRef,
       str: 'invalid ' + s
-    }
+    },
+    defPkg: null as any
   }
   return ret
 }

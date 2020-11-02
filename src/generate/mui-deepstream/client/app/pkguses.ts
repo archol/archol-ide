@@ -305,7 +305,7 @@ const genFunction = nodeTransformer({
 
 const genType = nodeTransformer({
   NormalType(w, t, info) {
-    const id = info.cfg.pkguri + '_base_' + t.name.str
+    const id = info.cfg.pkguri + '_type_' + t.name.str
     const base = t.base().base
     const validate = t.validate ? w.code(t.validate, { forceRetType: 'string | false' }) :
       w.funcDecl(['val: T' + id], 'string|false',
@@ -327,7 +327,7 @@ const genType = nodeTransformer({
     return w.chipResult(id, [
       [
         'export const ', id, ': ArcholType<T',
-        info.cfg.pkguri, '_base_', t.name.str,
+        info.cfg.pkguri, '_type_', t.name.str,
         '> = ',
         w.object({
           validate,

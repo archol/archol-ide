@@ -214,7 +214,8 @@ export function isRoleDef(o: any): o is RoleDef {
 
 export interface RoleDef extends SourceNodeMapped<'RoleDef'> {
   description: I18N,
-  icon: Icon
+  icon: Icon,
+  defPkg: Package
 }
 
 export type RoleGroups = ObjectConst<'RoleGroups', RoleGroup>
@@ -222,7 +223,8 @@ export function isRoleGroups(o: any): o is RoleGroups {
   return o.kind === 'RoleGroups'
 }
 export interface RoleGroup extends SourceNodeMapped<'RoleGroup'> {
-  allow: AllowRoles
+  allow: AllowRoles,
+  defPkg: Package
 }
 
 export type Types = ObjectConst<'Types', Type>
@@ -253,7 +255,8 @@ export const basicTypes3: {
       kind: 'StringConst',
       sourceRef: unkownErrorPos,
       str: 'invalid'
-    }
+    },
+    defPkg: null as any
   },
   string: {
     kind: 'NormalType',
@@ -266,7 +269,8 @@ export const basicTypes3: {
       kind: 'StringConst',
       sourceRef: unkownErrorPos,
       str: 'string'
-    }
+    },
+    defPkg: null as any
   },
   number: {
     kind: 'NormalType',
@@ -279,7 +283,8 @@ export const basicTypes3: {
       kind: 'StringConst',
       sourceRef: unkownErrorPos,
       str: 'number'
-    }
+    },
+    defPkg: null as any
   },
   boolean: {
     kind: 'NormalType',
@@ -292,7 +297,8 @@ export const basicTypes3: {
       kind: 'StringConst',
       sourceRef: unkownErrorPos,
       str: 'boolean'
-    }
+    },
+    defPkg: null as any
   },
   date: {
     kind: 'NormalType',
@@ -305,7 +311,8 @@ export const basicTypes3: {
       kind: 'StringConst',
       sourceRef: unkownErrorPos,
       str: 'date'
-    }
+    },
+    defPkg: null as any
   }
 }
 
@@ -334,7 +341,8 @@ export interface TypeBase<KIND extends SourceNodeKind, BASE extends keyof typeof
   validate?: Code
   format?: Code
   parse?: Code
-  base: () => BaseType<BASE>
+  base: () => BaseType<BASE>,
+  defPkg: Package
 }
 export interface NormalType extends TypeBase<'NormalType', BasicTypesOnly> {
 }
@@ -387,7 +395,8 @@ export interface Document extends SourceNodeMapped<'Document'> {
   indexes: DocIndexes,
   persistence: StringConst<'session' | 'persistent'>
   states: DocumentStates
-  actions: DocActions
+  actions: DocActions,
+  defPkg: Package
   refs: {
     allFields: PackageRefs<DocField>
     primaryFields: PackageRefs<DocField>
@@ -448,6 +457,7 @@ export interface Process extends SourceNodeMapped<'Process'> {
   vars: ProcessVars
   allow: AllowRoles
   volatile: BooleanConst
+  defPkg: Package
   refs: {
     package: Package
     vars: PackageRefs<Field>
@@ -538,6 +548,7 @@ export interface View extends SourceNodeMapped<'View'> {
   secondaryAction?: ViewAction
   otherActions?: ArrayConst<'otherActions', ViewAction>
   allActions?: ArrayConst<'allActions', ViewAction>
+  defPkg: Package
   refs: {
     fields: Fields
   }
@@ -601,6 +612,7 @@ export interface Function extends SourceNodeMapped<'Function'> {
   input: Fields
   output: Fields
   code: Code
+  defPkg: Package
 }
 
 export function isCodeNode(node: any): node is Code {

@@ -119,7 +119,7 @@ const genProcessInstanceTypeX = nodeTransformer({
 
 const genType = nodeTransformer({
   NormalType(w, t, info) {
-    const id = 'T' + info.cfg.pkguri + '_base_' + t.name.str
+    const id = 'T' + info.cfg.pkguri + '_type_' + t.name.str
     return w.chipResult(id, [
       [
         'export type ', id, ' = ',
