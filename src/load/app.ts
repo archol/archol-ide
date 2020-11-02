@@ -1245,7 +1245,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           model: parserForStrArg<"show" | "edit">(),
           field: parseStrArg,
           type: parseUseType
-        }, ['caption'])
+        }, [])
         const iwidget: WidgetEntry = {
           kind: 'WidgetEntry',
           sourceRef,

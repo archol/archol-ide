@@ -344,6 +344,7 @@ declare type ${pkgid}_view_${viewName}_DeclWidgget = {
   content: ${pkgid}_view_${viewName}_DeclContent
 } | {
   model: 'show' | 'edit'
+  caption: I18N
   field: string
   type: ${pkgid}_TypeName
 } | { markdown: I18N } 
