@@ -253,7 +253,8 @@ export const basicTypes3: {
       kind: 'StringConst',
       sourceRef: unkownErrorPos,
       str: 'invalid'
-    }
+    },
+    refs: null as any,
   },
   string: {
     kind: 'NormalType',
@@ -266,7 +267,8 @@ export const basicTypes3: {
       kind: 'StringConst',
       sourceRef: unkownErrorPos,
       str: 'string'
-    }
+    },
+    refs: null as any,
   },
   number: {
     kind: 'NormalType',
@@ -279,7 +281,8 @@ export const basicTypes3: {
       kind: 'StringConst',
       sourceRef: unkownErrorPos,
       str: 'number'
-    }
+    },
+    refs: null as any,
   },
   boolean: {
     kind: 'NormalType',
@@ -292,7 +295,8 @@ export const basicTypes3: {
       kind: 'StringConst',
       sourceRef: unkownErrorPos,
       str: 'boolean'
-    }
+    },
+    refs: null as any,
   },
   date: {
     kind: 'NormalType',
@@ -305,7 +309,8 @@ export const basicTypes3: {
       kind: 'StringConst',
       sourceRef: unkownErrorPos,
       str: 'date'
-    }
+    },
+    refs: null as any,
   }
 }
 
@@ -316,6 +321,18 @@ export interface BaseType<BASE extends keyof typeof normalTypes> extends SourceN
   arrayType: false | UseType
 }
 
+export function isTypeBase<KIND extends SourceNodeKind, BASE extends keyof typeof normalTypes>(
+  o: any
+): o is TypeBase<KIND, BASE> {
+  if (o && o.base) {
+    return (o.kind === 'NormalType') ||
+      (o.kind === 'EnumType') ||
+      (o.kind === 'ComplexType') ||
+      (o.kind === 'ArrayType')
+  }
+  return false
+}
+
 export type Type = NormalType | EnumType | ComplexType | ArrayType
 
 export interface TypeBase<KIND extends SourceNodeKind, BASE extends keyof typeof normalTypes> extends SourceNodeMapped<KIND> {
@@ -323,6 +340,9 @@ export interface TypeBase<KIND extends SourceNodeKind, BASE extends keyof typeof
   format?: Code
   parse?: Code
   base: () => BaseType<BASE>
+  refs: {
+    pkg: Package
+  }
 }
 export interface NormalType extends TypeBase<'NormalType', BasicTypesOnly> {
 }

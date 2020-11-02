@@ -1,22 +1,20 @@
 import { nodeTransformer } from "generate/lib/generator"
+import { normalTypes } from 'load/types'
 
 export const genUseType = nodeTransformer({
   UseType1(w, usetype, info) {
-    if (!icon.icon.startsWith('mui/')) throw info.ws.fatal('suporta apenas a icones mui', icon)
-    const src = info.src
-    if (!src) throw info.ws.fatal('info precisa ter src', icon)
-    const name = icon.icon.substr(4)
-    const id = 'Icon' + name
-    src.requireDefault(id, '@material-ui/icons/' + name, icon)
-    return id
+    const ref = usetype.ref(usetype)
+    const normalType: boolean = (normalTypes as any)[ref.name.str]
+    if (normalType) {
+      info.src.require(ref.name.str + 'Type', '~/lib/archol/normalTypes', usetype)
+      return ref.name.str + 'Type'
+    }
+    const pkguri = ref.refs.pkg.uri.id.str
+    const typeid = pkguri + '_type_' + ref.name.str
+    info.src.require(typeid, '~/app/' + pkguri + '/' + pkguri, usetype)
+    return typeid
   },
   UseTypeAsArray(w, usetype, info) {
-    if (!icon.icon.startsWith('mui/')) throw info.ws.fatal('suporta apenas a icones mui', icon)
-    const src = info.src
-    if (!src) throw info.ws.fatal('info precisa ter src', icon)
-    const name = icon.icon.substr(4)
-    const id = 'Icon' + name
-    src.requireDefault(id, '@material-ui/icons/' + name, icon)
-    return id
+    return ['Array<', usetype.itemType, '>']
   }
 }, {})

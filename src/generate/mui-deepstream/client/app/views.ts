@@ -1,6 +1,7 @@
 import { CodeLines, CodePartL } from 'generate/lib/codeWriter'
 import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
 import { isWidgetContent, isWidgetEntry, isWidgetMarkdown, WidgetContent, WidgetEntry, WidgetMarkdown } from 'load/types'
+import { genUseType } from './useType'
 
 export const generateClientViews = sourceTransformer({
   multiple: true,
@@ -60,12 +61,11 @@ const genView = nodeTransformer({
     }
     function renderEntry(entry: WidgetEntry): CodePartL {
       src.require('EntryWidget', '~/lib/components/widgets/entry', entry)
-      const typeref = entry.type.ref(entry)
       return [
         '<EntryWidget bindings={bindings}',
         ' path=', entry.field,
         ' caption={', entry.caption, '()}',
-        ' type={', typeref.name, '}',
+        ' type={', entry.type, '}',
         ' />'
       ]
     }
@@ -76,4 +76,5 @@ const genView = nodeTransformer({
       ]
     }
   },
+  ...genUseType.transformerFactory
 }, { pkguri: '' })
