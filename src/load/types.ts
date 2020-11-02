@@ -253,8 +253,7 @@ export const basicTypes3: {
       kind: 'StringConst',
       sourceRef: unkownErrorPos,
       str: 'invalid'
-    },
-    refs: null as any,
+    }
   },
   string: {
     kind: 'NormalType',
@@ -267,8 +266,7 @@ export const basicTypes3: {
       kind: 'StringConst',
       sourceRef: unkownErrorPos,
       str: 'string'
-    },
-    refs: null as any,
+    }
   },
   number: {
     kind: 'NormalType',
@@ -281,8 +279,7 @@ export const basicTypes3: {
       kind: 'StringConst',
       sourceRef: unkownErrorPos,
       str: 'number'
-    },
-    refs: null as any,
+    }
   },
   boolean: {
     kind: 'NormalType',
@@ -295,8 +292,7 @@ export const basicTypes3: {
       kind: 'StringConst',
       sourceRef: unkownErrorPos,
       str: 'boolean'
-    },
-    refs: null as any,
+    }
   },
   date: {
     kind: 'NormalType',
@@ -309,8 +305,7 @@ export const basicTypes3: {
       kind: 'StringConst',
       sourceRef: unkownErrorPos,
       str: 'date'
-    },
-    refs: null as any,
+    }
   }
 }
 
@@ -340,9 +335,6 @@ export interface TypeBase<KIND extends SourceNodeKind, BASE extends keyof typeof
   format?: Code
   parse?: Code
   base: () => BaseType<BASE>
-  refs: {
-    pkg: Package
-  }
 }
 export interface NormalType extends TypeBase<'NormalType', BasicTypesOnly> {
 }
@@ -711,6 +703,7 @@ export interface PackageRef<T extends SourceNode<any>> {
   path: string
   ref: T
 }
+
 export type SourceNodeType<KIND extends SourceNodeKind> = KIND extends 'Application' ? Application :
   KIND extends 'Package' ? Package :
   KIND extends 'StringConst' ? StringConst :

@@ -126,8 +126,9 @@ export async function generateApplication<CFG extends object, SW extends GenNode
   { ws, app, wstransformations, projects, cfg }: generateApplication<CFG, SW>): Promise<void> {
   const prjs: { [name: string]: Project } = {}
   const srcs: { [name: string]: boolean } = {}
+  const stack=createStack()
   projects.forEach((prj) => {
-    prj.sources.forEach((src) => transformFileDecl(prj, src))
+    prj.sources.forEach((src) => transformFileDecl(prj, src, stack))
   })
   return saveAll()
 
@@ -162,16 +163,18 @@ export async function generateApplication<CFG extends object, SW extends GenNode
   }
 
   function transformFileDecl<CFG extends object, ST extends GenNodes<CFG>>(
-    prj: ProjectTransformer<any, any>, src: SourceTransformer<any, any>) {
+    prj: ProjectTransformer<any, any>, 
+    src: SourceTransformer<any, any>,
+    stack: GenFuncStack) {
     if (isSourceTransformerOne(src))
-      return genereateFile(prj, src.filePath, src.transformations, app, cfg)
+      return genereateFile(prj, src.filePath, src.transformations, app, cfg, stack)
 
     const wnll = codeWriter([src.transformations], {
       ws,
       prj: {},
       src: { requireDefault: deny, require: deny, chip: deny },
       node: {},
-      stack: createStack(),
+      stack: stack|| createStack(),
       transformFile: transformFileInt,
       fileIsEmpty(file) {
         return !srcs[file]
@@ -190,7 +193,7 @@ export async function generateApplication<CFG extends object, SW extends GenNode
       subfilePath: string,
       subtransformations: NodeTransformer<CFGsub, STsub>
     ): void {
-      genereateFile<CFGsub, STsub>(prj, subfilePath, subtransformations.transformations, subtransformations.transformNode, subtransformations.transformCFG)
+      genereateFile<CFGsub, STsub>(prj, subfilePath, subtransformations.transformations, subtransformations.transformNode, subtransformations.transformCFG, stack)
     }
 
 
@@ -199,7 +202,8 @@ export async function generateApplication<CFG extends object, SW extends GenNode
       filePath: string,
       srctransformations: ST,
       startNode: SourceNode<any>,
-      cfg: CFG
+      cfg: CFG,
+      stack: GenFuncStack
     ): void {
       const srcUsed: { [id: string]: TsNode } = {}
       let srcChipsDecl: {
@@ -222,7 +226,7 @@ export async function generateApplication<CFG extends object, SW extends GenNode
         prj: {},
         src: { requireDefault: requireDefaultImport, require: requireImport, chip },
         node: {},
-        stack: createStack(),
+        stack,
         transformFile: transformFileInt,
         cfg,
         fileIsEmpty(file) {

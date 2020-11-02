@@ -1342,8 +1342,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             name: typeName,
             nodeMapping: nodeMapping([pkgid.str, 'type', typeName.str], () => type),
             ...typeProps,
-            base: fbase,
-            refs: null as any
+            base: fbase
           }
           return type
         }
@@ -1363,8 +1362,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
                 enumOptions: typeProps.options,
                 complexFields: false, arrayType: false
               }
-            },
-            refs: null as any
+            }
           }
           return etype
         }
@@ -1400,8 +1398,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
                 complexFields: typeProps.fields,
                 enumOptions: false, arrayType: false
               }
-            },
-            refs: null as any
+            }
           }
           return ctype
         }
@@ -1421,8 +1418,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
                 arrayType: typeProps.itemType,
                 enumOptions: false, complexFields: false
               }
-            },
-            refs: null as any
+            }
           }
           return atype
         }
@@ -1577,11 +1573,6 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             path: ipath,
             ref: iref
           })
-          if (isTypeBase(iref)) {
-            iref.refs = {
-              pkg: finishedPkg
-            }
-          }
           if (isDocument(iref)) {
             iref.refs = {
               allFields: null as any,
@@ -1747,8 +1738,7 @@ function makeInvalid(ws: Workspace, s: string, sourceRef: SourceRef) {
       kind: 'StringConst',
       sourceRef,
       str: 'invalid ' + s
-    },
-    refs: null as any
+    }
   }
   return ret
 }

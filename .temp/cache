@@ -402,12 +402,12 @@
         "affectsGlobalScope": false
       },
       "../src/load/types.ts": {
-        "version": "a91e539aabad2c89b1145a9583c050d056a0484ffceea59c80f98bdd3c9010b9",
-        "signature": "dfd0f9075aaf16de854590b21f29efdde25e213842fdf1e604eef090caf45b83",
+        "version": "007435db1ceabd56926505c02d25ea8148d946e87524cc0dc92ed6773d39dee2",
+        "signature": "fc382cda834f60cbaf0a19e62efb1b8fbf7b93b60f50cbed37992d304a9113e3",
         "affectsGlobalScope": false
       },
       "../src/load/app.ts": {
-        "version": "f610734bfe5d527d1e2b20dce3e659998793a77acde70cb884f2234ec626856e",
+        "version": "2281ccc6b92609eb910f2199f24f1a2d6b51bd2da8eb60ab8599b4b4ca3c5c3d",
         "signature": "6dbdfe485aabd0b94b2bfb6908d1277ad675a2856a39fd5341f43b7580513ae6",
         "affectsGlobalScope": false
       },
@@ -422,13 +422,13 @@
         "affectsGlobalScope": false
       },
       "../src/generate/lib/codeWriter.ts": {
-        "version": "d44a172b07a4da1ca5ecdb00050350e472709efe5be7f66ea5cb25db563fcdd2",
-        "signature": "2db5f856d07d7a89b7f85cfb7109b1437ce3bc52552329f1b7afc55571e4a4c5",
+        "version": "b7f6a45d8133da6e7979ad3f160607a7fd4dfeb643a4790965e939f082780c14",
+        "signature": "c2d53910b2653fd24681ab60d320e66b86426c2dad02846d5758a0f52773fb60",
         "affectsGlobalScope": false
       },
       "../src/generate/lib/generator.ts": {
-        "version": "d3fb88e5f1812f061e4bf28488443292d0408cdebccfe4eb25bb345a1555a519",
-        "signature": "d2feb84c5277f702254df4cfa2cb9f289bc9142500b9989fb51eaf09aea2a7ec",
+        "version": "4d0bf6229f43b59a93e6e114188931cb5e0d055f0a65fce5df5406cd5d6da604",
+        "signature": "3d4f19f65789848b3411f58eeeab0d2652a62536537d4e327451e6f7b1fc29be",
         "affectsGlobalScope": false
       },
       "../src/generate/wsdecl/materialuiicons.ts": {
@@ -437,7 +437,7 @@
         "affectsGlobalScope": false
       },
       "../src/generate/wsdecl/index.ts": {
-        "version": "e72e98fa0c873565642763557c4172b65b627b22a8f8f7aa02612d87d4d417b5",
+        "version": "b134315b1ccb7dfb0edbfb6612fc36a4046ec9f7df7ecf53d10426455c212da2",
         "signature": "544ef4123b7a3b8233523f79c22181d1420e324af2cccbee25720bf0d605c5f2",
         "affectsGlobalScope": false
       },
@@ -457,7 +457,7 @@
         "affectsGlobalScope": false
       },
       "../src/generate/mui-deepstream/client/app/menu.ts": {
-        "version": "87edcd782a59d2de4313747b7a91c0b1699fa14639da281e6ba8fd169627a600",
+        "version": "88dccddd22fcdca74d67ef39d61702b511bcd2b7f621b926379116201d58ce54",
         "signature": "c5080ce9cb9e5465b0cf5eb58e13ca0848d47e109cbe4d558afd547f96d22fe5",
         "affectsGlobalScope": false
       },
@@ -472,22 +472,27 @@
         "affectsGlobalScope": false
       },
       "../src/generate/mui-deepstream/client/app/types.ts": {
-        "version": "2bf42505aa11c262cb5f33e785233399c83a78d9bb179ece11795475aae0d761",
+        "version": "c4e3a73f304039b141e1c9d6fb5eecd75e5046b6396809a6a078b1639e20fc3e",
         "signature": "6029a4acaf973f1bdd974af7440dfc7369acacfcfea55a065d67fbdfc2b47a98",
         "affectsGlobalScope": false
       },
+      "../src/generate/mui-deepstream/client/app/useType.ts": {
+        "version": "cfb4ddfb7f7d00056a24c304c3fe1615a79a0fc9a491cf2c366950b2e3ee6d12",
+        "signature": "a3c820350b552737a705976d2ddb723847635d17343431d07c42264376f216c6",
+        "affectsGlobalScope": false
+      },
       "../src/generate/mui-deepstream/client/app/views.ts": {
-        "version": "96c9d2812ed97f178441f8eeee93c504b447276fd9c7ac5a808758feff759719",
+        "version": "1f59b8ad4663585fcfb2fc896818e364e18cef84a1c491a0ff90858a07aa1345",
         "signature": "1c6c7335039caff404b52a1a120a0d4756db4c9543c5a9cd1b1e39415d02e612",
         "affectsGlobalScope": false
       },
       "../src/generate/mui-deepstream/client/app/pkguses.ts": {
-        "version": "8f62e0953608df271fa4cee12279e244ce67f3f638b8f8dc38b0c9c78f2e49f4",
+        "version": "021cf2fc81d43a444a258ceb91800c1c773ab394aacc14178600b212041382d8",
         "signature": "a3c401ed36d809f7f4b67d40f044be24a6436cd704e143cb48b7431a837fa453",
         "affectsGlobalScope": false
       },
       "../src/generate/mui-deepstream/client/app/app.ts": {
-        "version": "15db35ab57eced525d51ca91c6f87c096f1af2e2c4b6c33e16fb94b5b958957b",
+        "version": "190913a3095421e74487e23d544aa479adf74bd013a1609b9f26e7709c8b210d",
         "signature": "25ea1a021e1454c07ccff3308f39bb81c22c220b1b5560b0621955035cce14f1",
         "affectsGlobalScope": false
       },
@@ -506,8 +511,38 @@
         "signature": "6c290a0b7fa468e623c88681257b68ef792e73bcc6070e69318ff2bb3ebc3d88",
         "affectsGlobalScope": false
       },
+      "../node_modules/@types/node-notifier/notifiers/notificationcenter.d.ts": {
+        "version": "b7520cc07a53a3f09cdd49b935d7e5c700c4f6162e0bd1fd555cad5b3330f97b",
+        "signature": "b7520cc07a53a3f09cdd49b935d7e5c700c4f6162e0bd1fd555cad5b3330f97b",
+        "affectsGlobalScope": false
+      },
+      "../node_modules/@types/node-notifier/notifiers/notifysend.d.ts": {
+        "version": "84bf23b4d70b2b32d958563ff179b415d18de8a2ebc74cbd314aa97e0aff0fa0",
+        "signature": "84bf23b4d70b2b32d958563ff179b415d18de8a2ebc74cbd314aa97e0aff0fa0",
+        "affectsGlobalScope": false
+      },
+      "../node_modules/@types/node-notifier/notifiers/toaster.d.ts": {
+        "version": "f95fdd50dc3f949338b6452847ad412d3c651aeb77ecd70218dfd20c1c331dc3",
+        "signature": "f95fdd50dc3f949338b6452847ad412d3c651aeb77ecd70218dfd20c1c331dc3",
+        "affectsGlobalScope": false
+      },
+      "../node_modules/@types/node-notifier/notifiers/balloon.d.ts": {
+        "version": "14ed18e9969577970c8b8ae3cfa347d07bacc381d86c576bbe2e2e640c1e1d0b",
+        "signature": "14ed18e9969577970c8b8ae3cfa347d07bacc381d86c576bbe2e2e640c1e1d0b",
+        "affectsGlobalScope": false
+      },
+      "../node_modules/@types/node-notifier/notifiers/growl.d.ts": {
+        "version": "e8f009ef6b28ea28b4b8ad37b68f09a51e5e137a54f00592abb4d2ec61211443",
+        "signature": "e8f009ef6b28ea28b4b8ad37b68f09a51e5e137a54f00592abb4d2ec61211443",
+        "affectsGlobalScope": false
+      },
+      "../node_modules/@types/node-notifier/index.d.ts": {
+        "version": "90784b9f38e062244d4bbf3dd009a5f523dba1a60f4e68ef4a88e62e21201212",
+        "signature": "90784b9f38e062244d4bbf3dd009a5f523dba1a60f4e68ef4a88e62e21201212",
+        "affectsGlobalScope": false
+      },
       "../src/index.ts": {
-        "version": "bf73b1b2ed2689da3c6f84a418430acb7ef7d38d507834b1e34f4a8117eb25cd",
+        "version": "7987085c16382fd7639a0afd499cdcc5a05b1647e31f320fdeae34bfaea17bbd",
         "signature": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881",
         "affectsGlobalScope": false
       },
@@ -571,6 +606,29 @@
       "../node_modules/@types/mkdirp/index.d.ts": [
         "../node_modules/@types/node/fs.d.ts",
         "../node_modules/@types/node/index.d.ts"
+      ],
+      "../node_modules/@types/node-notifier/index.d.ts": [
+        "../node_modules/@types/node-notifier/notifiers/balloon.d.ts",
+        "../node_modules/@types/node-notifier/notifiers/growl.d.ts",
+        "../node_modules/@types/node-notifier/notifiers/notificationcenter.d.ts",
+        "../node_modules/@types/node-notifier/notifiers/notifysend.d.ts",
+        "../node_modules/@types/node-notifier/notifiers/toaster.d.ts",
+        "../node_modules/@types/node/index.d.ts"
+      ],
+      "../node_modules/@types/node-notifier/notifiers/balloon.d.ts": [
+        "../node_modules/@types/node-notifier/index.d.ts"
+      ],
+      "../node_modules/@types/node-notifier/notifiers/growl.d.ts": [
+        "../node_modules/@types/node-notifier/index.d.ts"
+      ],
+      "../node_modules/@types/node-notifier/notifiers/notificationcenter.d.ts": [
+        "../node_modules/@types/node-notifier/index.d.ts"
+      ],
+      "../node_modules/@types/node-notifier/notifiers/notifysend.d.ts": [
+        "../node_modules/@types/node-notifier/index.d.ts"
+      ],
+      "../node_modules/@types/node-notifier/notifiers/toaster.d.ts": [
+        "../node_modules/@types/node-notifier/index.d.ts"
       ],
       "../node_modules/@types/node/base.d.ts": [
         "../node_modules/@types/node/assert.d.ts",
@@ -790,7 +848,8 @@
       ],
       "../src/generate/mui-deepstream/client/app/pkguses.ts": [
         "../src/generate/lib/codeWriter.ts",
-        "../src/generate/lib/generator.ts"
+        "../src/generate/lib/generator.ts",
+        "../src/load/types.ts"
       ],
       "../src/generate/mui-deepstream/client/app/roles.ts": [
         "../node_modules/@types/node/console.d.ts",
@@ -804,12 +863,18 @@
       ],
       "../src/generate/mui-deepstream/client/app/types.ts": [
         "../node_modules/@types/node/assert.d.ts",
+        "../node_modules/@types/node/crypto.d.ts",
         "../src/generate/lib/generator.ts",
         "../src/generate/mui-deepstream/client/app/fields.ts"
+      ],
+      "../src/generate/mui-deepstream/client/app/useType.ts": [
+        "../src/generate/lib/generator.ts",
+        "../src/load/types.ts"
       ],
       "../src/generate/mui-deepstream/client/app/views.ts": [
         "../src/generate/lib/codeWriter.ts",
         "../src/generate/lib/generator.ts",
+        "../src/generate/mui-deepstream/client/app/useType.ts",
         "../src/load/types.ts"
       ],
       "../src/generate/mui-deepstream/client/index.ts": [
@@ -842,6 +907,7 @@
         "../src/load/types.ts"
       ],
       "../src/index.ts": [
+        "../node_modules/@types/node-notifier/index.d.ts",
         "../node_modules/chokidar/types/index.d.ts",
         "../src/generate/index.ts",
         "../src/generate/wsdecl/index.ts",
@@ -877,6 +943,29 @@
       "../node_modules/@types/mkdirp/index.d.ts": [
         "../node_modules/@types/node/fs.d.ts",
         "../node_modules/@types/node/index.d.ts"
+      ],
+      "../node_modules/@types/node-notifier/index.d.ts": [
+        "../node_modules/@types/node-notifier/notifiers/balloon.d.ts",
+        "../node_modules/@types/node-notifier/notifiers/growl.d.ts",
+        "../node_modules/@types/node-notifier/notifiers/notificationcenter.d.ts",
+        "../node_modules/@types/node-notifier/notifiers/notifysend.d.ts",
+        "../node_modules/@types/node-notifier/notifiers/toaster.d.ts",
+        "../node_modules/@types/node/index.d.ts"
+      ],
+      "../node_modules/@types/node-notifier/notifiers/balloon.d.ts": [
+        "../node_modules/@types/node-notifier/index.d.ts"
+      ],
+      "../node_modules/@types/node-notifier/notifiers/growl.d.ts": [
+        "../node_modules/@types/node-notifier/index.d.ts"
+      ],
+      "../node_modules/@types/node-notifier/notifiers/notificationcenter.d.ts": [
+        "../node_modules/@types/node-notifier/index.d.ts"
+      ],
+      "../node_modules/@types/node-notifier/notifiers/notifysend.d.ts": [
+        "../node_modules/@types/node-notifier/index.d.ts"
+      ],
+      "../node_modules/@types/node-notifier/notifiers/toaster.d.ts": [
+        "../node_modules/@types/node-notifier/index.d.ts"
       ],
       "../node_modules/@types/node/base.d.ts": [
         "../node_modules/@types/node/assert.d.ts",
@@ -1109,6 +1198,11 @@
         "../src/generate/lib/generator.ts",
         "../src/load/types.ts"
       ],
+      "../src/generate/mui-deepstream/client/app/useType.ts": [
+        "../src/generate/lib/codeWriter.ts",
+        "../src/generate/lib/generator.ts",
+        "../src/load/types.ts"
+      ],
       "../src/generate/mui-deepstream/client/app/views.ts": [
         "../src/generate/lib/codeWriter.ts",
         "../src/generate/lib/generator.ts",
@@ -1150,6 +1244,12 @@
       "../node_modules/@types/json5/index.d.ts",
       "../node_modules/@types/minimatch/index.d.ts",
       "../node_modules/@types/mkdirp/index.d.ts",
+      "../node_modules/@types/node-notifier/index.d.ts",
+      "../node_modules/@types/node-notifier/notifiers/balloon.d.ts",
+      "../node_modules/@types/node-notifier/notifiers/growl.d.ts",
+      "../node_modules/@types/node-notifier/notifiers/notificationcenter.d.ts",
+      "../node_modules/@types/node-notifier/notifiers/notifysend.d.ts",
+      "../node_modules/@types/node-notifier/notifiers/toaster.d.ts",
       "../node_modules/@types/node/assert.d.ts",
       "../node_modules/@types/node/async_hooks.d.ts",
       "../node_modules/@types/node/base.d.ts",
@@ -1240,6 +1340,7 @@
       "../src/generate/mui-deepstream/client/app/roles.ts",
       "../src/generate/mui-deepstream/client/app/routes.ts",
       "../src/generate/mui-deepstream/client/app/types.ts",
+      "../src/generate/mui-deepstream/client/app/useType.ts",
       "../src/generate/mui-deepstream/client/app/views.ts",
       "../src/generate/mui-deepstream/client/index.ts",
       "../src/generate/mui-deepstream/index.ts",
