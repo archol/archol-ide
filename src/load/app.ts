@@ -32,20 +32,23 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     const expr1 = stmt.getExpression()
     if (expr1 instanceof ts.CallExpression) {
       const app = await tsCallExpr<Application>(expr1, 'declareApplication')
-      await Promise.all(mappingPending)
-      app.start.ref = (sourceRef) => {
-        const [pkgaliasstart, procnstart] = app.start.str.split('/')
-        const pkgstart = app.uses.get(pkgaliasstart)
-        if (!pkgstart)
-          throw ws.fatal('package do app.start não definido', app.start)
-        const pkgstartref = pkgstart.ref(app.start)
-        const procstart = pkgstartref.processes.get(procnstart)
-        if (!procstart)
-          throw ws.fatal('processo do app.start não definido', app.start)
-        return procstart
-      }
-      if (app.start.ref(app.start).vars.input.props.length)
-        throw ws.fatal('processo do app.start não deve ter INPUT', app.start)
+      await Promise.all(mappingPending);
+      ['start', 'login', 'error'].forEach((na) => {
+        const n: 'start' | 'login' | 'error' = na as any
+        app[n].ref = (sourceRef) => {
+          const [rpkgalias, rprocn] = app[n].str.split('/')
+          const rpkg = app.uses.get(rpkgalias)
+          if (!rpkg)
+            throw ws.fatal('package do app.' + n + ' não definido', app[n])
+          const rpkgRef = rpkg.ref(app[n])
+          const rproc = rpkgRef.processes.get(rprocn)
+          if (!rproc)
+            throw ws.fatal('processo do app ' + n + ' não definido', app[n])
+          return rproc
+        }
+        if (app[n].ref(app[n]).vars.input.props.length)
+          throw ws.fatal('processo do app.' + n + ' não deve ter INPUT', app[n])
+      })
       return app
     }
   }
