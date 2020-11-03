@@ -1,6 +1,8 @@
+import { pbkdf2 } from 'crypto';
 import { create } from 'domain';
 import { join } from 'path';
 import * as ts from 'ts-morph'
+import { isTemplateHead } from 'typescript';
 import { deferPromise, DeferredPromise, mapObjectToArray } from '../utils';
 import {
   Application, ArrayConst, BooleanConst, NumberConst, objectConst, ObjectConst, Package,
@@ -12,7 +14,7 @@ import {
   Pagelet, Menu, MenuItem, MenuItemSeparator, SourceNodeMapped, SourceNodeRefsKind, isPackage, RouteRedirect,
   RouteCode, RoleGroup, TsNode, basicTypes3, PackageRefs, PackageRef, isView, EnumOption, ComplexType, ArrayType,
   UseTypeAsArray, Types, SourceNodeKind, SourceNodeObjectKind, SourceNodeArrayKind, BuilderConfig, AppMappings,
-  RoleDefs, RoleGroups, WidgetEntry, WidgetMarkdown, WidgetContent, AnyRole, ProcessUse, SourceRef, WidgetItem, isCodeNode as isCodeNode, isTypeBase,
+  RoleDefs, RoleGroups, WidgetEntry, WidgetMarkdown, WidgetContent, AnyRole, ProcessUse, SourceRef, WidgetItem, isCodeNode as isCodeNode, isTypeBase, RoutePathItem,
 } from './types'
 
 export async function loadApp(ws: Workspace, appName: string): Promise<Application> {
@@ -521,22 +523,51 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
   }
 
   function parseRoutes(argRoutes: ts.Node): Routes {
-    return parseColObjArg('Routes', argRoutes, (itmRoute, itmName) => {
-      if (isStrArg(itmRoute)) {
+    return parseColObjArg('Routes', argRoutes, (itmRoute, itmPath) => {
+      const isRedirect = isStrArg(itmRoute)
+      const pathsplit = itmPath.str === '/' ? [''] : itmPath.str.split('/')
+      if (pathsplit[0] !== '') ws.error('Rota inválida: ' + itmPath.str, itmPath)
+      const itmPathArr = arrayConst<'RoutePath', RoutePathItem>('RoutePath', ws.getRef(itmPath))
+      const params: RoutePathItem[] = []
+      itmPathArr.items = pathsplit.slice(1).map((p, i) => {
+        const isword = /^\w+$/g.test(p)
+        const isparam = /^\{\w+\}$/g.test(p) && (!isRedirect)
+        const isrest = p === '...' && i === pathsplit.length - 2
+        const ok = isword || isparam || isrest
+        if (!ok) ws.error('Rota inválida: ' + itmPath.str, itmPath)
+        const r: RoutePathItem = {
+          ...itmPath,
+          str: p,
+        }
+        if (isparam) {
+          r.str = '=' + r.str.replace('{', '').replace('}', '')
+          r.type = true as any
+          params.push(r)
+        }
+        return r
+      })
+      if (isRedirect) {
         const redirect = parseStrArg(itmRoute)
         const rr: RouteRedirect = {
           kind: 'RouteRedirect',
           sourceRef: redirect.sourceRef,
-          path: itmName,
+          path: itmPathArr,
           redirect
         }
         return rr
       } else {
         const code = parserForCode()(itmRoute)
+        if (code.params.length - 1 === params.length) {
+          code.params.slice(1).forEach((p1, i) => {
+            const p2 = params[i]
+            if (('=' + p1.getName()) !== p2.str) ws.error('rota ' + itmPath.str + ' incompatível idx=' + i + ' ' + p1.getName() + '!==' + p2.str, itmRoute)
+            p2.type = p1.getType().getText()
+          })
+        } else ws.error('rota ' + itmPath.str + 'qtde de params invalido', itmRoute)
         const rc: RouteCode = {
           kind: 'RouteCode',
           sourceRef: code.sourceRef,
-          path: itmName,
+          path: itmPathArr,
           code
         }
         return rc

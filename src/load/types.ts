@@ -2,7 +2,7 @@ import * as ts from 'ts-morph'
 
 export type SourceNodeArrayKind = 'AppLanguages' | 'RoleGroup' | 'DocIndexFields' |
   'UsedDocStates' | 'AllowLocRoleList' | 'Widgets' | 'otherActions' | 'allActions' |
-  'UseTaskForks' | 'Menu'
+  'UseTaskForks' | 'Menu' | 'RoutePath'
 
 export type SourceNodeRefsKind = 'RefTypes' | 'RefDocuments' | 'RefProcesses' | 'RefRoles' | 'RefViews' |
   'RefFunctions' | 'RefPrimaryFields' | 'RefSecondaryFields' | 'RefDocIndexes' | 'RefDocStates' | 'RefDocAction'
@@ -22,6 +22,7 @@ export type SourceNodeKind = 'Application' | 'Package' | 'StringConst' | 'Number
   'Process' | 'ProcessUse' | 'ProcessVars' | 'AllowLocRoles' | 'AllowSysRole' | 'UseTask' | 'UITask' | 'UseView' | 'SystemTask' |
   'UseFunction' | 'BindVar' | 'View' | 'ViewAction' | 'WidgetContent' | 'WidgetEntry' | 'WidgetMarkdown' | 'FunctionLevel' |
   'Function' | 'Code' | 'BuilderConfig' | 'Pagelet' | 'RouteCode' | 'RouteRedirect' | 'MenuItem' | 'MenuItemSeparator' |
+  'RoutePathItem' |
   //
   SourceNodeArrayKind | SourceNodeObjectKind | SourceNodeWidgetKind
 
@@ -647,13 +648,17 @@ export interface Pagelet extends SourceNode<'Pagelet'> {
 export type Routes = ObjectConst<'Routes', Route>
 export type Route = RouteCode | RouteRedirect
 
+export interface RoutePathItem extends StringConst<'RoutePathItem'> {
+  type?: string
+}
+
 export interface RouteCode extends SourceNode<'RouteCode'> {
-  path: StringConst
+  path: ArrayConst<'RoutePath', RoutePathItem>
   code: Code
 }
 
 export interface RouteRedirect extends SourceNode<'RouteRedirect'> {
-  path: StringConst
+  path: ArrayConst<'RoutePath', RoutePathItem>
   redirect: StringConst
 }
 
@@ -774,6 +779,7 @@ export type SourceNodeType<KIND extends SourceNodeKind> = KIND extends 'Applicat
   KIND extends 'Code' ? Code :
   KIND extends 'BuilderConfig' ? BuilderConfig :
   KIND extends 'Pagelet' ? Pagelet :
+  KIND extends 'RoutePathItem' ? RoutePathItem :
   KIND extends 'RouteCode' ? RouteCode :
   KIND extends 'RouteRedirect' ? RouteRedirect :
   KIND extends 'MenuItem' ? MenuItem :
