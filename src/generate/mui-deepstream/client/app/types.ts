@@ -80,7 +80,7 @@ const genProcessRef = nodeTransformer({
         return taskdecl
       })],
       ['export type ' + procDecl, ' = ProcessDecl<', procTyping, '>'],
-      ['export type ', procContent, ' = AppContent<', procTyping, '>'],
+      //      ['export type ', procContent, ' = AppContent<', procTyping, '>'],
     ], false)
   },
   UITask(w, task, info) {

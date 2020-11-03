@@ -1,4 +1,4 @@
-import { CodeLines, CodePartL } from 'generate/lib/codeWriter'
+import { CodeLines, CodePartL, CodePartLines } from 'generate/lib/codeWriter'
 import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
 import { isWidgetContent, isWidgetEntry, isWidgetMarkdown, WidgetContent, WidgetEntry, WidgetMarkdown } from 'load/types'
 import { genUseType } from './useType'
@@ -30,20 +30,21 @@ const genView = nodeTransformer({
     const fields = v.refs.fields
     const hasfields = fields.props.length
     const render = renderContent(v.content)
-    const body: CodePartL[] = [
+    const vinst = 'T' + cfg.pkguri + '_view_' + v.name.str + 'Data'
+    const body: CodePartLines = [
+      hasfields ? 'const content: AppContent<any, any, any, any, ' + vinst + '> = contentDoc.use()' : null,
+      hasfields ? 'const bindings = content.bindings' : null,
       ['return ', render]
     ]
-    const vinst = 'T' + cfg.pkguri + '_view_' + v.name.str + 'Data'
     if (hasfields) {
-      src.require('SingletonBinding', '~/lib/archol/singleton', v)
+      src.require('contentDoc', '~/rx/app/content', v)
+      src.require('AppContent', '~/lib/archol/types', v)
       src.require(vinst, '~/app/types', v);
     }
 
     return w.statements([
       [
-        'export function View' + v.name.str, w.funcDecl(
-          hasfields ?
-            ['{ bindings }: { bindings: SingletonBinding<' + vinst + '> }'] : [],
+        'export function View' + v.name.str, w.funcDecl([],
           'React.ReactElement', body
         )
       ]
@@ -62,7 +63,7 @@ const genView = nodeTransformer({
     function renderEntry(entry: WidgetEntry): CodePartL {
       src.require('EntryWidget', '~/lib/components/widgets/entry', entry)
       return [
-        '<EntryWidget bindings={bindings}',
+        '<EntryWidget',
         ' path=', entry.field,
         ' caption={', entry.caption, '()}',
         ' type={', entry.type, '}',
