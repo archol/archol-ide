@@ -141,6 +141,8 @@ export interface Application extends SourceNode<'Application'> {
   uses: PackageUses,
   allPackages: Package[],
   start: ProcessUse,
+  login: ProcessUse,
+  error: ProcessUse,
   langs: ArrayConst<'AppLanguages', StringConst>
   builders: ObjectConst<'AppBuilders', BuilderConfig>
   pagelets: Pagelets

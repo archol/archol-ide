@@ -34,6 +34,8 @@ declare function declareApplication (name: '${appname}', opts: {
   icon: Icon,
   uses: ${appname}_PackageUses,
   start: ${appname}_AllProcs,
+  login: ${appname}_AllProcs,
+  error: ${appname}_AllProcs,
   langs: Lang[],
   builders: Builders
   pagelets: {

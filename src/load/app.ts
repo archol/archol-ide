@@ -414,6 +414,8 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         description: parseI18N,
         icon: parseIcon,
         start: parseProcessUse,
+        login: parseProcessUse,
+        error: parseProcessUse,
         uses: parsePackageUses,
         langs: parserForArrArg('AppLanguages', parseStrArg),
         builders: parseAppBuilders,

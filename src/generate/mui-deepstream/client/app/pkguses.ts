@@ -285,18 +285,18 @@ const genFunction = nodeTransformer({
     const body: CodePartL[] = [
       ['return executeFunction(input)']
     ]
-    const fid = 'T' + cfg.pkguri + '_func_' + f.name.str
+    const fid = cfg.pkguri + '_func_' + f.name.str
     src.require('FunctionContext', '~/lib/archol/functions', f)
     src.require('executeFunction', '~/lib/archol/functions', f)
-    src.require(fid + 'Exec', '~/app/types', f);
-    src.require(fid + 'Output', '~/app/types', f);
-    src.require(fid + 'Output', '~/app/types', f);
+    src.require('T' + fid + 'Exec', '~/app/types', f);
+    src.require('T' + fid + 'Output', '~/app/types', f);
+    src.require('T' + fid + 'Output', '~/app/types', f);
 
     return w.chipResult(fid + 'Exec', [
       [
         'export function ', fid + 'Exec', w.funcDecl([
-          'input: ' + fid + 'Input'
-        ], 'FunctionContext<' + fid + 'Output>', body
+          'input: T' + fid + 'Input'
+        ], 'FunctionContext<T' + fid + 'Output>', body
         )
       ]
     ], false)
