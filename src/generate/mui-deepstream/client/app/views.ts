@@ -33,7 +33,7 @@ const genView = nodeTransformer({
     const vinst = 'T' + cfg.pkguri + '_view_' + v.name.str + 'Data'
     const body: CodePartLines = [
       hasfields ? 'const content: AppContent<any, any, any, any, ' + vinst + '> = contentDoc.use()' : null,
-      hasfields ? 'const bindings = content.bindings' : null,
+      // hasfields ? 'const bindings = content.bindings' : null,
       ['return ', render]
     ]
     if (hasfields) {
@@ -44,9 +44,7 @@ const genView = nodeTransformer({
 
     return w.statements([
       [
-        'export function View' + v.name.str, w.funcDecl([],
-          'React.ReactElement', body
-        )
+        'export function View' + v.name.str, w.funcDecl([], 'React.ReactElement', body)
       ]
     ], false)
 
@@ -64,6 +62,7 @@ const genView = nodeTransformer({
       src.require('EntryWidget', '~/lib/components/widgets/entry', entry)
       return [
         '<EntryWidget',
+        ' content={content}',
         ' path=', entry.field,
         ' caption={', entry.caption, '()}',
         ' type={', entry.type, '}',

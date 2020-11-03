@@ -56,7 +56,6 @@ const genProcessRef = nodeTransformer({
   Process(w, proc, info) {
     const procpref = info.cfg.pkguri + '_proc_' + proc.name.str
     const procDecl = 'T' + procpref + 'Decl'
-    const procContent = 'T' + procpref + 'Content'
     const procInput = 'T' + procpref + 'Input'
     const procLocal = 'T' + procpref + 'Local'
     const procOutput = 'T' + procpref + 'Output'
@@ -80,7 +79,6 @@ const genProcessRef = nodeTransformer({
         return taskdecl
       })],
       ['export type ' + procDecl, ' = ProcessDecl<', procTyping, '>'],
-      //      ['export type ', procContent, ' = AppContent<', procTyping, '>'],
     ], false)
   },
   UITask(w, task, info) {

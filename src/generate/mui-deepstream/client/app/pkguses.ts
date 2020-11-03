@@ -106,7 +106,7 @@ const genProcessTask = nodeTransformer({
   UITask(w, task, info) {
     const procuripref = info.cfg.pkguri + '_proc_' + info.cfg.procname
     const taskuripref = procuripref + "_task_" + task.name.str
-    const taskrefid = taskuripref + 'Decl'
+    const taskdecl = taskuripref + 'Decl'
     const usedView = task.useView.ref(task)
     const hasfields = usedView.refs.fields.props.length
     const usedViewId = 'View' + usedView.name.str
@@ -130,11 +130,11 @@ const genProcessTask = nodeTransformer({
     info.src.require('ArcholGUID', '~/lib/archol/types', task)
     info.src.require('AppContent', '~/lib/archol/types', task)
     info.src.require(usedViewData, '~/app/types', task)
-    info.src.require('T' + taskrefid, '~/app/types', task)
+    info.src.require('T' + taskdecl, '~/app/types', task)
     info.src.require(usedViewId, '~/app/' + info.cfg.pkguri + '/views/' + usedView.name.str, task)
-    return w.chipResult(taskrefid, [
+    return w.chipResult(taskdecl, [
       [
-        ['export const ', taskrefid, ': T', taskrefid, ' = '],
+        ['export const ', taskdecl, ': T', taskdecl, ' = '],
         w.object({
           task: w.string(task.name.str),
           next: task.next,
@@ -154,6 +154,7 @@ const genProcessTask = nodeTransformer({
               : null,
             [
               'const content: AppContent<' + procTyping + ', ' + usedViewData + '> = ', w.object({
+                uid: w.string(taskuripref),
                 varsPub: '',
                 task: w.string(task.name.str),
                 view: usedViewId,
@@ -235,6 +236,7 @@ const genProcessTask = nodeTransformer({
             ],
             [
               'const content: AppContent<' + procTyping + ', {}> = ', w.object({
+                uid: w.string(taskuripref),
                 varsPub: '',
                 task: w.string(task.name.str),
                 view: '',
