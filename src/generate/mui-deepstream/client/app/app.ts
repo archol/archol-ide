@@ -8,9 +8,9 @@ export const generateClientApp = sourceTransformer({
   transformations: {
     Application(w, app, { transformFile, src }) {
       return w.statements([
-        ['export const appInstance = ', w.object({
+        ['export const appInstance = ', app.uses],
+        ['export const appInfo = ', w.object({
           name: app.name,
-          package: app.uses,
           start: r('start'),
           login: r('login'),
           error: r('error'),
