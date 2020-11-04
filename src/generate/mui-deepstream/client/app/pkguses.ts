@@ -1,6 +1,7 @@
 import { CodePartL } from 'generate/lib/codeWriter'
 import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
 import { propByPathTransverser } from 'generate/lib/transverses/propByPathTransverser'
+import { withPathTransverser } from 'generate/lib/transverses/withPathTransverser'
 import { isCodeNode } from 'load/types'
 
 export const generatePkgUses = nodeTransformer({
@@ -111,6 +112,7 @@ const genProcessTask = nodeTransformer({
     const usedView = task.useView.ref(task)
     const hasfields = usedView.refs.fields.props.length
     const usedViewId = 'View' + usedView.name.str
+    const usedViewInst = 'T' + info.cfg.pkguri + '_view_' + usedView.name.str + 'Instance'
     const usedViewData = 'T' + info.cfg.pkguri + '_view_' + usedView.name.str + 'Data'
     const storage = info.cfg.storage
     const procInput = 'T' + procuripref + 'Input'
@@ -130,6 +132,7 @@ const genProcessTask = nodeTransformer({
 
     info.src.require('ArcholGUID', '~/lib/archol/types', task)
     info.src.require('AppContent', '~/lib/archol/types', task)
+    info.src.require(usedViewInst, '~/app/types', task)
     info.src.require(usedViewData, '~/app/types', task)
     info.src.require('T' + taskdecl, '~/app/types', task)
     info.src.require(usedViewId, '~/app/' + info.cfg.pkguri + '/views/' + usedView.name.str, task)
@@ -154,7 +157,7 @@ const genProcessTask = nodeTransformer({
               ['const bindings = ', 'bindSingleton<', usedViewData, '>(varsPub, ', task.useView.bind, ')']
               : null,
             [
-              'const content: AppContent<' + procTyping + ', ' + usedViewData + '> = ', w.object({
+              'const content: AppContent<' + procTyping + ', ' + usedViewInst + '> = ', w.object({
                 uid: w.string(taskuripref),
                 varsPub: '',
                 task: w.string(task.name.str),
@@ -165,10 +168,10 @@ const genProcessTask = nodeTransformer({
                     if (usedView.title.params.length !== 1) throw info.ws.fatal('title como função exige param vars', usedView.title)
                     return w.code(usedView.title, {
                       traversals: [
-                        propByPathTransverser(usedView.title.params[0].getName())
-                      ]
+                        withPathTransverser(usedView.title.params[0].getName(), 'get', undefined)
+                      ],
                       // forceParams: [],
-                      // forceParams: [usedView.title.params[0].getName() + ' : X'],
+                      forceParams: [usedView.title.params[0].getName() + ' : ' + usedViewInst],
                       // before: [
                       //   ['const ', usedView.title.params[0].getName(), ' = bindings.useProxy()']
                       // ]

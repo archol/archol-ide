@@ -3,7 +3,6 @@ import { Application, ArrayConst, isArrayConst, isCodeNode, isObjectConst, isStr
 import { ChipDecl1 as ChipForNodeTransformerFactory, ChipDecl2 as ChipForNodeTransformer, ChipRes, CodePartL, CodePartLines, CodePartR, CodeWriter, codeWriter, isChipRes } from './codeWriter'
 import { join, resolve, dirname } from 'path'
 import { mapObject, mapObjectToArray, mergeObjWith, tildeExpand } from 'utils'
-import { info } from 'console'
 
 export interface ProjectTransformer<CFG extends object, PT extends GenNodes<CFG>> {
   projectPath: string,
