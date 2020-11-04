@@ -1,5 +1,6 @@
 import { CodePartL } from 'generate/lib/codeWriter'
 import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
+import { propByPathTransverser } from 'generate/lib/transverses/propByPathTransverser'
 import { isCodeNode } from 'load/types'
 
 export const generatePkgUses = nodeTransformer({
@@ -163,6 +164,9 @@ const genProcessTask = nodeTransformer({
                   (() => {
                     if (usedView.title.params.length !== 1) throw info.ws.fatal('title como função exige param vars', usedView.title)
                     return w.code(usedView.title, {
+                      traversals: [
+                        propByPathTransverser(usedView.title.params[0].getName())
+                      ]
                       // forceParams: [],
                       // forceParams: [usedView.title.params[0].getName() + ' : X'],
                       // before: [

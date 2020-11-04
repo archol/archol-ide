@@ -1,4 +1,5 @@
-import * as ts from 'ts-morph'
+import * as tsm from 'ts-morph'
+import * as ts from 'typescript'
 
 export type SourceNodeArrayKind = 'AppLanguages' | 'RoleGroup' | 'DocIndexFields' |
   'UsedDocStates' | 'AllowLocRoleList' | 'Widgets' | 'otherActions' | 'allActions' |
@@ -110,13 +111,20 @@ export interface ArrayConst<KIND extends SourceNodeArrayKind, T extends SourceNo
   items: T[]
 }
 
-export type TsNode = ts.Node | ts.SourceFile | SourceRef | SourceNode<any> | Array<ts.Node | ts.SourceFile | SourceRef | SourceNode<any>>
+export type TsNode =
+  ts.Node | ts.SourceFile |
+  tsm.Node | tsm.SourceFile |
+  SourceRef | SourceNode<any> |
+  Array<
+    ts.Node | ts.SourceFile |
+    tsm.Node | tsm.SourceFile
+    | SourceRef | SourceNode<any>>
 
 export interface Workspace extends SourceNode<'Workspace'> {
   path: string
   defaultLang: StringConst,
   apps: string[]
-  ts: ts.Project
+  ts: tsm.Project
   loadApp(appName: string): Promise<Application>
   diagnostics: {
     [id: string]: {
@@ -624,9 +632,10 @@ export function isCodeNode(node: any): node is Code {
 
 export interface Code extends SourceNode<'Code'> {
   async: boolean
-  params: ts.ParameterDeclaration[],
-  ret: ts.Type,
-  body: ts.Statement[]
+  params: tsm.ParameterDeclaration[],
+  ret: tsm.Type,
+  body: tsm.Statement[]
+  fn: tsm.FunctionDeclaration | tsm.ArrowFunction | tsm.MethodDeclaration | tsm.FunctionExpression
 }
 
 export interface BuilderConfig extends SourceNode<'BuilderConfig'> {

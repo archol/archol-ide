@@ -1,9 +1,13 @@
-import { Node, Project, SourceFile } from 'ts-morph'
+import * as tsm from 'ts-morph'
+import ts from 'typescript'
 import { loadApp } from './app'
 import { SourceRef, TsNode, Workspace, unkownErrorPos } from './types'
 
 export async function loadWorkspace(path: string): Promise<Workspace> {
-  const ts = new Project({
+  const proj = new tsm.Project({
+    manipulationSettings: {
+
+    },
     tsConfigFilePath: path + '/ws/tsconfig.json'
   })
   const ws: Workspace = {
@@ -15,8 +19,8 @@ export async function loadWorkspace(path: string): Promise<Workspace> {
       str: 'pt_BR'
     },
     path: path,
-    ts,
-    apps: ts.getSourceFiles()
+    ts: proj,
+    apps: proj.getSourceFiles()
       .filter((s) => s.getBaseName().endsWith('.app.ts'))
       .map((s) => s.getBaseName().replace(/\.app\.ts$/g, '')),
     loadApp(appName: string) {
@@ -55,7 +59,7 @@ export async function loadWorkspace(path: string): Promise<Workspace> {
     getRef(tsNode2: any): SourceRef {
       if (tsNode2.file && tsNode2.start && tsNode2.end) return tsNode2 as any
       if (tsNode2.kind && tsNode2.sourceRef) return tsNode2.sourceRef
-      if (tsNode2 instanceof Node) {
+      if (tsNode2 instanceof tsm.Node) {
         const start = tsNode2.getSourceFile().getLineAndColumnAtPos(tsNode2.getStart())
         const end = tsNode2.getSourceFile().getLineAndColumnAtPos(tsNode2.getEnd())
         return {
@@ -72,7 +76,7 @@ export async function loadWorkspace(path: string): Promise<Workspace> {
           },
         }
       }
-      if (tsNode2 instanceof SourceFile) {
+      if (tsNode2 instanceof tsm.SourceFile) {
         const start = tsNode2.getLineAndColumnAtPos(tsNode2.getStart())
         const end = tsNode2.getLineAndColumnAtPos(tsNode2.getEnd())
         return {
@@ -89,6 +93,40 @@ export async function loadWorkspace(path: string): Promise<Workspace> {
           },
         }
       }
+      if (ts.isToken(tsNode2)) {
+        const start = tsNode2.getSourceFile().getLineAndColumnAtPos(tsNode2.getStart())
+        const end = tsNode2.getSourceFile().getLineAndColumnAtPos(tsNode2.getEnd())
+        return {
+          file: tsNode2.getSourceFile().getFilePath(),
+          start: {
+            pos: tsNode2.getStart(),
+            row: start.line,
+            col: start.column,
+          },
+          end: {
+            pos: tsNode2.getEnd(),
+            row: end.line,
+            col: end.column,
+          },
+        }
+      }
+      // if (ts.isSourceFile(tsNode2)) {
+      //   const start = tsNode2.getLineAndColumnAtPos(tsNode2.getStart())
+      //   const end = tsNode2.getLineAndColumnAtPos(tsNode2.getEnd())
+      //   return {
+      //     file: tsNode2.getFilePath(),
+      //     start: {
+      //       pos: tsNode2.getStart(),
+      //       row: start.line,
+      //       col: start.column,
+      //     },
+      //     end: {
+      //       pos: tsNode2.getEnd(),
+      //       row: end.line,
+      //       col: end.column,
+      //     },
+      //   }
+      // }
       throw new Error('invalid source node')
     },
     allApplications() {

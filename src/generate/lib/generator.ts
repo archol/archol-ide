@@ -81,16 +81,18 @@ export type GenNodes<CFG extends object> = {
   [name in SourceNodeKind]?: GenFunc<name, CFG>
 }
 
+export interface GenSource {
+  require(identifier: string, module: string, sourceRef: TsNode): string
+  requireDefault(identifier: string, module: string, sourceRef: TsNode): string
+  // chip<CFG2 extends object>(pos: number, nt: () => NodeTransformerFactory<CFG2, any>): ChipForNodeTransformerFactory<CFG2>
+  chip<CFG2 extends object>(pos: number, nt: NodeTransformer<CFG2, any>): ChipRes
+  chip(pos: number, lines: CodePartLines, block: boolean): void
+}
+
 export interface GenInfo<CFG extends object> {
   ws: Workspace
   prj: {}
-  src: {
-    require(identifier: string, module: string, sourceRef: TsNode): string
-    requireDefault(identifier: string, module: string, sourceRef: TsNode): string
-    // chip<CFG2 extends object>(pos: number, nt: () => NodeTransformerFactory<CFG2, any>): ChipForNodeTransformerFactory<CFG2>
-    chip<CFG2 extends object>(pos: number, nt: NodeTransformer<CFG2, any>): ChipRes
-    chip<CFG2 extends object>(pos: number, lines: CodePartLines, block: boolean): void
-  }
+  src: GenSource
   node: {
 
   },
@@ -126,7 +128,7 @@ export async function generateApplication<CFG extends object, SW extends GenNode
   { ws, app, wstransformations, projects, cfg }: generateApplication<CFG, SW>): Promise<void> {
   const prjs: { [name: string]: Project } = {}
   const srcs: { [name: string]: boolean } = {}
-  const stack=createStack()
+  const stack = createStack()
   projects.forEach((prj) => {
     prj.sources.forEach((src) => transformFileDecl(prj, src, stack))
   })
@@ -163,7 +165,7 @@ export async function generateApplication<CFG extends object, SW extends GenNode
   }
 
   function transformFileDecl<CFG extends object, ST extends GenNodes<CFG>>(
-    prj: ProjectTransformer<any, any>, 
+    prj: ProjectTransformer<any, any>,
     src: SourceTransformer<any, any>,
     stack: GenFuncStack) {
     if (isSourceTransformerOne(src))
@@ -174,7 +176,7 @@ export async function generateApplication<CFG extends object, SW extends GenNode
       prj: {},
       src: { requireDefault: deny, require: deny, chip: deny },
       node: {},
-      stack: stack|| createStack(),
+      stack: stack || createStack(),
       transformFile: transformFileInt,
       fileIsEmpty(file) {
         return !srcs[file]

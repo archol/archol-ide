@@ -1,15 +1,17 @@
 import {
   ArrayConst, ObjectConst,
   SourceNode, SourceNodeKind, SourceNodeType, StringConst,
-  isObjectConst, isSourceNode, isStringConst, Code, isCodeNode, isArrayConst, SourceNodeObjectKind, Workspace, ObjectConstProp, isObjectConstProp
+  isObjectConst, isSourceNode, isStringConst, Code, isCodeNode, isArrayConst, SourceNodeObjectKind, Workspace, ObjectConstProp, isObjectConstProp, TsNode
 } from "load/types"
 import { mapObjectToArray } from 'utils'
 import {
   quote, NodeTransformer, isNodeTransformer, NodeTransformerFactory, isNodeTransformerFactory,
   GenNodes, GenInfo, GenFunc
 } from './generator'
+import { Project, TransformTraversalControl, ts } from 'ts-morph'
 
 export type CodePartLines = Array<CodePartL | null>
+export type CodeTraversal = (src: GenInfo<any>) => (traversal: TransformTraversalControl) => ts.Node
 
 export interface CodeWriter {
   statements(lines: CodePartLines, block: boolean): CodeLines
@@ -18,7 +20,13 @@ export interface CodeWriter {
   transform(transformer: NodeTransformer<any, any>): CodePartR[]
   transform(node: SourceNode<any>): CodePartR[]
   map(nodes: Array<ObjectConst<any> | ArrayConst<any>>): CodeLines
-  code(node: Code, opts?: { before?: CodePartLines, after?: CodePartLines, forceParams?: string[], forceRetType?: string, arrow?: boolean, forceParamType?: (param: string, idx: number) => string | undefined }): FuncDecl
+  code(node: Code, opts?: {
+    before?: CodePartLines, after?: CodePartLines,
+    forceParams?: string[], forceRetType?: string,
+    forceParamType?: (param: string, idx: number) => string | undefined,
+    arrow?: boolean,
+    traversals?: CodeTraversal[]
+  }): FuncDecl
   funcDecl(args: string[], ret: string, statements: null | CodePartLines, opts?: { arrow?: boolean, async?: boolean }): FuncDecl
   array(arr: CodePartLines): CodeLines
   property(name: string, val: CodePartL | null): CodeProperty
@@ -127,7 +135,23 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
       return wSelf.lines(lines, '[', ']', ',')
     },
     code(node, opts): FuncDecl {
-      const body: CodePartLines = node.body.map(b => b.getText())
+      const body: CodePartLines = opts?.traversals ? (() => {
+        const tmpp = new Project({ useInMemoryFileSystem: true });
+        const tmps = tmpp.createSourceFile(
+          "tmp.ts", [
+            'function tmp(' + node.params.map((p) => p.getText()) + '):' + node.ret.getText() + '{',
+          ].concat(node.body.map(b => b.getText()))
+            .concat(['}'])
+            .join('\n')
+        );
+        opts.traversals.forEach(t => tmps.transform(t(info)))
+        const nfn = tmps.compilerNode.statements[0]
+        if (nfn && ts.isFunctionDeclaration(nfn) && nfn.body)
+          return nfn.body.statements.map(s => s.getText())
+        throw info.ws.fatal('Erro ao transformar código', node)
+      })() : node.body.map((b) => {
+        return b.getText()
+      })
       let retType = node.ret.getText()
       if (opts) {
         if (opts.before) body.unshift(opts.before)

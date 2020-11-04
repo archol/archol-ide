@@ -170,6 +170,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       let ret: Code = null as any
       if (argCode instanceof ts.MethodDeclaration) {
         rcode(
+          argCode,
           argCode.getTypeParameters(),
           argCode.getParameters(),
           argCode.getReturnType(),
@@ -179,6 +180,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       }
       else if (argCode instanceof ts.FunctionDeclaration) {
         rcode(
+          argCode,
           argCode.getTypeParameters(),
           argCode.getParameters(),
           argCode.getReturnType(),
@@ -187,6 +189,16 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       }
       else if (argCode instanceof ts.FunctionExpression) {
         rcode(
+          argCode,
+          argCode.getTypeParameters(),
+          argCode.getParameters(),
+          argCode.getReturnType(),
+          argCode.getStatements(),
+          argCode.isAsync())
+      }
+      else if (argCode instanceof ts.ArrowFunction) {
+        rcode(
+          argCode,
           argCode.getTypeParameters(),
           argCode.getParameters(),
           argCode.getReturnType(),
@@ -197,6 +209,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       return ret
 
       function rcode(
+        fn: ts.FunctionDeclaration | ts.ArrowFunction | ts.MethodDeclaration | ts.FunctionExpression,
         typedParams: ts.TypeParameterDeclaration[],
         params: ts.ParameterDeclaration[],
         retType: ts.Type,
@@ -211,6 +224,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           params,
           ret: retType,
           body,
+          fn,
           async
         }
       }
