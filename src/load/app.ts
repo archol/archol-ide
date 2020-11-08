@@ -7,9 +7,9 @@ import { deferPromise, DeferredPromise, mapObjectToArray } from '../utils';
 import {
   Application, ArrayConst, BooleanConst, NumberConst, objectConst, ObjectConst, Component,
   SourceNode, StringConst, Workspace, sysRoles, isDocument, isProcess, isWidgetContent, EnumType, UseType1,
-  Process, Function, View, Type, Document, RoleDef, Code, I18N, arrayConst, Icon, ComponentUse, ComponentUses,
+  Process, Operation, View, Type, Document, RoleDef, Code, I18N, arrayConst, Icon, ComponentUse, ComponentUses,
   Task, UseTask, AllowSysRole, AllowLocRoles, AllowRoles, Fields, Field, UseType, BindVar, ProcessVars,
-  UseView, UseFunction, BindVars, FunctionLevel, ViewAction, BaseType, NormalType, normalTypes, DocFields, DocIndexes,
+  UseView, UseOperation, BindVars, OperationLevel, ViewAction, BaseType, NormalType, normalTypes, DocFields, DocIndexes,
   DocumentStates, DocActions, DocAction, DocField, DocIndex, DocumentState, UseDocStates, Routes, Pagelets,
   Pagelet, Menu, MenuItem, MenuItemSeparator, SourceNodeMapped, SourceNodeRefsKind, isComponent, RouteRedirect,
   RouteCode, RoleGroup, TsNode, basicTypes3, ComponentRefs, ComponentRef, isView, EnumOption, ComplexType, ArrayType,
@@ -1106,10 +1106,10 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
                 allow: parseAllowRoles,
                 next: parseNextTask,
                 useView: parseUseView,
-                useFunction: parseUseFunction
-              }, ['useView', 'useFunction', 'allow', 'pool', 'lane'])
+                useOperation: parseUseOperation
+              }, ['useView', 'useOperation', 'allow', 'pool', 'lane'])
               const task: Task = {
-                kind: tprops.useFunction ? 'SystemTask' : 'UITask',
+                kind: tprops.useOperation ? 'SystemTask' : 'UITask',
                 sourceRef: ws.getRef(val),
                 name: taskname,
                 ...tprops
@@ -1178,19 +1178,19 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             }
             return r
           }
-          function parseUseFunction(argUseFunction: ts.Node): UseFunction {
-            const pusefunc = parseObjArg(argUseFunction, {
-              function: parseStrArg,
+          function parseUseOperation(argUseOperation: ts.Node): UseOperation {
+            const puseop = parseObjArg(argUseOperation, {
+              operation: parseStrArg,
               input: parseBindVars,
               output: parseBindVars,
             }, [])
-            const r: UseFunction = {
-              kind: 'UseFunction',
-              sourceRef: ws.getRef(argUseFunction),
-              ...pusefunc,
+            const r: UseOperation = {
+              kind: 'UseOperation',
+              sourceRef: ws.getRef(argUseOperation),
+              ...puseop,
               ref() {
-                const f = comp.functions.get(pusefunc.function)
-                if (!f) throw ws.fatal('function não encontrada: ' + pusefunc.function.str, pusefunc.function)
+                const f = comp.operations.get(puseop.operation)
+                if (!f) throw ws.fatal('operation não encontrada: ' + puseop.operation.str, puseop.operation)
                 return f
               }
             }
@@ -1198,35 +1198,35 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           }
         }
       }, ['*'])
-      return { functions }
+      return { operations }
     }
-    function functions(expr1Functions: ts.CallExpression) {
-      const argsFunctions = expr1Functions.getArguments()
-      if (argsFunctions.length !== 1) ws.error(expr1Functions.getSourceFile().getFilePath() + ' functions precisa de um parametro', expr1Functions)
-      comp.functions = parseColObjArg('Functions', argsFunctions[0], (itmFunction, functionName) => {
-        const fprops = parseObjArg(itmFunction, {
+    function operations(expr1Ops: ts.CallExpression) {
+      const argsOps = expr1Ops.getArguments()
+      if (argsOps.length !== 1) ws.error(expr1Ops.getSourceFile().getFilePath() + ' operations precisa de um parametro', expr1Ops)
+      comp.operations = parseColObjArg('Operations', argsOps[0], (itmOp, opName) => {
+        const fprops = parseObjArg(itmOp, {
           title: parseI18N,
-          level: parseFunctionLevel,
+          level: parseOpLevel,
           cancelabled: parseBolArg,
           input: parseFields,
           output: parseFields,
           code: parserForCode(),
         }, ['cancelabled'])
-        const func: Function = {
-          kind: 'Function',
-          sourceRef: ws.getRef(argsFunctions[0]),
-          name: functionName,
-          nodeMapping: nodeMapping([compid.str, 'function', functionName.str], () => func),
+        const op: Operation = {
+          kind: 'Operation',
+          sourceRef: ws.getRef(argsOps[0]),
+          name: opName,
+          nodeMapping: nodeMapping([compid.str, 'function', opName.str], () => op),
           ...fprops,
           defComp: null as any
         }
-        return func
-        function parseFunctionLevel(argFuncLevel: ts.Node): FunctionLevel {
+        return op
+        function parseOpLevel(argFuncLevel: ts.Node): OperationLevel {
           const str = parseStrArg(argFuncLevel)
           if (!["cpu", "io", "net"].includes(str.str))
-            ws.error('FunctionLevel invalido', str)
-          const ret: FunctionLevel = {
-            kind: 'FunctionLevel',
+            ws.error('OperationLevel invalido', str)
+          const ret: OperationLevel = {
+            kind: 'OperationLevel',
             sourceRef: str.sourceRef,
             level: str.str as any
           }
@@ -1616,7 +1616,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       roleDefs: createRefs<'RefRoles', RoleDef>('RefRoles', finishedComp, 'roleDefs', './'),
       roleGroups: createRefs<'RefRoles', RoleGroup>('RefRoles', finishedComp, 'roleGroups', './'),
       views: createRefs<'RefViews', View>('RefViews', finishedComp, 'views', './'),
-      functions: createRefs<'RefFunctions', Function>('RefFunctions', finishedComp, 'functions', './'),
+      operations: createRefs<'RefOperations', Operation>('RefOperations', finishedComp, 'operations', './'),
     }
     function createRefs<KIND extends SourceNodeRefsKind, T extends SourceNode<any>>(
       kind: KIND,
@@ -1753,7 +1753,7 @@ function invalidComponent(uri: StringConst) {
       roleDefs: componentRefs([]),
       roleGroups: componentRefs([]),
       views: componentRefs([]),
-      functions: componentRefs([]),
+      operations: componentRefs([]),
     },
     types: objectConst('Types', uri.sourceRef),
     documents: objectConst('Documents', uri.sourceRef),
@@ -1761,7 +1761,7 @@ function invalidComponent(uri: StringConst) {
     roleDefs: objectConst('RoleDefs', uri.sourceRef),
     roleGroups: objectConst('RoleGroups', uri.sourceRef),
     views: objectConst('Views', uri.sourceRef),
-    functions: objectConst('Functions', uri.sourceRef),
+    operations: objectConst('Operations', uri.sourceRef),
     routes: objectConst('Routes', uri.sourceRef),
   }
   return comp

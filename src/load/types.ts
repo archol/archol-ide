@@ -6,12 +6,12 @@ export type SourceNodeArrayKind = 'AppLanguages' | 'RoleGroup' | 'DocIndexFields
   'UseTaskForks' | 'Menu' | 'RoutePath'
 
 export type SourceNodeRefsKind = 'RefTypes' | 'RefDocuments' | 'RefProcesses' | 'RefRoles' | 'RefViews' |
-  'RefFunctions' | 'RefPrimaryFields' | 'RefSecondaryFields' | 'RefDocIndexes' | 'RefDocStates' | 'RefDocAction'
+  'RefOperations' | 'RefPrimaryFields' | 'RefSecondaryFields' | 'RefDocIndexes' | 'RefDocStates' | 'RefDocAction'
 
 export type SourceNodeObjectKind = 'AppBuilders' | 'Pagelets' | 'AppMappings' |
   'I18NMsg' | 'ComponentUses' | 'RoleDefs' | 'RoleGroups' | 'Types' | 'EnumOptions' | 'Fields' | 'Documents' |
   'DocActions' | 'DocFields' | 'DocIndexes' | 'DocumentStates' | 'Processes' | 'Tasks' |
-  'BindVars' | 'Views' | 'Functions' | 'Routes' |
+  'BindVars' | 'Views' | 'Operations' | 'Routes' |
   SourceNodeRefsKind
 
 export type SourceNodeWidgetKind = 'WidgetEntry' | 'WidgetMarkdown'
@@ -21,8 +21,8 @@ export type SourceNodeKind = 'Application' | 'Component' | 'StringConst' | 'Numb
   'BaseType' | 'NormalType' | 'EnumType' | 'EnumOption' | 'ComplexType' | 'ArrayType' | 'UseType1' | 'UseTypeAsArray' |
   'Field' | 'Document' | 'DocAction' | 'DocField' | 'DocIndex' | 'DocumentState' | 'UseDocStates' |
   'Process' | 'ProcessUse' | 'ProcessVars' | 'AllowLocRoles' | 'AllowSysRole' | 'UseTask' | 'UITask' | 'UseView' | 'SystemTask' |
-  'UseFunction' | 'BindVar' | 'View' | 'ViewAction' | 'WidgetContent' | 'WidgetEntry' | 'WidgetMarkdown' | 'FunctionLevel' |
-  'Function' | 'Code' | 'BuilderConfig' | 'Pagelet' | 'RouteCode' | 'RouteRedirect' | 'MenuItem' | 'MenuItemSeparator' |
+  'UseOperation' | 'BindVar' | 'View' | 'ViewAction' | 'WidgetContent' | 'WidgetEntry' | 'WidgetMarkdown' | 'OperationLevel' |
+  'Operation' | 'Code' | 'BuilderConfig' | 'Pagelet' | 'RouteCode' | 'RouteRedirect' | 'MenuItem' | 'MenuItemSeparator' |
   'RoutePathItem' |
   //
   SourceNodeArrayKind | SourceNodeObjectKind | SourceNodeWidgetKind
@@ -205,7 +205,7 @@ export interface Component extends SourceNode<'Component'> {
     roleDefs: ComponentRefs<RoleDef>,
     roleGroups: ComponentRefs<RoleGroup>,
     views: ComponentRefs<View>,
-    functions: ComponentRefs<Function>,
+    operations: ComponentRefs<Operation>,
   }
   types: Types,
   documents: Documents,
@@ -213,7 +213,7 @@ export interface Component extends SourceNode<'Component'> {
   roleDefs: RoleDefs
   roleGroups: RoleGroups
   views: Views,
-  functions: Functions,
+  operations: Operations,
   routes: Routes
 }
 
@@ -529,14 +529,14 @@ export interface UseView extends SourceNode<'UseView'> {
 }
 
 export interface SystemTask extends BaseTask<'SystemTask'> {
-  useFunction: UseFunction
+  useOperation: UseOperation
 }
 
-export interface UseFunction extends SourceNode<'UseFunction'> {
-  function: StringConst
+export interface UseOperation extends SourceNode<'UseOperation'> {
+  operation: StringConst
   input: BindVars,
   output: BindVars
-  ref(sourceRef: TsNode): Function
+  ref(sourceRef: TsNode): Operation
 }
 
 export type BindVars = ObjectConst<'BindVars', BindVar>
@@ -610,15 +610,15 @@ export interface WidgetMarkdown extends WidgetItem<'WidgetMarkdown'> {
   markdown: I18N,
 }
 
-export type Functions = ObjectConst<'Functions', Function>
+export type Operations = ObjectConst<'Operations', Operation>
 
-export interface FunctionLevel extends SourceNode<'FunctionLevel'> {
+export interface OperationLevel extends SourceNode<'OperationLevel'> {
   level: "cpu" | "io" | "net"
 }
 
-export interface Function extends SourceNodeMapped<'Function'> {
+export interface Operation extends SourceNodeMapped<'Operation'> {
   title: I18N
-  level: FunctionLevel
+  level: OperationLevel
   cancelabled: BooleanConst
   input: Fields
   output: Fields
@@ -775,7 +775,7 @@ export type SourceNodeType<KIND extends SourceNodeKind> = KIND extends 'Applicat
   KIND extends 'UITask' ? UITask :
   KIND extends 'UseView' ? UseView :
   KIND extends 'SystemTask' ? SystemTask :
-  KIND extends 'UseFunction' ? UseFunction :
+  KIND extends 'UseOperation' ? UseOperation :
   KIND extends 'BindVars' ? BindVars :
   KIND extends 'BindVar' ? BindVar :
   KIND extends 'View' ? View :
@@ -783,8 +783,8 @@ export type SourceNodeType<KIND extends SourceNodeKind> = KIND extends 'Applicat
   KIND extends 'WidgetContent' ? WidgetContent :
   KIND extends 'WidgetEntry' ? WidgetEntry :
   KIND extends 'WidgetMarkdown' ? WidgetMarkdown :
-  KIND extends 'FunctionLevel' ? FunctionLevel :
-  KIND extends 'Function' ? Function :
+  KIND extends 'OperationLevel' ? OperationLevel :
+  KIND extends 'Operation' ? Operation :
   KIND extends 'Code' ? Code :
   KIND extends 'BuilderConfig' ? BuilderConfig :
   KIND extends 'Pagelet' ? Pagelet :

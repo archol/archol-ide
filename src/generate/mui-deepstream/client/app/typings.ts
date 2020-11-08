@@ -43,9 +43,9 @@ const genCompRef = nodeTransformer({
           src.chip(20,
             genViewInstanceType.make(val, { compuri }))
         ),
-        func: w.mapObj(comp.functions, (val, key) =>
+        operation: w.mapObj(comp.operations, (val, key) =>
           src.chip(30,
-            genFuncInstanceType.make(val, { compuri }))
+            genOpInstanceType.make(val, { compuri }))
         ),
       })]
     ], false)
@@ -164,14 +164,14 @@ const genViewInstanceType = nodeTransformer({
   },
 }, { compuri: '' })
 
-const genFuncInstanceType = nodeTransformer({
-  Function(w, func, info) {
-    const id = 'T' + info.cfg.compuri + '_func_' + func.name.str
-    info.src.require('FunctionContext', '~/lib/archol/functions', func)
+const genOpInstanceType = nodeTransformer({
+  Operation(w, op, info) {
+    const id = 'T' + info.cfg.compuri + '_operation_' + op.name.str
+    info.src.require('OperationContext', '~/lib/archol/operations', op)
     return w.chipResult(id + 'Exec', [
-      ['export interface ', id, 'Input', genFieldsWithType.make(func.input, {})],
-      ['export interface ', id, 'Output', genFieldsWithType.make(func.output, {})],
-      ['export type ', id, 'Exec = ( input: ', id, 'Input ) => FunctionContext<', id, 'Output>'],
+      ['export interface ', id, 'Input', genFieldsWithType.make(op.input, {})],
+      ['export interface ', id, 'Output', genFieldsWithType.make(op.output, {})],
+      ['export type ', id, 'Exec = ( input: ', id, 'Input ) => OperationContext<', id, 'Output>'],
     ], false)
   },
 }, { compuri: '' })

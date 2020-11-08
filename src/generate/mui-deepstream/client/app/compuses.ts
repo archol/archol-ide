@@ -36,8 +36,8 @@ const genCompRef = nodeTransformer({
           process: w.mapObj(comp.processes, (val, key) =>
             src.chip(-10, genProcess.make(val, { compuri }))
           ),
-          func: w.mapObj(comp.functions, (val, key) =>
-            src.chip(-10, genFunction.make(val, { compuri }))
+          operation: w.mapObj(comp.operations, (val, key) =>
+            src.chip(-10, genOperation.make(val, { compuri }))
           ),
           // view: w.mapObj(comp.views, (val, key) =>
           //   src.chip(-10, genViewInstanceType.make(val, { compuri }))
@@ -200,7 +200,7 @@ const genProcessTask = nodeTransformer({
     const procuripref = info.cfg.compuri + '_proc_' + info.cfg.procname
     const taskuripref = procuripref + "_task_" + task.name.str
     const taskrefid = taskuripref + 'Decl'
-    const usedFunc = task.useFunction.ref(task)
+    const usedFunc = task.useOperation.ref(task)
     const usedFuncId = 'Function' + usedFunc.name.str
     const usedFuncInput = 'T' + info.cfg.compuri + '_func_' + usedFunc.name.str + 'Input'
     const usedFuncOutput = 'T' + info.cfg.compuri + '_func_' + usedFunc.name.str + 'Output'
@@ -211,7 +211,7 @@ const genProcessTask = nodeTransformer({
     const procTyping = procInput + ', ' + procLocal + ', ' + procOutput + ', ' + procTask
 
     info.src.requireDefault('React', 'react', task)
-    info.src.require('getExecutionContext', '~/lib/archol/functions', task)
+    info.src.require('getOperationContext', '~/lib/archol/operations', task)
     info.src.require('ExecuteFunctionRenderer', '~/layout/app/executeFunctionRenderer', task)
     info.src.require('ArcholGUID', '~/lib/archol/types', task)
     info.src.require(usedFuncInput, '~/app/typings', task)
@@ -277,24 +277,24 @@ const genProcessTask = nodeTransformer({
   }
 }, { compuri: '', procname: '', storage: '' })
 
-const genFunction = nodeTransformer({
-  Function(w, f, { ws, src, cfg }) {
+const genOperation = nodeTransformer({
+  Operation(w, op, { ws, src, cfg }) {
 
     const body: CodePartL[] = [
-      ['return executeFunction(input)']
+      ['return executeOperation(input)']
     ]
-    const fid = cfg.compuri + '_func_' + f.name.str
-    src.require('FunctionContext', '~/lib/archol/functions', f)
-    src.require('executeFunction', '~/lib/archol/functions', f)
-    src.require('T' + fid + 'Exec', '~/app/typings', f);
-    src.require('T' + fid + 'Output', '~/app/typings', f);
-    src.require('T' + fid + 'Output', '~/app/typings', f);
+    const fid = cfg.compuri + '_func_' + op.name.str
+    src.require('OperationContext', '~/lib/archol/operations', op)
+    src.require('operationFunction', '~/lib/archol/operations', op)
+    src.require('T' + fid + 'Exec', '~/app/typings', op);
+    src.require('T' + fid + 'Output', '~/app/typings', op);
+    src.require('T' + fid + 'Output', '~/app/typings', op);
 
     return w.chipResult(fid + 'Exec', [
       [
         'export function ', fid + 'Exec', w.funcDecl([
           'input: T' + fid + 'Input'
-        ], 'FunctionContext<T' + fid + 'Output>', body
+        ], 'OperationContext<T' + fid + 'Output>', body
         )
       ]
     ], false)

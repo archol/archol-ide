@@ -1,5 +1,5 @@
 import { CodeBlockWriter } from 'ts-morph';
-import { Application, Component, Process, Workspace, Function, normalTypes, View, Type, Document, Fields, SourceNodeWithName, SourceNode } from '../../load/types';
+import { Application, Component, Process, Workspace, Operation, normalTypes, View, Type, Document, Fields, SourceNodeWithName, SourceNode } from '../../load/types';
 import { quote, typePipeObj, typePipeStr } from '../lib/generator';
 import { materialUiIcons } from './materialuiicons';
 
@@ -127,7 +127,7 @@ declare interface ${compid}_DeclProcesses {
   }): ${compid}_DeclFunctions
 }
 declare interface ${compid}_DeclFunctions {
-  functions (functions: {${comp.functions.props.map((f) => `${f.key.str}: ${compid}_function_${f.key.str}_Decl,`).join('\n')}
+  operations (operations: {${comp.operations.props.map((f) => `${f.key.str}: ${compid}_operation_${f.key.str}_Decl,`).join('\n')}
   }): ${compid}_DeclViews
 }
 declare interface ${compid}_DeclViews {
@@ -157,8 +157,8 @@ declare interface ${compid}_Ref {
   documents: {  
     ${comp.documents.props.map((d) => `${d.key.str}: ${compid}_document_${d.key.str}_Ref,`).join('\n')}
   },
-  functions: {  
-    ${comp.functions.props.map((f) => `${f.key.str}: ${compid}_function_${f.key.str}_Ref,`).join('\n')}
+  operations: {  
+    ${comp.operations.props.map((f) => `${f.key.str}: ${compid}_operation_${f.key.str}_Ref,`).join('\n')}
   },
 }
 
@@ -232,7 +232,7 @@ interface ${compid}_DeclDocFields {
 }
 `.trimStart())
     comp.processes.props.forEach((p) => genDeclCompProcess(p.val))
-    comp.functions.props.forEach((f) => genDeclCompFunction(f.val))
+    comp.operations.props.forEach((f) => genDeclCompOperation(f.val))
     comp.views.props.forEach((v) => genDeclCompView(v.val))
     comp.documents.props.forEach((d) => genDeclCompDoc(d.val))
     return
@@ -271,9 +271,9 @@ declare interface ${compid}_process_${procName}_InstanceVars {
 declare type ${compid}_process_${procName}_DeclTasks = {
   [task: string]: ${compid}_process_${procName}_DeclTask,
 }
-declare type ${compid}_process_${procName}_DeclTask = ${typePipeObj(comp.functions.props.map(f => `{
-    useFunction: {      
-      function: ${quote(f.key.str)},
+declare type ${compid}_process_${procName}_DeclTask = ${typePipeObj(comp.operations.props.map(f => `{
+    useOperation: {      
+      operation: ${quote(f.key.str)},
       input: {
         ${f.val.input.keys().map((k) => `${k}: ${compid}_process_${procName}_Scope`)}
       },
@@ -306,28 +306,28 @@ declare type ${compid}_process_${procName}_NextTask = ${compid}_process_${procNa
         }`.trimStart()))
       }
     }
-    function genDeclCompFunction(func: Function) {
-      const funcName = func.name.str
+    function genDeclCompOperation(op: Operation) {
+      const opName = op.name.str
       w.writeLine(`
-declare interface ${compid}_function_${funcName}_Decl {
+declare interface ${compid}_operation_${opName}_Decl {
   title: I18N
   cancelabled?: boolean
-  level: FunctionLevel
+  level: OperationLevel
   input: ${compid}_DeclFields,
   output: ${compid}_DeclFields,
   code (args: { 
-    input: ${compid}_function_${funcName}_InputRef, 
-    output: ${compid}_function_${funcName}_OutputRef, 
+    input: ${compid}_operation_${opName}_InputRef, 
+    output: ${compid}_operation_${opName}_OutputRef, 
     progress: (percent: number, msg?: string)=>void,
-    ${func.cancelabled ? 'canceled: ()=>boolean' : ''}
+    ${op.cancelabled ? 'canceled: ()=>boolean' : ''}
   }): void
 }
-declare type ${compid}_function_${funcName}_Ref = (input: ${compid}_function_${funcName}_InputRef, output: ${compid}_function_${funcName}_OutputRef) => Promise<void>
-declare interface ${compid}_function_${funcName}_InputRef {
-  ${func.input.props.map((f) => `  ${f.key.str}:${f.val.type.base(null)}`)}
+declare type ${compid}_operation_${opName}_Ref = (input: ${compid}_operation_${opName}_InputRef, output: ${compid}_operation_${opName}_OutputRef) => Promise<void>
+declare interface ${compid}_operation_${opName}_InputRef {
+  ${op.input.props.map((f) => `  ${f.key.str}:${f.val.type.base(null)}`)}
 }
-declare interface ${compid}_function_${funcName}_OutputRef {
-  ${func.output.props.map((f) => `  ${f.key.str}:${f.val.type.base(null)}`)}
+declare interface ${compid}_operation_${opName}_OutputRef {
+  ${op.output.props.map((f) => `  ${f.key.str}:${f.val.type.base(null)}`)}
 }
 `.trimStart())
     }
@@ -455,7 +455,7 @@ declare interface DocState {
   description: I18N
 }
 
-declare type FunctionLevel = 'cpu' | 'io' | 'proc'
+declare type OperationLevel = 'cpu' | 'io' | 'proc'
 
 declare type Pagelet = {
   drawer?: true,
