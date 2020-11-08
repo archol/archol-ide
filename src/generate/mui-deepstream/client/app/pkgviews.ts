@@ -3,7 +3,7 @@ import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
 import { isWidgetContent, isWidgetEntry, isWidgetMarkdown, WidgetContent, WidgetEntry, WidgetMarkdown } from 'load/types'
 import { genUseType } from './useType'
 
-export const generateClientViews = sourceTransformer({
+export const generateClientPkgViews = sourceTransformer({
   multiple: true,
   cfg: {},
   transformations: {
@@ -32,14 +32,14 @@ const genView = nodeTransformer({
     const render = renderContent(v.content)
     const vinst = 'T' + cfg.pkguri + '_view_' + v.name.str + 'Data'
     const body: CodePartLines = [
-      hasfields ? 'const content: AppContent<any, any, any, any, ' + vinst + '> = contentDoc.use()' : null,
+      hasfields ? 'const content: AppContent<any, any, any, any, ' + vinst + '> = contentPub.use()' : null,
       // hasfields ? 'const bindings = content.bindings' : null,
       ['return ', render]
     ]
     if (hasfields) {
-      src.require('contentDoc', '~/rx/app/content', v)
+      src.require('contentPub', '~/rx/app/content', v)
       src.require('AppContent', '~/lib/archol/types', v)
-      src.require(vinst, '~/app/types', v);
+      src.require(vinst, '~/app/typings', v);
     }
 
     return w.statements([

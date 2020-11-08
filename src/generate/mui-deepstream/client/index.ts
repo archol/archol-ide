@@ -5,8 +5,9 @@ import { genIcon } from './app/icon';
 import { generateClientMenu } from './app/menu';
 import { generateClientRoles } from './app/roles';
 import { generateClientRoutes } from './app/routes'
-import { generateClientTypes } from './app/types';
-import { generateClientViews } from './app/views';
+import { generateClientTypings } from './app/typings';
+import { generateClientPkgTypes } from './app/pkgtypes';
+import { generateClientPkgViews } from './app/pkgviews';
 import { generateClientApp } from './app/app';
 
 export const generateClientProject = projectTransformer({
@@ -19,8 +20,9 @@ export const generateClientProject = projectTransformer({
     generateClientRoutes,
     generateClientRoles,
     generateClientMenu,
-    generateClientTypes,
-    generateClientViews,
+    generateClientTypings,
+    generateClientPkgTypes,
+    generateClientPkgViews,
     generateClientApp,
   ],
   cfg: {}

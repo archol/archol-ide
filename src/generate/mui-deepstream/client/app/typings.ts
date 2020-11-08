@@ -3,8 +3,8 @@ import { scrypt } from 'crypto'
 import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
 import { genFieldsWithBase, genFieldsWithType } from './fields'
 
-export const generateClientTypes = sourceTransformer({
-  filePath: '~/app/types.ts',
+export const generateClientTypings = sourceTransformer({
+  filePath: '~/app/typings.ts',
   cfg: {},
   transformations: {
     Application(w, app, { src }) {
@@ -126,7 +126,7 @@ const genType = nodeTransformer({
     ], false)
   },
   EnumType(w, t, info) {
-    const id = 'T' + info.cfg.pkguri + '_enum_' + t.name.str
+    const id = 'T' + info.cfg.pkguri + '_type_' + t.name.str
     return w.chipResult(id, [
       [
         'export type ', id, ' = ',
@@ -135,7 +135,7 @@ const genType = nodeTransformer({
     ], false)
   },
   ComplexType(w, t, info) {
-    const id = 'T' + info.cfg.pkguri + '_complex_' + t.name.str
+    const id = 'T' + info.cfg.pkguri + '_type_' + t.name.str
     return w.chipResult(id, [
       [
         'export type ', id, t.name.str, ' = TODO',
@@ -143,7 +143,7 @@ const genType = nodeTransformer({
     ], false)
   },
   ArrayType(w, t, info) {
-    const id = 'T' + info.cfg.pkguri + '_array_' + t.name.str
+    const id = 'T' + info.cfg.pkguri + '_type_' + t.name.str
     return w.chipResult(id, [
       'export type ', id, ' = TODO',
     ], false)

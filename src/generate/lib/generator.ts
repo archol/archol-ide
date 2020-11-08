@@ -235,9 +235,11 @@ export async function generateApplication<CFG extends object, SW extends GenNode
         }
       })
 
+      let part0 = w.transform(startNode) as any
+      // if (isChipRes(part0)) part0=w.statements(part0.$chip$.$lines$,)
       srcChipsRes['part$0'] = {
         id: 'part$0',
-        $chip$: w.transform(startNode) as any,
+        $chip$: part0,
         pos: 0
       }
 

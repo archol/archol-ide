@@ -28,12 +28,11 @@ const genPkgRef = nodeTransformer({
       [
         'export const ', pkguri, 'Instance = ',
         w.object({
-          types: w.mapObj(pkg.types, (val, key) =>
-            src.chip(
-              -1000,
-              genType.make(val, { pkguri })
-            )
-          ),
+          type: w.mapObj(pkg.types, (val) => {
+            const id = pkguri + '_type_' + val.name.str
+            src.require(id, '~/app/' + pkguri + '/types/' + val.name.str + '.tsx', val)
+            return id
+          }),
           process: w.mapObj(pkg.processes, (val, key) =>
             src.chip(-10, genProcess.make(val, { pkguri }))
           ),
@@ -57,13 +56,13 @@ const genProcess = nodeTransformer({
     info.src.require('ArcholGUID', '~/lib/archol/types', proc)
     info.src.require('instanciateProcess', '~/lib/archol/process', proc)
     info.src.require('openProcessInstance', '~/lib/archol/process', proc)
-    info.src.require('T' + procrefid, '~/app/types', proc)
-    info.src.require('T' + procuripref + 'Input', '~/app/types', proc)
-    info.src.require('T' + procuripref + 'Local', '~/app/types', proc)
-    info.src.require('T' + procuripref + 'Output', '~/app/types', proc)
-    info.src.require('T' + procuripref + 'Task', '~/app/types', proc)
+    info.src.require('T' + procrefid, '~/app/typings', proc)
+    info.src.require('T' + procuripref + 'Input', '~/app/typings', proc)
+    info.src.require('T' + procuripref + 'Local', '~/app/typings', proc)
+    info.src.require('T' + procuripref + 'Output', '~/app/typings', proc)
+    info.src.require('T' + procuripref + 'Task', '~/app/typings', proc)
     info.src.require(storage, '~/lib/archol/storage', proc)
-    info.src.require('contentDoc', '~/rx/app/content', proc)
+    info.src.require('contentPub', '~/rx/app/content', proc)
     return w.chipResult(procrefid, [
       [
         'export const ' + procrefid + ': T' + procrefid + ' = ',
@@ -78,7 +77,7 @@ const genProcess = nodeTransformer({
               procuripref, 'Decl, ', storage, ', input',
               ')'
             ],
-            'contentDoc.show(content)',
+            'contentPub.show(content)',
             'return content'
           ], { async: true }),
           open: w.funcDecl(['processInstanceId: ArcholGUID'], '', [
@@ -88,7 +87,7 @@ const genProcess = nodeTransformer({
               storage,
               ')'
             ],
-            'contentDoc.show(content)',
+            'contentPub.show(content)',
             'return content'
           ], { async: true }),
           tasks: w.mapObj(proc.tasks, (val, key) =>
@@ -126,15 +125,15 @@ const genProcessTask = nodeTransformer({
       info.src.require('bindSingleton', '~/lib/archol/singleton', task)
       info.src.require(info.cfg.storage, '~/lib/archol/storage', task)
     }
-    info.src.require(procInput, '~/app/types', task)
-    info.src.require(procLocal, '~/app/types', task)
-    info.src.require(procOutput, '~/app/types', task)
+    info.src.require(procInput, '~/app/typings', task)
+    info.src.require(procLocal, '~/app/typings', task)
+    info.src.require(procOutput, '~/app/typings', task)
 
     info.src.require('ArcholGUID', '~/lib/archol/types', task)
     info.src.require('AppContent', '~/lib/archol/types', task)
-    info.src.require(usedViewInst, '~/app/types', task)
-    info.src.require(usedViewData, '~/app/types', task)
-    info.src.require('T' + taskdecl, '~/app/types', task)
+    info.src.require(usedViewInst, '~/app/typings', task)
+    info.src.require(usedViewData, '~/app/typings', task)
+    info.src.require('T' + taskdecl, '~/app/typings', task)
     info.src.require(usedViewId, '~/app/' + info.cfg.pkguri + '/views/' + usedView.name.str, task)
     return w.chipResult(taskdecl, [
       [
@@ -215,12 +214,12 @@ const genProcessTask = nodeTransformer({
     info.src.require('getExecutionContext', '~/lib/archol/functions', task)
     info.src.require('ExecuteFunctionRenderer', '~/layout/app/executeFunctionRenderer', task)
     info.src.require('ArcholGUID', '~/lib/archol/types', task)
-    info.src.require(usedFuncInput, '~/app/types', task)
-    info.src.require(usedFuncOutput, '~/app/types', task)
-    info.src.require('T' + taskrefid, '~/app/types', task)
-    info.src.require(procInput, '~/app/types', task)
-    info.src.require(procLocal, '~/app/types', task)
-    info.src.require(procOutput, '~/app/types', task)
+    info.src.require(usedFuncInput, '~/app/typings', task)
+    info.src.require(usedFuncOutput, '~/app/typings', task)
+    info.src.require('T' + taskrefid, '~/app/typings', task)
+    info.src.require(procInput, '~/app/typings', task)
+    info.src.require(procLocal, '~/app/typings', task)
+    info.src.require(procOutput, '~/app/typings', task)
 
     return w.chipResult(taskrefid, [
       [
@@ -287,9 +286,9 @@ const genFunction = nodeTransformer({
     const fid = cfg.pkguri + '_func_' + f.name.str
     src.require('FunctionContext', '~/lib/archol/functions', f)
     src.require('executeFunction', '~/lib/archol/functions', f)
-    src.require('T' + fid + 'Exec', '~/app/types', f);
-    src.require('T' + fid + 'Output', '~/app/types', f);
-    src.require('T' + fid + 'Output', '~/app/types', f);
+    src.require('T' + fid + 'Exec', '~/app/typings', f);
+    src.require('T' + fid + 'Output', '~/app/typings', f);
+    src.require('T' + fid + 'Output', '~/app/typings', f);
 
     return w.chipResult(fid + 'Exec', [
       [
@@ -302,90 +301,11 @@ const genFunction = nodeTransformer({
   },
 }, { pkguri: '' })
 
-const genType = nodeTransformer({
-  NormalType(w, t, info) {
-    const id = info.cfg.pkguri + '_type_' + t.name.str
-    const base = t.base().base
-    const validate = t.validate ? w.code(t.validate, { forceRetType: 'string | false' }) :
-      w.funcDecl(['val: T' + id], 'string|false',
-        [
-          'return false'
-        ]
-      )
-    const parse = t.parse ? w.code(t.parse, { forceRetType: 'T' + id + '|undefined' }) :
-      w.funcDecl(['str: string | undefined'], 'T' + id + '|undefined',
-        base === 'number' ? ['return str ? parseFloat(str) : undefined'] :
-          ['return str']
-      )
-    const format = t.format ? w.code(t.format, { forceRetType: 'string' }) :
-      w.funcDecl(['val: T' + id], 'string',
-        base === 'number' ? ['return val ? val.toString() : ""'] :
-          ['return val'])
-    info.src.require('ArcholType', '~/lib/archol/types', t)
-    info.src.require('T' + id, '~/app/types', t)
-    return w.chipResult(id, [
-      [
-        'export const ', id, ': ArcholType<T',
-        info.cfg.pkguri, '_type_', t.name.str,
-        '> = ',
-        w.object({
-          validate,
-          parse,
-          format
-        })
-      ]
-    ], false)
-  },
-  EnumType(w, t, info) {
-    const id = info.cfg.pkguri + '_enum_' + t.name.str
-    info.src.require('ArcholType', '~/lib/archol/types', t)
-    info.src.require('T' + id, '~/app/types', t)
-    return w.chipResult(id, [
-      [
-        'export const ', id, ': ArcholType<T',
-        info.cfg.pkguri, '_enum_', t.name.str,
-        '> = ',
-        w.object({
-          validate: w.funcDecl(['val: T' + id], 'string | false',
-            t.options.props.map((o) => ['if (val===', w.string(o.key.str), ') return false'])
-              .concat([
-                "return 'Valor inválido'"
-              ])
-          ),
-          parse: w.funcDecl(['str: string | undefined'], 'T' + id + '|undefined',
-            t.options.props.map((o) => ['if (str===', w.string(o.key.str), ') return str'] as CodePartL).concat(
-              t.options.props.map((o) => ['if (str===', o.val.description, '()) return ', o.key])
-            ).concat([
-              "return"
-            ])),
-          format: w.funcDecl(['val: T' + id], 'string',
-            t.options.props.map((o) => ['if (val===', w.string(o.key.str), ') return ', o.val.description, '()'] as CodePartL).
-              concat([
-                "return ''"
-              ])),
-        })
-      ]
-    ], false)
-  },
-  ComplexType(w, t, info) {
-    const id = info.cfg.pkguri + '_complex_' + t.name.str
-    return w.chipResult(id, [
-      'export const TODO_', info.cfg.pkguri, '_complex_', t.name.str, ' = TODO',
-    ], false)
-  },
-  ArrayType(w, t, info) {
-    const id = info.cfg.pkguri + '_array_' + t.name.str
-    return w.chipResult(id, [
-      'export const TODO_', info.cfg.pkguri, '_arr_', t.name.str, ' = TODO',
-    ], false)
-  },
-}, { pkguri: '' })
-
 // const genViewInstanceType = nodeTransformer({
 //   View(w, view, info) {
 //     const viewuri = info.cfg.pkguri + '_view_' + view.name.str
 //     info.src.require('ArcholViewInstance', '~/lib/archol/types', view)
-//     info.src.require('T' + viewuri + 'Binder', '~/app/types', view)
+//     info.src.require('T' + viewuri + 'Binder', '~/app/typings', view)
 //     return w.chipResult(viewuri + 'Binder', [
 //       [
 //         'export function ' + viewuri + 'Binder',
