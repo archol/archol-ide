@@ -54,7 +54,7 @@ const genCompRef = nodeTransformer({
 
 const genProcessRef = nodeTransformer({
   Process(w, proc, info) {
-    const procpref = info.cfg.compuri + '_proc_' + proc.name.str
+    const procpref = info.cfg.compuri + '_process_' + proc.name.str
     const procDecl = 'T' + procpref + 'Decl'
     const procInput = 'T' + procpref + 'Input'
     const procLocal = 'T' + procpref + 'Local'
@@ -97,7 +97,7 @@ const genProcessRef = nodeTransformer({
 
 const genProcessInstanceTypeX = nodeTransformer({
   Process(w, proc, info) {
-    const procpref = 'T' + info.cfg.compuri + '_proc_' + proc.name.str
+    const procpref = 'T' + info.cfg.compuri + '_process_' + proc.name.str
     const id = procpref + 'Instance'
     info.src.require('ProcesInstance', '~/lib/archol/process', proc)
     return w.chipResult(id, [

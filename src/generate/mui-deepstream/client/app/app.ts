@@ -19,8 +19,8 @@ export const generateClientApp = sourceTransformer({
       function r(n: 'start' | 'login' | 'error') {
         const rref = app[n].ref(app[n])
         const compuri = rref.refs.component.uri.id.str
-        const rid = compuri + '_proc_' + rref.name.str + 'Decl'
-        src.require(rid, '~/app/' + compuri + '/' + compuri, app[n])
+        const rid = compuri + '_process_' + rref.name.str
+        src.require(rid, '~/app/' + compuri + '/processes/' + rref.name.str, app[n])
         return w.funcDecl([], '', [
           [
             'return ', rid, '.instanciate({})'

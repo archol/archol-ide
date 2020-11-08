@@ -25,7 +25,7 @@ export const generateClientCompProcesses = sourceTransformer({
 
 const genProcess = nodeTransformer({
   Process(w, proc, info) {
-    const procuripref = info.cfg.compuri + '_proc_' + proc.name.str
+    const procuripref = info.cfg.compuri + '_process_' + proc.name.str
     const procrefid = procuripref + 'Decl'
     const storage = proc.volatile.bool ? 'volatileStorage' : 'remoteStorage'
     info.src.require('ArcholGUID', '~/lib/archol/types', proc)
@@ -40,7 +40,7 @@ const genProcess = nodeTransformer({
     info.src.require('contentPub', '~/rx/app/content', proc)
     return w.statements([
       [
-        'export const ' + procrefid + ': T' + procrefid + ' = ',
+        'export const ' + procuripref + ': T' + procrefid + ' = ',
         w.object({
           // componentId: w.string(info.cfg.compuri),
           // processId: w.string(proc.name.str),
@@ -49,7 +49,7 @@ const genProcess = nodeTransformer({
           instanciate: w.funcDecl(['input: T' + procuripref + 'Input'], '', [
             [
               'const content=await instanciateProcess(',
-              procuripref, 'Decl, ', storage, ', input',
+              procuripref, ', ', storage, ', input',
               ')'
             ],
             'contentPub.show(content)',
@@ -58,7 +58,7 @@ const genProcess = nodeTransformer({
           open: w.funcDecl(['processInstanceId: ArcholGUID'], '', [
             [
               'const content=await openProcessInstance(',
-              procuripref, 'Decl, processInstanceId, ',
+              procuripref, ', processInstanceId, ',
               storage,
               ')'
             ],
@@ -80,7 +80,7 @@ const genProcess = nodeTransformer({
 
 const genProcessTask = nodeTransformer({
   UITask(w, task, info) {
-    const procuripref = info.cfg.compuri + '_proc_' + info.cfg.procname
+    const procuripref = info.cfg.compuri + '_process_' + info.cfg.procname
     const taskuripref = procuripref + "_task_" + task.name.str
     const taskdecl = taskuripref + 'Decl'
     const usedView = task.useView.ref(task)
@@ -172,7 +172,7 @@ const genProcessTask = nodeTransformer({
     })
   },
   SystemTask(w, task, info) {
-    const procuripref = info.cfg.compuri + '_proc_' + info.cfg.procname
+    const procuripref = info.cfg.compuri + '_process_' + info.cfg.procname
     const taskuripref = procuripref + "_task_" + task.name.str
     const taskrefid = taskuripref + 'Decl'
     const usedOp = task.useOperation.ref(task)
