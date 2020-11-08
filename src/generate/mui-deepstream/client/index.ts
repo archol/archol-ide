@@ -6,8 +6,8 @@ import { generateClientMenu } from './app/menu';
 import { generateClientRoles } from './app/roles';
 import { generateClientRoutes } from './app/routes'
 import { generateClientTypings } from './app/typings';
-import { generateClientPkgTypes } from './app/pkgtypes';
-import { generateClientPkgViews } from './app/pkgviews';
+import { generateClientCompTypes } from './app/comptypes';
+import { generateClientCompViews } from './app/compviews';
 import { generateClientApp } from './app/app';
 
 export const generateClientProject = projectTransformer({
@@ -21,8 +21,8 @@ export const generateClientProject = projectTransformer({
     generateClientRoles,
     generateClientMenu,
     generateClientTypings,
-    generateClientPkgTypes,
-    generateClientPkgViews,
+    generateClientCompTypes,
+    generateClientCompViews,
     generateClientApp,
   ],
   cfg: {}

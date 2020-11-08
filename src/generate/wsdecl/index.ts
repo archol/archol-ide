@@ -1,5 +1,5 @@
 import { CodeBlockWriter } from 'ts-morph';
-import { Application, Package, Process, Workspace, Function, normalTypes, View, Type, Document, Fields, SourceNodeWithName, SourceNode } from '../../load/types';
+import { Application, Component, Process, Workspace, Function, normalTypes, View, Type, Document, Fields, SourceNodeWithName, SourceNode } from '../../load/types';
 import { quote, typePipeObj, typePipeStr } from '../lib/generator';
 import { materialUiIcons } from './materialuiicons';
 
@@ -9,7 +9,7 @@ export async function generateDeclaration(ws: Workspace) {
   let declsource = sources.filter(s => s.getFilePath() === declFileName)[0]
 
   if (!declsource) declsource = ws.ts.createSourceFile(declFileName)
-  const AllPackageUris = ws.allPackages()
+  const AllComponentUris = ws.allComponents()
 
   declsource.removeText()
 
@@ -32,7 +32,7 @@ export async function generateDeclaration(ws: Workspace) {
 declare function declareApplication (name: '${appname}', opts: {
   description: I18N,
   icon: Icon,
-  uses: ${appname}_PackageUses,
+  uses: ${appname}_ComponentUses,
   start: ${appname}_AllProcs,
   login: ${appname}_AllProcs,
   error: ${appname}_AllProcs,
@@ -53,8 +53,8 @@ declare function declareApplication (name: '${appname}', opts: {
   mappings: ${appname}_Mappings
 }): void      
 
-declare type ${appname}_PackageUses = {
-  [alias: string]: AllPackageUris
+declare type ${appname}_ComponentUses = {
+  [alias: string]: AllComponentUris
 }
 
 declare type ${appname}_Route = string | ((app: ${appname}_Ref, ...args: any[]) => void)
@@ -73,18 +73,18 @@ ${app.uses.props.map((u) => `${u.key.str}: ${u.val.ref(u.val.uri.sourceRef).uri.
 declare type ${appname}_Roles = 'public' | 'anonymous' | 'authenticated' | Array<${typePipeStr(
         app.uses.props.reduce<string[]>((ret, u) => {
           const alias = u.key.str
-          const pkg = u.val.ref(u.val.uri.sourceRef)
+          const comp = u.val.ref(u.val.uri.sourceRef)
           return ret.concat(
-            pkg.roleDefs
+            comp.roleDefs
               .map(r => alias + '/' + r.name.str)
-              .concat(pkg.roleGroups.map(r => alias + '/' + r.name.str)))
+              .concat(comp.roleGroups.map(r => alias + '/' + r.name.str)))
         }, []))}>
 
 declare type ${appname}_AllProcs = ${typePipeStr((() => {
           const ret: string[] = []
           app.uses.props.forEach((u) => {
-            const pkg = u.val
-            pkg.ref(u.key).processes.props.forEach((proc) => {
+            const comp = u.val
+            comp.ref(u.key).processes.props.forEach((proc) => {
               ret.push(u.key.str + '/' + proc.key.str)
             })
           })
@@ -95,79 +95,79 @@ declare type ${appname}_Mapping = ${typePipeStr(Object.keys(app.mappingList))}
 declare type ${appname}_Mappings = {
   [uri in ${appname}_Mapping]?: string
 }`.trimStart())
-      app.allPackages.forEach((p) => genDeclPkg(p, w))
+      app.allComponents.forEach((p) => genDeclComp(p, w))
     })
   }
 
 
-  function genDeclPkg(pkg: Package, w: CodeBlockWriter) {
-    const pkgid = pkg.uri.id.str
+  function genDeclComp(comp: Component, w: CodeBlockWriter) {
+    const compid = comp.uri.id.str
     w.writeLine(`
-declare function declarePackage (ns: '${pkg.uri.ns.str}', path: '${pkg.uri.path.str}'): ${pkgid}_DeclUses
-declare interface ${pkgid}_DeclUses {
-  uses (packages: AppCVV_PackageUses): ${pkgid}_DeclRoles
+declare function declareComponent (ns: '${comp.uri.ns.str}', path: '${comp.uri.path.str}'): ${compid}_DeclUses
+declare interface ${compid}_DeclUses {
+  uses (components: AppCVV_ComponentUses): ${compid}_DeclRoles
 }
-declare interface ${pkgid}_DeclRoles {
-  roles (roles: ${pkgid}_Decl2Roles): ${pkgid}_DeclProcesses
+declare interface ${compid}_DeclRoles {
+  roles (roles: ${compid}_Decl2Roles): ${compid}_DeclProcesses
 }
-declare type ${pkgid}_Decl2Roles = {
+declare type ${compid}_Decl2Roles = {
   [roleName: string]: Role | Array<${typePipeStr(
-      pkg.refs.roleDefs.items
+      comp.refs.roleDefs.items
         .map((r) => r.path))}>
 }
-type ${pkgid}_Roles = ${pkgid}_Role | ${pkgid}_Role[]
-type ${pkgid}_Role = 'public' | 'anonymous' | 'authenticated' | ${typePipeStr(
-          pkg.refs.roleDefs.items.map((r) => r.path)
-            .concat(pkg.refs.roleGroups.items.map((r) => r.path))
+type ${compid}_Roles = ${compid}_Role | ${compid}_Role[]
+type ${compid}_Role = 'public' | 'anonymous' | 'authenticated' | ${typePipeStr(
+          comp.refs.roleDefs.items.map((r) => r.path)
+            .concat(comp.refs.roleGroups.items.map((r) => r.path))
         )
       }
 
-declare interface ${pkgid}_DeclProcesses {
-  processes (processes: {${pkg.processes.props.map((p) => `${p.key.str}: ${pkgid}_process_${p.key.str}_Decl,`).join('\n')}
-  }): ${pkgid}_DeclFunctions
+declare interface ${compid}_DeclProcesses {
+  processes (processes: {${comp.processes.props.map((p) => `${p.key.str}: ${compid}_process_${p.key.str}_Decl,`).join('\n')}
+  }): ${compid}_DeclFunctions
 }
-declare interface ${pkgid}_DeclFunctions {
-  functions (functions: {${pkg.functions.props.map((f) => `${f.key.str}: ${pkgid}_function_${f.key.str}_Decl,`).join('\n')}
-  }): ${pkgid}_DeclViews
+declare interface ${compid}_DeclFunctions {
+  functions (functions: {${comp.functions.props.map((f) => `${f.key.str}: ${compid}_function_${f.key.str}_Decl,`).join('\n')}
+  }): ${compid}_DeclViews
 }
-declare interface ${pkgid}_DeclViews {
-  views (views: {${pkg.views.props.map((v) => `${v.key.str}: ${pkgid}_view_${v.key.str}_Decl,`).join('\n')}
-  }): ${pkgid}_DeclTypes
+declare interface ${compid}_DeclViews {
+  views (views: {${comp.views.props.map((v) => `${v.key.str}: ${compid}_view_${v.key.str}_Decl,`).join('\n')}
+  }): ${compid}_DeclTypes
 }
-declare interface ${pkgid}_DeclTypes {
-  types (types: {${pkg.types.props.map((t) => `${t.key.str}: ${pkgid}_TypeDecl,`).join('\n')}
-  }): ${pkgid}_DeclDocuments
+declare interface ${compid}_DeclTypes {
+  types (types: {${comp.types.props.map((t) => `${t.key.str}: ${compid}_TypeDecl,`).join('\n')}
+  }): ${compid}_DeclDocuments
 }
-declare interface ${pkgid}_DeclDocuments {
-  documents (documents: {${pkg.documents.props.map((d) => `${d.key.str}: ${pkgid}_document_${d.key.str}_Decl,`).join('\n')}
-  }): ${pkgid}_DeclRoutes
+declare interface ${compid}_DeclDocuments {
+  documents (documents: {${comp.documents.props.map((d) => `${d.key.str}: ${compid}_document_${d.key.str}_Decl,`).join('\n')}
+  }): ${compid}_DeclRoutes
 }
-declare interface ${pkgid}_DeclRoutes {
-  routes (routes: { [path:string]: ${pkgid}_Route}): void
+declare interface ${compid}_DeclRoutes {
+  routes (routes: { [path:string]: ${compid}_Route}): void
 }
-declare type ${pkgid}_Route = string | ((app: ${pkgid}_Ref, ...args: any[]) => void)
+declare type ${compid}_Route = string | ((app: ${compid}_Ref, ...args: any[]) => void)
 
-declare interface ${pkgid}_Ref {
+declare interface ${compid}_Ref {
   dep: {
-    ${pkg.uses.props.map((u) => `${u.key.str}: ${u.val.ref(u.val.uri.sourceRef).uri.id.str}_Ref,`).join('\n')}
+    ${comp.uses.props.map((u) => `${u.key.str}: ${u.val.ref(u.val.uri.sourceRef).uri.id.str}_Ref,`).join('\n')}
   },
   process: {  
-    ${pkg.processes.props.map((p) => `${p.key.str}: ${pkgid}_process_${p.key.str}_Ref,`).join('\n')}
+    ${comp.processes.props.map((p) => `${p.key.str}: ${compid}_process_${p.key.str}_Ref,`).join('\n')}
   },
   documents: {  
-    ${pkg.documents.props.map((d) => `${d.key.str}: ${pkgid}_document_${d.key.str}_Ref,`).join('\n')}
+    ${comp.documents.props.map((d) => `${d.key.str}: ${compid}_document_${d.key.str}_Ref,`).join('\n')}
   },
   functions: {  
-    ${pkg.functions.props.map((f) => `${f.key.str}: ${pkgid}_function_${f.key.str}_Ref,`).join('\n')}
+    ${comp.functions.props.map((f) => `${f.key.str}: ${compid}_function_${f.key.str}_Ref,`).join('\n')}
   },
 }
 
-type ${pkgid}_TypeName = BasicTypes | ${typePipeStr(addArrayTypes(
-        pkg.refs.types.items.map((t) => t.path)
-          .concat(pkg.refs.baseTypes.items.map(t => t.path))
+type ${compid}_TypeName = BasicTypes | ${typePipeStr(addArrayTypes(
+        comp.refs.types.items.map((t) => t.path)
+          .concat(comp.refs.baseTypes.items.map(t => t.path))
       ))}
 
-${pkg.refs.baseTypes.items.map((b) => {
+${comp.refs.baseTypes.items.map((b) => {
         const t = b.ref
         if (t.enumOptions) return `type ${b.path} = ${typePipeStr(t.enumOptions.props.map(p => p.key.str))}`
         if (t.complexFields) return asComplex()
@@ -182,7 +182,7 @@ ${pkg.refs.baseTypes.items.map((b) => {
       }).join('')
       }
 
-declare type ${pkgid}_TypeDecl = ${typePipeObj(Object.keys(normalTypes)
+declare type ${compid}_TypeDecl = ${typePipeObj(Object.keys(normalTypes)
         .filter((b) => b !== 'invalid')
         .map((b) => {
           if (b === 'enum') return `{
@@ -199,13 +199,13 @@ declare type ${pkgid}_TypeDecl = ${typePipeObj(Object.keys(normalTypes)
           {
             base: "complex"
             fields: {
-              [key:string]: ${pkgid}_TypeDecl
+              [key:string]: ${compid}_TypeDecl
             }
           }`
           if (b === 'array') return `
           {
             base: "array"
-            item: ${pkgid}_TypeDecl
+            item: ${compid}_TypeDecl
           }  
           `
           const js = b === 'date' ? 'Date' : b
@@ -218,87 +218,87 @@ declare type ${pkgid}_TypeDecl = ${typePipeObj(Object.keys(normalTypes)
         }))
       }
 
-interface ${pkgid}_DeclFields {
+interface ${compid}_DeclFields {
   [fieldName:string]: {
      description?: string
-     type: ${pkgid}_TypeName
+     type: ${compid}_TypeName
   }
 }
-interface ${pkgid}_DeclDocFields {
+interface ${compid}_DeclDocFields {
   [fieldName:string]: {
      description: string
-     type: ${pkgid}_TypeName
+     type: ${compid}_TypeName
   }
 }
 `.trimStart())
-    pkg.processes.props.forEach((p) => genDeclPkgProcess(p.val))
-    pkg.functions.props.forEach((f) => genDeclPkgFunction(f.val))
-    pkg.views.props.forEach((v) => genDeclPkgView(v.val))
-    pkg.documents.props.forEach((d) => genDeclPkgDoc(d.val))
+    comp.processes.props.forEach((p) => genDeclCompProcess(p.val))
+    comp.functions.props.forEach((f) => genDeclCompFunction(f.val))
+    comp.views.props.forEach((v) => genDeclCompView(v.val))
+    comp.documents.props.forEach((d) => genDeclCompDoc(d.val))
     return
 
-    function genDeclPkgProcess(process: Process) {
+    function genDeclCompProcess(process: Process) {
       const procName = process.name.str
       w.writeLine(`
-declare interface ${pkgid}_process_${procName}_Decl {
-  title: I18N | ((vars: ${pkgid}_process_${procName}_InstanceVars)=>I18N),
+declare interface ${compid}_process_${procName}_Decl {
+  title: I18N | ((vars: ${compid}_process_${procName}_InstanceVars)=>I18N),
   caption: I18N,
   icon: Icon,
-  start: ${pkgid}_process_${procName}_Tasknames,
+  start: ${compid}_process_${procName}_Tasknames,
   volatile: boolean,
-  allow: ${pkgid}_Roles,
-  vars: ${pkgid}_process_${procName}_DeclVars,
-  tasks: ${pkgid}_process_${procName}_DeclTasks,
+  allow: ${compid}_Roles,
+  vars: ${compid}_process_${procName}_DeclVars,
+  tasks: ${compid}_process_${procName}_DeclTasks,
 }
-declare type ${pkgid}_process_${procName}_Tasknames = ${typePipeStr(process.tasks.props.map((t) => t.key.str))}
-declare interface ${pkgid}_process_${procName}_Ref {
-  instanciate(input: {${process.vars.input.props.map((v) => v.key.str + ': ' + v.val.type.base(v.val)).join(',')}}): Promise<${pkgid}_process_${procName}_Instance>;  
-  open(processInstanceId: GUID): Promise<${pkgid}_process_${procName}_Instance>;  
+declare type ${compid}_process_${procName}_Tasknames = ${typePipeStr(process.tasks.props.map((t) => t.key.str))}
+declare interface ${compid}_process_${procName}_Ref {
+  instanciate(input: {${process.vars.input.props.map((v) => v.key.str + ': ' + v.val.type.base(v.val)).join(',')}}): Promise<${compid}_process_${procName}_Instance>;  
+  open(processInstanceId: GUID): Promise<${compid}_process_${procName}_Instance>;  
 }
-declare interface ${pkgid}_process_${procName}_Instance {
-  modify(fn: (vars?: ${pkgid}_process_${procName}_InstanceVars) => boolean): ${pkgid}_process_${procName}_InstanceVars,
+declare interface ${compid}_process_${procName}_Instance {
+  modify(fn: (vars?: ${compid}_process_${procName}_InstanceVars) => boolean): ${compid}_process_${procName}_InstanceVars,
 }
-declare interface ${pkgid}_process_${procName}_DeclVars {
-  input: ${pkgid}_DeclFields,
-  output: ${pkgid}_DeclFields,
-  local: ${pkgid}_DeclFields,
+declare interface ${compid}_process_${procName}_DeclVars {
+  input: ${compid}_DeclFields,
+  output: ${compid}_DeclFields,
+  local: ${compid}_DeclFields,
 }
-declare interface ${pkgid}_process_${procName}_InstanceVars {
-  input: ${pkgid}_process_${procName}_InstanceVars_input,
-  output: ${pkgid}_process_${procName}_InstanceVars_output,
-  local: ${pkgid}_process_${procName}_InstanceVars_local,
+declare interface ${compid}_process_${procName}_InstanceVars {
+  input: ${compid}_process_${procName}_InstanceVars_input,
+  output: ${compid}_process_${procName}_InstanceVars_output,
+  local: ${compid}_process_${procName}_InstanceVars_local,
 }
-declare type ${pkgid}_process_${procName}_DeclTasks = {
-  [task: string]: ${pkgid}_process_${procName}_DeclTask,
+declare type ${compid}_process_${procName}_DeclTasks = {
+  [task: string]: ${compid}_process_${procName}_DeclTask,
 }
-declare type ${pkgid}_process_${procName}_DeclTask = ${typePipeObj(pkg.functions.props.map(f => `{
+declare type ${compid}_process_${procName}_DeclTask = ${typePipeObj(comp.functions.props.map(f => `{
     useFunction: {      
       function: ${quote(f.key.str)},
       input: {
-        ${f.val.input.keys().map((k) => `${k}: ${pkgid}_process_${procName}_Scope`)}
+        ${f.val.input.keys().map((k) => `${k}: ${compid}_process_${procName}_Scope`)}
       },
       output: {
-        ${f.val.output.keys().map((k) => `${k}: ${pkgid}_process_${procName}_Scope`)}
+        ${f.val.output.keys().map((k) => `${k}: ${compid}_process_${procName}_Scope`)}
       }    
     },
-    next: ${pkgid}_process_${procName}_NextTask,
-}`).concat(pkg.views.props.map(view => `{
+    next: ${compid}_process_${procName}_NextTask,
+}`).concat(comp.views.props.map(view => `{
   useView: {
     view: ${quote(view.key.str)}
-    bind: ${pkgid}_view_${view.key.str}_DeclBind<${pkgid}_process_${procName}_Scope>
+    bind: ${compid}_view_${view.key.str}_DeclBind<${compid}_process_${procName}_Scope>
   },
-  next: ${pkgid}_process_${procName}_NextTask,
-  allow: ${pkgid}_Roles,
+  next: ${compid}_process_${procName}_NextTask,
+  allow: ${compid}_Roles,
 }`)))
         }
-declare type ${pkgid}_process_${procName}_Scope = ${typePipeStr(process.refs.vars.items.map(v => v.path))}
-declare type ${pkgid}_process_${procName}_NextTask = ${pkgid}_process_${procName}_Tasknames | ${pkgid}_process_${procName}_Tasknames[] | {
-  [task in ${pkgid}_process_${procName}_Tasknames]?: (vars: ${pkgid}_process_${procName}_InstanceVars) => boolean
+declare type ${compid}_process_${procName}_Scope = ${typePipeStr(process.refs.vars.items.map(v => v.path))}
+declare type ${compid}_process_${procName}_NextTask = ${compid}_process_${procName}_Tasknames | ${compid}_process_${procName}_Tasknames[] | {
+  [task in ${compid}_process_${procName}_Tasknames]?: (vars: ${compid}_process_${procName}_InstanceVars) => boolean
 }`.trimStart())
-      genDeclPkgProcessFields()
-      function genDeclPkgProcessFields() {
+      genDeclCompProcessFields()
+      function genDeclCompProcessFields() {
         ['input', 'output', 'local'].forEach((scope) => w.writeLine(`
-        declare interface ${pkgid}_process_${procName}_InstanceVars_${scope} {
+        declare interface ${compid}_process_${procName}_InstanceVars_${scope} {
           ${function () {
             const fields: Fields = (process.vars as any)[scope]
             return fields.props.map((f) => f.key.str + ': ' + f.val.type.base(null)).join('\n')
@@ -306,86 +306,86 @@ declare type ${pkgid}_process_${procName}_NextTask = ${pkgid}_process_${procName
         }`.trimStart()))
       }
     }
-    function genDeclPkgFunction(func: Function) {
+    function genDeclCompFunction(func: Function) {
       const funcName = func.name.str
       w.writeLine(`
-declare interface ${pkgid}_function_${funcName}_Decl {
+declare interface ${compid}_function_${funcName}_Decl {
   title: I18N
   cancelabled?: boolean
   level: FunctionLevel
-  input: ${pkgid}_DeclFields,
-  output: ${pkgid}_DeclFields,
+  input: ${compid}_DeclFields,
+  output: ${compid}_DeclFields,
   code (args: { 
-    input: ${pkgid}_function_${funcName}_InputRef, 
-    output: ${pkgid}_function_${funcName}_OutputRef, 
+    input: ${compid}_function_${funcName}_InputRef, 
+    output: ${compid}_function_${funcName}_OutputRef, 
     progress: (percent: number, msg?: string)=>void,
     ${func.cancelabled ? 'canceled: ()=>boolean' : ''}
   }): void
 }
-declare type ${pkgid}_function_${funcName}_Ref = (input: ${pkgid}_function_${funcName}_InputRef, output: ${pkgid}_function_${funcName}_OutputRef) => Promise<void>
-declare interface ${pkgid}_function_${funcName}_InputRef {
+declare type ${compid}_function_${funcName}_Ref = (input: ${compid}_function_${funcName}_InputRef, output: ${compid}_function_${funcName}_OutputRef) => Promise<void>
+declare interface ${compid}_function_${funcName}_InputRef {
   ${func.input.props.map((f) => `  ${f.key.str}:${f.val.type.base(null)}`)}
 }
-declare interface ${pkgid}_function_${funcName}_OutputRef {
+declare interface ${compid}_function_${funcName}_OutputRef {
   ${func.output.props.map((f) => `  ${f.key.str}:${f.val.type.base(null)}`)}
 }
 `.trimStart())
     }
-    function genDeclPkgView(view: View) {
+    function genDeclCompView(view: View) {
       const viewName = view.name.str
       w.writeLine(`
-declare interface ${pkgid}_view_${viewName}_Decl {
-  title: I18N ${view.refs.fields.props.length ? `| ((data: ${pkgid}_view_${viewName}_DeclData) => I18N)` : ''}
-  content: ${pkgid}_view_${viewName}_DeclContent
-  primaryAction?: IAction<${pkgid}_view_${viewName}_DeclData>
-  secondaryAction?: IAction<${pkgid}_view_${viewName}_DeclData>
-  otherActions?: Array<IAction<${pkgid}_view_${viewName}_DeclData>>
+declare interface ${compid}_view_${viewName}_Decl {
+  title: I18N ${view.refs.fields.props.length ? `| ((data: ${compid}_view_${viewName}_DeclData) => I18N)` : ''}
+  content: ${compid}_view_${viewName}_DeclContent
+  primaryAction?: IAction<${compid}_view_${viewName}_DeclData>
+  secondaryAction?: IAction<${compid}_view_${viewName}_DeclData>
+  otherActions?: Array<IAction<${compid}_view_${viewName}_DeclData>>
 }
-declare type ${pkgid}_view_${viewName}_DeclContent = ${pkgid}_view_${viewName}_DeclWidgget[]
-declare type ${pkgid}_view_${viewName}_DeclWidgget = {
-  content: ${pkgid}_view_${viewName}_DeclContent
+declare type ${compid}_view_${viewName}_DeclContent = ${compid}_view_${viewName}_DeclWidgget[]
+declare type ${compid}_view_${viewName}_DeclWidgget = {
+  content: ${compid}_view_${viewName}_DeclContent
 } | {
   model: 'show' | 'edit'
   caption: I18N
   field: string
-  type: ${pkgid}_TypeName
+  type: ${compid}_TypeName
 } | { markdown: I18N } 
-declare interface ${pkgid}_view_${viewName}_DeclData {
+declare interface ${compid}_view_${viewName}_DeclData {
   ${view.refs.fields.props.map((f) => {
         return `${f.key.str}: ${f.val.type ? f.val.type.base(null) : 'invalid type'}`
       })}
 }
-declare interface ${pkgid}_view_${viewName}_DeclBind<S> {
+declare interface ${compid}_view_${viewName}_DeclBind<S> {
   ${view.refs.fields.props.map((f) => `${f.key.str}: S`)}
 }
 `.trimStart())
     }
-    function genDeclPkgDoc(doc: Document) {
+    function genDeclCompDoc(doc: Document) {
       const docName = doc.name.str
       w.writeLine(`
-declare interface ${pkgid}_document_${docName}_Decl {
+declare interface ${compid}_document_${docName}_Decl {
   caption: I18N
   persistence: DocPersistence
   identification: 'Centralized'|'ByPeer',
   states: {
     ${doc.states.keys().map((k) => `${k}: DocState`).join('\n')}    
   }
-  primaryFields: ${pkgid}_DeclDocFields
-  secondaryFields: ${pkgid}_DeclDocFields
-  indexes: { [name: string]: ${pkgid}_document_${docName}_Fieldname[] }
-  actions: ${pkgid}_document_${docName}_DeclActions
+  primaryFields: ${compid}_DeclDocFields
+  secondaryFields: ${compid}_DeclDocFields
+  indexes: { [name: string]: ${compid}_document_${docName}_Fieldname[] }
+  actions: ${compid}_document_${docName}_DeclActions
 }
-declare type ${pkgid}_document_${docName}_Fieldname = ${typePipeStr(doc.refs.allFields.items.map((f) => f.path))}
-declare type ${pkgid}_document_${docName}_StateName = ${typePipeStr(doc.refs.states.items.map((f) => f.path))}
-declare type ${pkgid}_document_${docName}_ActionName = ${typePipeStr(doc.refs.actions.items.map((f) => f.path))}
-declare interface ${pkgid}_document_${docName}_DeclActions {
+declare type ${compid}_document_${docName}_Fieldname = ${typePipeStr(doc.refs.allFields.items.map((f) => f.path))}
+declare type ${compid}_document_${docName}_StateName = ${typePipeStr(doc.refs.states.items.map((f) => f.path))}
+declare type ${compid}_document_${docName}_ActionName = ${typePipeStr(doc.refs.actions.items.map((f) => f.path))}
+declare interface ${compid}_document_${docName}_DeclActions {
   ${doc.refs.actions.items.map((a) =>
         `${a.path}: {
-      from?: ${pkgid}_document_${docName}_StateName | ${pkgid}_document_${docName}_StateName[],
-      to: ${pkgid}_document_${docName}_StateName | ${pkgid}_document_${docName}_StateName[],
+      from?: ${compid}_document_${docName}_StateName | ${compid}_document_${docName}_StateName[],
+      to: ${compid}_document_${docName}_StateName | ${compid}_document_${docName}_StateName[],
       icon: Icon,
       description: I18N,
-      run?(data: ${pkgid}_document_${docName}_Data, ${a.ref.run ? a.ref.run.params.map((p, idx) => {
+      run?(data: ${compid}_document_${docName}_Data, ${a.ref.run ? a.ref.run.params.map((p, idx) => {
           const ptxt = p.getText()
           if (idx === 0) {
             if (ptxt.includes(':')) ws.error('nao deve ter o tipo', p)
@@ -397,12 +397,12 @@ declare interface ${pkgid}_document_${docName}_DeclActions {
      }
     `)}      
 }
-declare interface ${pkgid}_document_${docName}_Data {
+declare interface ${compid}_document_${docName}_Data {
   ${doc.refs.allFields.items.map((f) =>
           `${f.path}:${f.ref.type.base(null)}`
         ).join('\n')}  
 }
-declare interface ${pkgid}_document_${docName}_Ref {
+declare interface ${compid}_document_${docName}_Ref {
   ${doc.refs.actions.items.map((a) =>
           `${a.path}: ${a.ref.run ?
             '(' +
@@ -475,7 +475,7 @@ declare type Pagelet = {
 
 declare interface Builders { "mui-deepstream": BuilderConfig }
 
-declare type AllPackageUris = ${typePipeStr(AllPackageUris)}
+declare type AllComponentUris = ${typePipeStr(AllComponentUris)}
 
 `.trimStart())
     })

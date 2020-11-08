@@ -1,6 +1,6 @@
 import { CodePartL } from 'generate/lib/codeWriter'
 import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
-import { generatePkgUses } from './pkguses'
+import { generateCompUses } from './compuses'
 
 export const generateClientApp = sourceTransformer({
   filePath: '~/app/app.tsx',
@@ -18,9 +18,9 @@ export const generateClientApp = sourceTransformer({
       ], false)
       function r(n: 'start' | 'login' | 'error') {
         const rref = app[n].ref(app[n])
-        const pkguri = rref.refs.package.uri.id.str
-        const rid = pkguri + '_proc_' + rref.name.str + 'Decl'
-        src.require(rid, '~/app/' + pkguri + '/' + pkguri, app[n])
+        const compuri = rref.refs.component.uri.id.str
+        const rid = compuri + '_proc_' + rref.name.str + 'Decl'
+        src.require(rid, '~/app/' + compuri + '/' + compuri, app[n])
         return w.funcDecl([], '', [
           [
             'return ', rid, '.instanciate({})'
@@ -28,6 +28,6 @@ export const generateClientApp = sourceTransformer({
         ], { async: true })
       }
     },
-    ...generatePkgUses.transformerFactory
+    ...generateCompUses.transformerFactory
   }
 })

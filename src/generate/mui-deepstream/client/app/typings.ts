@@ -16,36 +16,36 @@ export const generateClientTypings = sourceTransformer({
         'export type Tdate=number',
       ], false)
     },
-    PackageUses(w, pkgs) {
-      return [w.mapObj(pkgs, (val, key) => val)]
+    ComponentUses(w, comps) {
+      return [w.mapObj(comps, (val, key) => val)]
     },
-    PackageUse(w, pkg, { src }) {
-      return src.chip(1, genPkgRef.make(pkg.ref(pkg), {}))
+    ComponentUse(w, comp, { src }) {
+      return src.chip(1, genCompRef.make(comp.ref(comp), {}))
     },
   },
 })
 
-const genPkgRef = nodeTransformer({
-  Package(w, pkg, { src }) {
-    const pkguri = pkg.uri.id.str
-    pkg.types.props.forEach(t => src.chip(
+const genCompRef = nodeTransformer({
+  Component(w, comp, { src }) {
+    const compuri = comp.uri.id.str
+    comp.types.props.forEach(t => src.chip(
       1,
-      genType.make(t.val, { pkguri })) && ''
+      genType.make(t.val, { compuri })) && ''
     )
-    const id = 'T' + pkguri + 'Ref'
+    const id = 'T' + compuri + 'Ref'
     return w.chipResult(id, [
       ['export interface ' + id,
       w.object({
-        process: w.mapObj(pkg.processes, (val, key) =>
-          src.chip(10, genProcessRef.make(val, { pkguri }))
+        process: w.mapObj(comp.processes, (val, key) =>
+          src.chip(10, genProcessRef.make(val, { compuri }))
         ),
-        view: w.mapObj(pkg.views, (val, key) =>
+        view: w.mapObj(comp.views, (val, key) =>
           src.chip(20,
-            genViewInstanceType.make(val, { pkguri }))
+            genViewInstanceType.make(val, { compuri }))
         ),
-        func: w.mapObj(pkg.functions, (val, key) =>
+        func: w.mapObj(comp.functions, (val, key) =>
           src.chip(30,
-            genFuncInstanceType.make(val, { pkguri }))
+            genFuncInstanceType.make(val, { compuri }))
         ),
       })]
     ], false)
@@ -54,7 +54,7 @@ const genPkgRef = nodeTransformer({
 
 const genProcessRef = nodeTransformer({
   Process(w, proc, info) {
-    const procpref = info.cfg.pkguri + '_proc_' + proc.name.str
+    const procpref = info.cfg.compuri + '_proc_' + proc.name.str
     const procDecl = 'T' + procpref + 'Decl'
     const procInput = 'T' + procpref + 'Input'
     const procLocal = 'T' + procpref + 'Local'
@@ -85,7 +85,7 @@ const genProcessRef = nodeTransformer({
     info.src.require('TaskDecl', '~/lib/archol/process', task)
 
     // const usedView = task.useView.ref(task)
-    // const usedViewData = 'T' + info.cfg.pkguri + '_view_' + usedView.name.str + 'Data'
+    // const usedViewData = 'T' + info.cfg.compuri + '_view_' + usedView.name.str + 'Data'
 
     return ['TaskDecl']
   },
@@ -93,18 +93,18 @@ const genProcessRef = nodeTransformer({
     info.src.require('TaskDecl', '~/lib/archol/process', task)
     return ['TaskDecl']
   },
-}, { pkguri: '' })
+}, { compuri: '' })
 
 const genProcessInstanceTypeX = nodeTransformer({
   Process(w, proc, info) {
-    const procpref = 'T' + info.cfg.pkguri + '_proc_' + proc.name.str
+    const procpref = 'T' + info.cfg.compuri + '_proc_' + proc.name.str
     const id = procpref + 'Instance'
     info.src.require('ProcesInstance', '~/lib/archol/process', proc)
     return w.chipResult(id, [
       // [
       //   'export interface ', id,
       //   w.object({
-      //     packageId: w.string(info.cfg.pkguri),
+      //     componentId: w.string(info.cfg.compuri),
       //     processId: w.string(proc.name.str),
       //     instanceId: info.src.require('ArcholGUID', '~/lib/archol/types', proc),
       //     vars: [id, 'Vars']
@@ -113,11 +113,11 @@ const genProcessInstanceTypeX = nodeTransformer({
 
     ], false)
   },
-}, { pkguri: '' })
+}, { compuri: '' })
 
 const genType = nodeTransformer({
   NormalType(w, t, info) {
-    const id = 'T' + info.cfg.pkguri + '_type_' + t.name.str
+    const id = 'T' + info.cfg.compuri + '_type_' + t.name.str
     return w.chipResult(id, [
       [
         'export type ', id, ' = ',
@@ -126,7 +126,7 @@ const genType = nodeTransformer({
     ], false)
   },
   EnumType(w, t, info) {
-    const id = 'T' + info.cfg.pkguri + '_type_' + t.name.str
+    const id = 'T' + info.cfg.compuri + '_type_' + t.name.str
     return w.chipResult(id, [
       [
         'export type ', id, ' = ',
@@ -135,7 +135,7 @@ const genType = nodeTransformer({
     ], false)
   },
   ComplexType(w, t, info) {
-    const id = 'T' + info.cfg.pkguri + '_type_' + t.name.str
+    const id = 'T' + info.cfg.compuri + '_type_' + t.name.str
     return w.chipResult(id, [
       [
         'export type ', id, t.name.str, ' = TODO',
@@ -143,30 +143,30 @@ const genType = nodeTransformer({
     ], false)
   },
   ArrayType(w, t, info) {
-    const id = 'T' + info.cfg.pkguri + '_type_' + t.name.str
+    const id = 'T' + info.cfg.compuri + '_type_' + t.name.str
     return w.chipResult(id, [
       'export type ', id, ' = TODO',
     ], false)
   },
-}, { pkguri: '' })
+}, { compuri: '' })
 
 const genViewInstanceType = nodeTransformer({
   View(w, view, info) {
     info.src.require('SingletonBinder', '~/lib/archol/singleton', view)
     info.src.require('SingletonBinding', '~/lib/archol/singleton', view)
 
-    const id = 'T' + info.cfg.pkguri + '_view_' + view.name.str
+    const id = 'T' + info.cfg.compuri + '_view_' + view.name.str
     return w.chipResult(id + 'Binder', [
       ['export interface ', id, 'Data', genFieldsWithBase.make(view.refs.fields, {})],
       ['export type ', id, 'Binder = SingletonBinder<', id, 'Data>'],
       ['export type ', id, 'Instance = SingletonBinding<', id, 'Data>']
     ], false)
   },
-}, { pkguri: '' })
+}, { compuri: '' })
 
 const genFuncInstanceType = nodeTransformer({
   Function(w, func, info) {
-    const id = 'T' + info.cfg.pkguri + '_func_' + func.name.str
+    const id = 'T' + info.cfg.compuri + '_func_' + func.name.str
     info.src.require('FunctionContext', '~/lib/archol/functions', func)
     return w.chipResult(id + 'Exec', [
       ['export interface ', id, 'Input', genFieldsWithType.make(func.input, {})],
@@ -174,4 +174,4 @@ const genFuncInstanceType = nodeTransformer({
       ['export type ', id, 'Exec = ( input: ', id, 'Input ) => FunctionContext<', id, 'Output>'],
     ], false)
   },
-}, { pkguri: '' })
+}, { compuri: '' })

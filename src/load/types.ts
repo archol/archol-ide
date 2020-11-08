@@ -9,15 +9,15 @@ export type SourceNodeRefsKind = 'RefTypes' | 'RefDocuments' | 'RefProcesses' | 
   'RefFunctions' | 'RefPrimaryFields' | 'RefSecondaryFields' | 'RefDocIndexes' | 'RefDocStates' | 'RefDocAction'
 
 export type SourceNodeObjectKind = 'AppBuilders' | 'Pagelets' | 'AppMappings' |
-  'I18NMsg' | 'PackageUses' | 'RoleDefs' | 'RoleGroups' | 'Types' | 'EnumOptions' | 'Fields' | 'Documents' |
+  'I18NMsg' | 'ComponentUses' | 'RoleDefs' | 'RoleGroups' | 'Types' | 'EnumOptions' | 'Fields' | 'Documents' |
   'DocActions' | 'DocFields' | 'DocIndexes' | 'DocumentStates' | 'Processes' | 'Tasks' |
   'BindVars' | 'Views' | 'Functions' | 'Routes' |
   SourceNodeRefsKind
 
 export type SourceNodeWidgetKind = 'WidgetEntry' | 'WidgetMarkdown'
 
-export type SourceNodeKind = 'Application' | 'Package' | 'StringConst' | 'NumberConst' | 'BooleanConst' |
-  'Workspace' | 'Application' | 'Icon' | 'I18N' | 'PackageUse' | 'Package' | 'RoleDef' |
+export type SourceNodeKind = 'Application' | 'Component' | 'StringConst' | 'NumberConst' | 'BooleanConst' |
+  'Workspace' | 'Application' | 'Icon' | 'I18N' | 'ComponentUse' | 'Component' | 'RoleDef' |
   'BaseType' | 'NormalType' | 'EnumType' | 'EnumOption' | 'ComplexType' | 'ArrayType' | 'UseType1' | 'UseTypeAsArray' |
   'Field' | 'Document' | 'DocAction' | 'DocField' | 'DocIndex' | 'DocumentState' | 'UseDocStates' |
   'Process' | 'ProcessUse' | 'ProcessVars' | 'AllowLocRoles' | 'AllowSysRole' | 'UseTask' | 'UITask' | 'UseView' | 'SystemTask' |
@@ -140,15 +140,15 @@ export interface Workspace extends SourceNode<'Workspace'> {
   getRef(tsNode: TsNode): SourceRef
   getRefs(tsNode: TsNode | TsNode[]): SourceRef[]
   allApplications(): string[]
-  allPackages(): string[]
+  allComponents(): string[]
 }
 
 export interface Application extends SourceNode<'Application'> {
   name: StringConst
   description: I18N,
   icon: Icon,
-  uses: PackageUses,
-  allPackages: Package[],
+  uses: ComponentUses,
+  allComponents: Component[],
   start: ProcessUse,
   login: ProcessUse,
   error: ProcessUse,
@@ -175,20 +175,20 @@ export interface I18N extends SourceNode<'I18N'> {
   //TODO params: Fields
 }
 
-export type PackageUses = ObjectConst<'PackageUses', PackageUse>
+export type ComponentUses = ObjectConst<'ComponentUses', ComponentUse>
 
-export interface PackageUse extends SourceNode<'PackageUse'> {
+export interface ComponentUse extends SourceNode<'ComponentUse'> {
   alias: StringConst
   uri: StringConst
-  ref(sourceRef: TsNode): Package
-  promise: Promise<Package>
+  ref(sourceRef: TsNode): Component
+  promise: Promise<Component>
 }
 
-export function isPackage(node: any): node is Package {
-  return node && node.kind === 'Package'
+export function isComponent(node: any): node is Component {
+  return node && node.kind === 'Component'
 }
 
-export interface Package extends SourceNode<'Package'> {
+export interface Component extends SourceNode<'Component'> {
   uri: {
     id: StringConst
     full: StringConst
@@ -196,16 +196,16 @@ export interface Package extends SourceNode<'Package'> {
     path: StringConst
   },
   redefines?: StringConst
-  uses: PackageUses,
+  uses: ComponentUses,
   refs: {
-    baseTypes: PackageRefs<BaseType<any>>,
-    types: PackageRefs<Type>,
-    documents: PackageRefs<Document>,
-    processes: PackageRefs<Process>,
-    roleDefs: PackageRefs<RoleDef>,
-    roleGroups: PackageRefs<RoleGroup>,
-    views: PackageRefs<View>,
-    functions: PackageRefs<Function>,
+    baseTypes: ComponentRefs<BaseType<any>>,
+    types: ComponentRefs<Type>,
+    documents: ComponentRefs<Document>,
+    processes: ComponentRefs<Process>,
+    roleDefs: ComponentRefs<RoleDef>,
+    roleGroups: ComponentRefs<RoleGroup>,
+    views: ComponentRefs<View>,
+    functions: ComponentRefs<Function>,
   }
   types: Types,
   documents: Documents,
@@ -226,7 +226,7 @@ export function isRoleDef(o: any): o is RoleDef {
 export interface RoleDef extends SourceNodeMapped<'RoleDef'> {
   description: I18N,
   icon: Icon,
-  defPkg: Package
+  defComp: Component
 }
 
 export type RoleGroups = ObjectConst<'RoleGroups', RoleGroup>
@@ -235,7 +235,7 @@ export function isRoleGroups(o: any): o is RoleGroups {
 }
 export interface RoleGroup extends SourceNodeMapped<'RoleGroup'> {
   allow: AllowRoles,
-  defPkg: Package
+  defComp: Component
 }
 
 export type Types = ObjectConst<'Types', Type>
@@ -267,7 +267,7 @@ export const basicTypes3: {
       sourceRef: unkownErrorPos,
       str: 'invalid'
     },
-    defPkg: null as any
+    defComp: null as any
   },
   string: {
     kind: 'NormalType',
@@ -281,7 +281,7 @@ export const basicTypes3: {
       sourceRef: unkownErrorPos,
       str: 'string'
     },
-    defPkg: null as any
+    defComp: null as any
   },
   number: {
     kind: 'NormalType',
@@ -295,7 +295,7 @@ export const basicTypes3: {
       sourceRef: unkownErrorPos,
       str: 'number'
     },
-    defPkg: null as any
+    defComp: null as any
   },
   boolean: {
     kind: 'NormalType',
@@ -309,7 +309,7 @@ export const basicTypes3: {
       sourceRef: unkownErrorPos,
       str: 'boolean'
     },
-    defPkg: null as any
+    defComp: null as any
   },
   date: {
     kind: 'NormalType',
@@ -323,7 +323,7 @@ export const basicTypes3: {
       sourceRef: unkownErrorPos,
       str: 'date'
     },
-    defPkg: null as any
+    defComp: null as any
   }
 }
 
@@ -353,7 +353,7 @@ export interface TypeBase<KIND extends SourceNodeKind, BASE extends keyof typeof
   format?: Code
   parse?: Code
   base: () => BaseType<BASE>,
-  defPkg: Package
+  defComp: Component
 }
 export interface NormalType extends TypeBase<'NormalType', BasicTypesOnly> {
 }
@@ -407,14 +407,14 @@ export interface Document extends SourceNodeMapped<'Document'> {
   persistence: StringConst<'session' | 'persistent'>
   states: DocumentStates
   actions: DocActions,
-  defPkg: Package
+  defComp: Component
   refs: {
-    allFields: PackageRefs<DocField>
-    primaryFields: PackageRefs<DocField>
-    secondaryFields: PackageRefs<DocField>
-    indexes: PackageRefs<DocIndex>
-    states: PackageRefs<DocumentState>
-    actions: PackageRefs<DocAction>
+    allFields: ComponentRefs<DocField>
+    primaryFields: ComponentRefs<DocField>
+    secondaryFields: ComponentRefs<DocField>
+    indexes: ComponentRefs<DocIndex>
+    states: ComponentRefs<DocumentState>
+    actions: ComponentRefs<DocAction>
   }
 }
 
@@ -468,10 +468,10 @@ export interface Process extends SourceNodeMapped<'Process'> {
   vars: ProcessVars
   allow: AllowRoles
   volatile: BooleanConst
-  defPkg: Package
+  defComp: Component
   refs: {
-    package: Package
-    vars: PackageRefs<Field>
+    component: Component
+    vars: ComponentRefs<Field>
   }
 }
 
@@ -491,7 +491,7 @@ export type AnyRole = RoleDef | RoleGroup
 
 export interface AllowLocRoles extends SourceNode<'AllowLocRoles'> {
   allow: ArrayConst<'AllowLocRoleList', StringConst>
-  ref(sourceRef: TsNode): Array<{ pkg: Package, role: AnyRole }>
+  ref(sourceRef: TsNode): Array<{ comp: Component, role: AnyRole }>
 }
 
 export interface AllowSysRole extends SourceNode<'AllowSysRole'> {
@@ -559,7 +559,7 @@ export interface View extends SourceNodeMapped<'View'> {
   secondaryAction?: ViewAction
   otherActions?: ArrayConst<'otherActions', ViewAction>
   allActions?: ArrayConst<'allActions', ViewAction>
-  defPkg: Package
+  defComp: Component
   refs: {
     fields: Fields
   }
@@ -623,7 +623,7 @@ export interface Function extends SourceNodeMapped<'Function'> {
   input: Fields
   output: Fields
   code: Code
-  defPkg: Package
+  defComp: Component
 }
 
 export function isCodeNode(node: any): node is Code {
@@ -722,18 +722,18 @@ export function arrayConst<KIND extends SourceNodeArrayKind, T extends SourceNod
   return ret
 }
 
-export interface PackageRefs<T extends SourceNode<any>> {
-  find(path: string): PackageRef<T> | undefined
-  items: Array<PackageRef<T>>
+export interface ComponentRefs<T extends SourceNode<any>> {
+  find(path: string): ComponentRef<T> | undefined
+  items: Array<ComponentRef<T>>
 }
 
-export interface PackageRef<T extends SourceNode<any>> {
+export interface ComponentRef<T extends SourceNode<any>> {
   path: string
   ref: T
 }
 
 export type SourceNodeType<KIND extends SourceNodeKind> = KIND extends 'Application' ? Application :
-  KIND extends 'Package' ? Package :
+  KIND extends 'Component' ? Component :
   KIND extends 'StringConst' ? StringConst :
   KIND extends 'NumberConst' ? NumberConst :
   KIND extends 'BooleanConst' ? BooleanConst :
@@ -741,9 +741,9 @@ export type SourceNodeType<KIND extends SourceNodeKind> = KIND extends 'Applicat
   KIND extends 'Application' ? Application :
   KIND extends 'Icon' ? Icon :
   KIND extends 'I18N' ? I18N :
-  KIND extends 'PackageUses' ? PackageUses :
-  KIND extends 'PackageUse' ? PackageUse :
-  KIND extends 'Package' ? Package :
+  KIND extends 'ComponentUses' ? ComponentUses :
+  KIND extends 'ComponentUse' ? ComponentUse :
+  KIND extends 'Component' ? Component :
   KIND extends 'RoleDefs' ? RoleDefs :
   KIND extends 'RoleGroups' ? RoleGroups :
   KIND extends 'RoleDef' ? RoleDef :

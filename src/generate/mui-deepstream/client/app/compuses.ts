@@ -4,43 +4,43 @@ import { propByPathTransverser } from 'generate/lib/transverses/propByPathTransv
 import { withPathTransverser } from 'generate/lib/transverses/withPathTransverser'
 import { isCodeNode } from 'load/types'
 
-export const generatePkgUses = nodeTransformer({
-  PackageUses(w, pkgs, { src }) {
-    return [w.mapObj(pkgs, (pkg, key) => {
-      const pkguri = pkg.ref(pkg).uri.id.str
-      src.require(pkguri + 'Instance', '~/app/' + pkguri + '/' + pkguri, pkg)
-      return pkg
+export const generateCompUses = nodeTransformer({
+  ComponentUses(w, comps, { src }) {
+    return [w.mapObj(comps, (comp, key) => {
+      const compuri = comp.ref(comp).uri.id.str
+      src.require(compuri + 'Instance', '~/app/' + compuri + '/' + compuri, comp)
+      return comp
     })]
   },
-  PackageUse(w, pkg, { transformFile, src, ws, fileIsEmpty }) {
-    const pkguri = pkg.ref(pkg).uri.id.str
-    const pkgsource = '~/app/' + pkguri + '/' + pkguri
-    if (fileIsEmpty(pkgsource))
-      transformFile(pkgsource + '.tsx', genPkgRef.make(pkg.ref(pkg), { pkguri }))
-    return pkguri + 'Instance'
+  ComponentUse(w, comp, { transformFile, src, ws, fileIsEmpty }) {
+    const compuri = comp.ref(comp).uri.id.str
+    const compsource = '~/app/' + compuri + '/' + compuri
+    if (fileIsEmpty(compsource))
+      transformFile(compsource + '.tsx', genCompRef.make(comp.ref(comp), { compuri }))
+    return compuri + 'Instance'
   },
 }, {})
 
-const genPkgRef = nodeTransformer({
-  Package(w, pkg, { src }) {
-    const pkguri = pkg.uri.id.str
+const genCompRef = nodeTransformer({
+  Component(w, comp, { src }) {
+    const compuri = comp.uri.id.str
     return w.statements([
       [
-        'export const ', pkguri, 'Instance = ',
+        'export const ', compuri, 'Instance = ',
         w.object({
-          type: w.mapObj(pkg.types, (val) => {
-            const id = pkguri + '_type_' + val.name.str
-            src.require(id, '~/app/' + pkguri + '/types/' + val.name.str + '.tsx', val)
+          type: w.mapObj(comp.types, (val) => {
+            const id = compuri + '_type_' + val.name.str
+            src.require(id, '~/app/' + compuri + '/types/' + val.name.str + '.tsx', val)
             return id
           }),
-          process: w.mapObj(pkg.processes, (val, key) =>
-            src.chip(-10, genProcess.make(val, { pkguri }))
+          process: w.mapObj(comp.processes, (val, key) =>
+            src.chip(-10, genProcess.make(val, { compuri }))
           ),
-          func: w.mapObj(pkg.functions, (val, key) =>
-            src.chip(-10, genFunction.make(val, { pkguri }))
+          func: w.mapObj(comp.functions, (val, key) =>
+            src.chip(-10, genFunction.make(val, { compuri }))
           ),
-          // view: w.mapObj(pkg.views, (val, key) =>
-          //   src.chip(-10, genViewInstanceType.make(val, { pkguri }))
+          // view: w.mapObj(comp.views, (val, key) =>
+          //   src.chip(-10, genViewInstanceType.make(val, { compuri }))
           // )
         })
       ]
@@ -50,7 +50,7 @@ const genPkgRef = nodeTransformer({
 
 const genProcess = nodeTransformer({
   Process(w, proc, info) {
-    const procuripref = info.cfg.pkguri + '_proc_' + proc.name.str
+    const procuripref = info.cfg.compuri + '_proc_' + proc.name.str
     const procrefid = procuripref + 'Decl'
     const storage = proc.volatile.bool ? 'volatileStorage' : 'remoteStorage'
     info.src.require('ArcholGUID', '~/lib/archol/types', proc)
@@ -67,9 +67,9 @@ const genProcess = nodeTransformer({
       [
         'export const ' + procrefid + ': T' + procrefid + ' = ',
         w.object({
-          // packageId: w.string(info.cfg.pkguri),
+          // componentId: w.string(info.cfg.compuri),
           // processId: w.string(proc.name.str),
-          uri: [w.string(info.cfg.pkguri + '_' + proc.name.str) + ' as ArcholGUID'],
+          uri: [w.string(info.cfg.compuri + '_' + proc.name.str) + ' as ArcholGUID'],
           start: w.string(proc.start.task.str) + ' as ArcholGUID',
           instanciate: w.funcDecl(['input: T' + procuripref + 'Input'], '', [
             [
@@ -92,7 +92,7 @@ const genProcess = nodeTransformer({
           ], { async: true }),
           tasks: w.mapObj(proc.tasks, (val, key) =>
             info.src.chip(-10, genProcessTask.make(val, {
-              pkguri: info.cfg.pkguri,
+              compuri: info.cfg.compuri,
               procname: proc.name.str,
               storage
             }))
@@ -101,18 +101,18 @@ const genProcess = nodeTransformer({
       ]
     ], false)
   },
-}, { pkguri: '' })
+}, { compuri: '' })
 
 const genProcessTask = nodeTransformer({
   UITask(w, task, info) {
-    const procuripref = info.cfg.pkguri + '_proc_' + info.cfg.procname
+    const procuripref = info.cfg.compuri + '_proc_' + info.cfg.procname
     const taskuripref = procuripref + "_task_" + task.name.str
     const taskdecl = taskuripref + 'Decl'
     const usedView = task.useView.ref(task)
     const hasfields = usedView.refs.fields.props.length
     const usedViewId = 'View' + usedView.name.str
-    const usedViewInst = 'T' + info.cfg.pkguri + '_view_' + usedView.name.str + 'Instance'
-    const usedViewData = 'T' + info.cfg.pkguri + '_view_' + usedView.name.str + 'Data'
+    const usedViewInst = 'T' + info.cfg.compuri + '_view_' + usedView.name.str + 'Instance'
+    const usedViewData = 'T' + info.cfg.compuri + '_view_' + usedView.name.str + 'Data'
     const storage = info.cfg.storage
     const procInput = 'T' + procuripref + 'Input'
     const procLocal = 'T' + procuripref + 'Local'
@@ -134,7 +134,7 @@ const genProcessTask = nodeTransformer({
     info.src.require(usedViewInst, '~/app/typings', task)
     info.src.require(usedViewData, '~/app/typings', task)
     info.src.require('T' + taskdecl, '~/app/typings', task)
-    info.src.require(usedViewId, '~/app/' + info.cfg.pkguri + '/views/' + usedView.name.str, task)
+    info.src.require(usedViewId, '~/app/' + info.cfg.compuri + '/views/' + usedView.name.str, task)
     return w.chipResult(taskdecl, [
       [
         ['export const ', taskdecl, ': T', taskdecl, ' = '],
@@ -142,7 +142,7 @@ const genProcessTask = nodeTransformer({
           task: w.string(task.name.str),
           next: task.next,
           getContent: w.funcDecl(['varsPub'], '', [
-            // ['const packageId = ', w.string(info.cfg.pkguri)],
+            // ['const componentId = ', w.string(info.cfg.compuri)],
             // ['const processId = ', w.string(info.cfg.procname)],
             // ['const taskId = ', w.string(task.name.str)],
             // hasfields ?
@@ -197,13 +197,13 @@ const genProcessTask = nodeTransformer({
     })
   },
   SystemTask(w, task, info) {
-    const procuripref = info.cfg.pkguri + '_proc_' + info.cfg.procname
+    const procuripref = info.cfg.compuri + '_proc_' + info.cfg.procname
     const taskuripref = procuripref + "_task_" + task.name.str
     const taskrefid = taskuripref + 'Decl'
     const usedFunc = task.useFunction.ref(task)
     const usedFuncId = 'Function' + usedFunc.name.str
-    const usedFuncInput = 'T' + info.cfg.pkguri + '_func_' + usedFunc.name.str + 'Input'
-    const usedFuncOutput = 'T' + info.cfg.pkguri + '_func_' + usedFunc.name.str + 'Output'
+    const usedFuncInput = 'T' + info.cfg.compuri + '_func_' + usedFunc.name.str + 'Input'
+    const usedFuncOutput = 'T' + info.cfg.compuri + '_func_' + usedFunc.name.str + 'Output'
     const procInput = 'T' + procuripref + 'Input'
     const procLocal = 'T' + procuripref + 'Local'
     const procOutput = 'T' + procuripref + 'Output'
@@ -228,10 +228,10 @@ const genProcessTask = nodeTransformer({
           task: w.string(task.name.str),
           next: task.next,
           getContent: w.funcDecl(['varsPub'], '', [
-            // ['const packageId = ', w.string(info.cfg.pkguri)],
+            // ['const componentId = ', w.string(info.cfg.compuri)],
             // ['const processId = ', w.string(info.cfg.procname)],
             // ['const taskId = ', w.string(task.name.str)],
-            // ['const uid = (', w.string(info.cfg.pkguri + '_' + info.cfg.procname + '/' + task.name.str + '.') + ' + processInstanceId) as ArcholGUID'],
+            // ['const uid = (', w.string(info.cfg.compuri + '_' + info.cfg.procname + '/' + task.name.str + '.') + ' + processInstanceId) as ArcholGUID'],
             [
               'const ctx = getExecutionContext(varsPub, ', w.string(task.name.str), ')'
             ],
@@ -255,11 +255,11 @@ const genProcessTask = nodeTransformer({
             ['return content']
             // []
 
-            //             ['const varsPub = getProcessVars<', 'T' + procuripref + 'InstanceVars', '>(packageId, processId, processInstanceId, volatileStorage)'],
+            //             ['const varsPub = getProcessVars<', 'T' + procuripref + 'InstanceVars', '>(componentId, processId, processInstanceId, volatileStorage)'],
             //             [
             //               'const input = copyVarsFromDoc<' + usedFuncInput + '>(varsPub,', task.useFunction.input, ' )'
             //             ],
-            //             ['const output = executeFunction<', usedFuncInput + ', ' + usedFuncOutput + '>(packageId, processId, processInstanceId, taskId, input)'],
+            //             ['const output = executeFunction<', usedFuncInput + ', ' + usedFuncOutput + '>(componentId, processId, processInstanceId, taskId, input)'],
             //             ['const result = await output.result'],
             //             ['copyVarsToDoc(result, varsPub, ', task.useFunction.output, ' )'],
             //             ['return result']
@@ -275,7 +275,7 @@ const genProcessTask = nodeTransformer({
       return [f.task.str, ': true']
     }), '{', '}', ',')
   }
-}, { pkguri: '', procname: '', storage: '' })
+}, { compuri: '', procname: '', storage: '' })
 
 const genFunction = nodeTransformer({
   Function(w, f, { ws, src, cfg }) {
@@ -283,7 +283,7 @@ const genFunction = nodeTransformer({
     const body: CodePartL[] = [
       ['return executeFunction(input)']
     ]
-    const fid = cfg.pkguri + '_func_' + f.name.str
+    const fid = cfg.compuri + '_func_' + f.name.str
     src.require('FunctionContext', '~/lib/archol/functions', f)
     src.require('executeFunction', '~/lib/archol/functions', f)
     src.require('T' + fid + 'Exec', '~/app/typings', f);
@@ -299,11 +299,11 @@ const genFunction = nodeTransformer({
       ]
     ], false)
   },
-}, { pkguri: '' })
+}, { compuri: '' })
 
 // const genViewInstanceType = nodeTransformer({
 //   View(w, view, info) {
-//     const viewuri = info.cfg.pkguri + '_view_' + view.name.str
+//     const viewuri = info.cfg.compuri + '_view_' + view.name.str
 //     info.src.require('ArcholViewInstance', '~/lib/archol/types', view)
 //     info.src.require('T' + viewuri + 'Binder', '~/app/typings', view)
 //     return w.chipResult(viewuri + 'Binder', [
@@ -315,7 +315,7 @@ const genFunction = nodeTransformer({
 //       ]
 //     ], false)
 //   },
-// }, { pkguri: '' })
+// }, { compuri: '' })
 
 /*
 cadastro/telaBadosBasicos

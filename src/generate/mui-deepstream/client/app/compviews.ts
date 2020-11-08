@@ -3,19 +3,19 @@ import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
 import { isWidgetContent, isWidgetEntry, isWidgetMarkdown, WidgetContent, WidgetEntry, WidgetMarkdown } from 'load/types'
 import { genUseType } from './useType'
 
-export const generateClientPkgViews = sourceTransformer({
+export const generateClientCompViews = sourceTransformer({
   multiple: true,
   cfg: {},
   transformations: {
     Application(w, app) {
-      return app.uses.props.map((pkguse) => {
-        return pkguse.val.ref(pkguse.val.sourceRef)
+      return app.uses.props.map((compuse) => {
+        return compuse.val.ref(compuse.val.sourceRef)
       })
     },
-    Package(w, pkg, { transformFile }) {
-      const pkguri = pkg.uri.id.str
-      pkg.views.props.forEach((v) => {
-        transformFile('~/app/' + pkg.uri.id.str + '/views/' + v.key.str + '.tsx', genView.make(v.val, { pkguri }))
+    Component(w, comp, { transformFile }) {
+      const compuri = comp.uri.id.str
+      comp.views.props.forEach((v) => {
+        transformFile('~/app/' + comp.uri.id.str + '/views/' + v.key.str + '.tsx', genView.make(v.val, { compuri }))
       })
       return ''
     },
@@ -30,7 +30,7 @@ const genView = nodeTransformer({
     const fields = v.refs.fields
     const hasfields = fields.props.length
     const render = renderContent(v.content)
-    const vinst = 'T' + cfg.pkguri + '_view_' + v.name.str + 'Data'
+    const vinst = 'T' + cfg.compuri + '_view_' + v.name.str + 'Data'
     const body: CodePartLines = [
       hasfields ? 'const content: AppContent<any, any, any, any, ' + vinst + '> = contentPub.use()' : null,
       // hasfields ? 'const bindings = content.bindings' : null,
@@ -77,4 +77,4 @@ const genView = nodeTransformer({
     }
   },
   ...genUseType.transformerFactory
-}, { pkguri: '' })
+}, { compuri: '' })

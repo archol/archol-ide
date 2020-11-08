@@ -3,19 +3,19 @@ import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
 import { isWidgetContent, isWidgetEntry, isWidgetMarkdown, WidgetContent, WidgetEntry, WidgetMarkdown } from 'load/types'
 import { genUseType } from './useType'
 
-export const generateClientPkgTypes = sourceTransformer({
+export const generateClientCompTypes = sourceTransformer({
   multiple: true,
   cfg: {},
   transformations: {
     Application(w, app) {
-      return app.uses.props.map((pkguse) => {
-        return pkguse.val.ref(pkguse.val.sourceRef)
+      return app.uses.props.map((compuse) => {
+        return compuse.val.ref(compuse.val.sourceRef)
       })
     },
-    Package(w, pkg, { transformFile }) {
-      const pkguri = pkg.uri.id.str
-      pkg.types.props.forEach((v) => {
-        transformFile('~/app/' + pkg.uri.id.str + '/types/' + v.key.str + '.tsx', genType.make(v.val, { pkguri }))
+    Component(w, comp, { transformFile }) {
+      const compuri = comp.uri.id.str
+      comp.types.props.forEach((v) => {
+        transformFile('~/app/' + comp.uri.id.str + '/types/' + v.key.str + '.tsx', genType.make(v.val, { compuri }))
       })
       return ''
     },
@@ -24,7 +24,7 @@ export const generateClientPkgTypes = sourceTransformer({
 
 const genType = nodeTransformer({
   NormalType(w, t, info) {
-    const id = info.cfg.pkguri + '_type_' + t.name.str
+    const id = info.cfg.compuri + '_type_' + t.name.str
     const base = t.base().base
     const validate = t.validate ? w.code(t.validate, { forceRetType: 'string | false' }) :
       w.funcDecl(['val: T' + id], 'string|false',
@@ -46,7 +46,7 @@ const genType = nodeTransformer({
     return w.statements([
       [
         'export const ', id, ': ArcholType<T',
-        info.cfg.pkguri, '_type_', t.name.str,
+        info.cfg.compuri, '_type_', t.name.str,
         '> = ',
         w.object({
           validate,
@@ -57,7 +57,7 @@ const genType = nodeTransformer({
     ], false)
   },
   EnumType(w, t, info) {
-    const id = info.cfg.pkguri + '_type_' + t.name.str
+    const id = info.cfg.compuri + '_type_' + t.name.str
     info.src.require('ArcholType', '~/lib/archol/types', t)
     info.src.require('T' + id, '~/app/typings', t)
     return w.statements([
@@ -88,15 +88,15 @@ const genType = nodeTransformer({
     ], false)
   },
   ComplexType(w, t, info) {
-    const id = info.cfg.pkguri + '_type_' + t.name.str
+    const id = info.cfg.compuri + '_type_' + t.name.str
     return w.statements([
       'export const TODO_', id, ' = TODO',
     ], false)
   },
   ArrayType(w, t, info) {
-    const id = info.cfg.pkguri + '_type_' + t.name.str
+    const id = info.cfg.compuri + '_type_' + t.name.str
     return w.statements([
       'export const TODO_', id, ' = TODO',
     ], false)
   },
-}, { pkguri: '' })
+}, { compuri: '' })

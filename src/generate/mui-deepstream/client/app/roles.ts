@@ -13,9 +13,9 @@ export const generateClientRoles = sourceTransformer({
       src.require('AppRoles', '~/lib/archol/types', app)
       return w.statements([
         genSysRoles.make(app.sysroles, {}),
-        genPkgRolesDefs.make(app.uses, {}),
-        genPkgRoles.make(app.uses, {}),
-        // genPkgRolesMerge(app.uses),
+        genCompRolesDefs.make(app.uses, {}),
+        genCompRoles.make(app.uses, {}),
+        // genCompRolesMerge(app.uses),
       ], false)
     },
   }
@@ -24,8 +24,8 @@ export const generateClientRoles = sourceTransformer({
 export const genUseRoles = nodeTransformer({
   AllowLocRoles(w, roles, info) {
     return w.array(roles.ref(roles).map((r) => {
-      const s = isRoleDef(r.role) ? r.pkg.uri.id.str + '_role_' + r.role.name.str :
-        r.pkg.uri.id.str + '_role_' + r.role.name.str
+      const s = isRoleDef(r.role) ? r.comp.uri.id.str + '_role_' + r.role.name.str :
+        r.comp.uri.id.str + '_role_' + r.role.name.str
       info.src.require(s, '~/app/roles', roles)
       return s
     }))
@@ -53,21 +53,21 @@ const genSysRoles = nodeTransformer({
   }
 }, {})
 
-const genPkgRolesDefs = nodeTransformer({
-  PackageUses(w, pkgs) {
-    return pkgs.props.map((p) => p.val)
+const genCompRolesDefs = nodeTransformer({
+  ComponentUses(w, comps) {
+    return comps.props.map((p) => p.val)
     // return w.lines([
     //   [
-    //     'const pkgrolesdefs: {[app: string]:AppRoles}=',
-    //     w.mapObj(pkgs, (val, key) => val)
+    //     'const comprolesdefs: {[app: string]:AppRoles}=',
+    //     w.mapObj(comps, (val, key) => val)
     //   ]
     // ], '', '', '')
   },
-  PackageUse(w, pkg) {
-    return pkg.ref(pkg)
+  ComponentUse(w, comp) {
+    return comp.ref(comp)
   },
-  Package(w, pkg) {
-    return pkg.roleDefs
+  Component(w, comp) {
+    return comp.roleDefs
   },
   RoleDefs(w, roles) {
     return roles.props.map((p) => p.val)
@@ -78,7 +78,7 @@ const genPkgRolesDefs = nodeTransformer({
   RoleDef(w, role, info) {
     return w.statements([
       [
-        'export const ' + info.stack.get('PackageUse').ref(role).uri.id.str + '_role_' + role.name.str + ': AppRole =', w.object({
+        'export const ' + info.stack.get('ComponentUse').ref(role).uri.id.str + '_role_' + role.name.str + ': AppRole =', w.object({
           description: genI18N,
           icon: genIcon,
         }, role)
@@ -87,30 +87,30 @@ const genPkgRolesDefs = nodeTransformer({
   },
 }, {})
 
-const genPkgRoles = nodeTransformer({
-  PackageUses(w, pkgs) {
+const genCompRoles = nodeTransformer({
+  ComponentUses(w, comps) {
     return w.lines([
-      'export const roles = (<T extends { [pkg: string]: AppRole|{ [grp: string]: AppRole | AppRole[] }}>(v: T) => v)(',
-      [w.mapObj(pkgs, (val, key) => val, undefined, ['...sysroles'])],
+      'export const roles = (<T extends { [comp: string]: AppRole|{ [grp: string]: AppRole | AppRole[] }}>(v: T) => v)(',
+      [w.mapObj(comps, (val, key) => val, undefined, ['...sysroles'])],
       ')'
     ], '', '', '')
   },
-  PackageUse(w, pkg) {
-    return pkg.ref(pkg)
+  ComponentUse(w, comp) {
+    return comp.ref(comp)
   },
-  Package(w, pkg) {
-    return w.mapObj([pkg.roleDefs, pkg.roleGroups])
+  Component(w, comp) {
+    return w.mapObj([comp.roleDefs, comp.roleGroups])
   },
   RoleDefs(w, roles, info) {
     return w.lines(roles.props.map((r) => [
       [
         r.key, ':',
-        info.stack.get('PackageUse').ref(r.val).uri.id.str + '_role_' + r.key.str,
+        info.stack.get('ComponentUse').ref(r.val).uri.id.str + '_role_' + r.key.str,
       ]
     ]), '', '', ',')
   },
   RoleDef(w, role, info) {
-    return info.stack.get('PackageUse').ref(role).uri.id.str + '_role_' + role.name.str
+    return info.stack.get('ComponentUse').ref(role).uri.id.str + '_role_' + role.name.str
   },
   RoleGroups(w, roles) {
     return w.lines([
@@ -123,7 +123,7 @@ const genPkgRoles = nodeTransformer({
   AllowLocRoles(w, role, info) {
     return w.array(
       role.ref(role).
-        map((r) => info.stack.get('PackageUse').ref(role).uri.id.str + '_role_' + r.role.name.str)
+        map((r) => info.stack.get('ComponentUse').ref(role).uri.id.str + '_role_' + r.role.name.str)
     )
   },
 }, {})
