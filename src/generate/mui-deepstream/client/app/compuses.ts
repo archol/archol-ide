@@ -38,9 +38,11 @@ const genCompRef = nodeTransformer({
             src.require(id, '~/app/' + compuri + '/processes/' + val.name.str, val)
             return id
           }),
-          operation: w.mapObj(comp.operations, (val, key) =>
-            src.chip(-10, genOperation.make(val, { compuri }))
-          ),
+          operation: w.mapObj(comp.operations, (val, key) => {
+            const id = compuri + '_operation_' + val.name.str
+            src.require(id, '~/app/' + compuri + '/operations/' + val.name.str, val)
+            return id
+          }),
           // view: w.mapObj(comp.views, (val, key) =>
           //   src.chip(-10, genViewInstanceType.make(val, { compuri }))
           // )
@@ -49,30 +51,6 @@ const genCompRef = nodeTransformer({
     ], false)
   },
 }, {})
-
-const genOperation = nodeTransformer({
-  Operation(w, op, { ws, src, cfg }) {
-
-    const body: CodePartL[] = [
-      ['return executeOperation(input)']
-    ]
-    const opId = cfg.compuri + '_operation_' + op.name.str
-    src.require('OperationContext', '~/lib/archol/operations', op)
-    src.require('executeOperation', '~/lib/archol/operations', op)
-    src.require('T' + opId + 'Exec', '~/app/typings', op);
-    src.require('T' + opId + 'Output', '~/app/typings', op);
-    src.require('T' + opId + 'Output', '~/app/typings', op);
-
-    return w.chipResult(opId + 'Exec', [
-      [
-        'export function ', opId + 'Exec', w.funcDecl([
-          'input: T' + opId + 'Input'
-        ], 'OperationContext<T' + opId + 'Output>', body
-        )
-      ]
-    ], false)
-  },
-}, { compuri: '' })
 
 // const genViewInstanceType = nodeTransformer({
 //   View(w, view, info) {
