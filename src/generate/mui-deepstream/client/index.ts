@@ -8,6 +8,7 @@ import { generateClientRoutes } from './app/routes'
 import { generateClientTypings } from './app/typings';
 import { generateClientCompTypes } from './app/comptypes';
 import { generateClientCompViews } from './app/compviews';
+import { generateClientCompProcesses } from './app/compprocesses';
 import { generateClientApp } from './app/app';
 
 export const generateClientProject = projectTransformer({
@@ -23,6 +24,7 @@ export const generateClientProject = projectTransformer({
     generateClientTypings,
     generateClientCompTypes,
     generateClientCompViews,
+    generateClientCompProcesses,
     generateClientApp,
   ],
   cfg: {}
