@@ -49,16 +49,17 @@ const genProcess = nodeTransformer({
           instanciate: w.funcDecl(['input: T' + procuripref + 'Input'], '', [
             [
               'const content=await instanciateProcess(',
-              procuripref, ', ', storage, ', input',
+              procuripref, ', ', storage, ', input, ',
+              proc.singleton,
               ')'
             ],
             'contentPub.show(content)',
             'return content'
           ], { async: true }),
-          open: w.funcDecl(['processInstanceId: ArcholGUID'], '', [
+          open: w.funcDecl(proc.singleton.bool ? [] : ['processInstanceId: ArcholGUID'], '', [
             [
               'const content=await openProcessInstance(',
-              procuripref, ', processInstanceId, ',
+              procuripref, ', ' + (proc.singleton.bool ? 'true' : 'processInstanceId') + ', ',
               storage,
               ')'
             ],

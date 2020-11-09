@@ -1,6 +1,6 @@
 import {
   ArrayConst, ObjectConst,
-  SourceNode, SourceNodeKind, SourceNodeType, StringConst,
+  SourceNode, SourceNodeKind, SourceNodeType, StringConst, isBooleanConst,
   isObjectConst, isSourceNode, isStringConst, Code, isCodeNode, isArrayConst, SourceNodeObjectKind, Workspace, ObjectConstProp, isObjectConstProp, TsNode
 } from "load/types"
 import { mapObjectToArray } from 'utils'
@@ -275,6 +275,7 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
 
   function defaultTransformer(n: SourceNode<any>) {
     if (isStringConst(n)) return wSelf.string(n)
+    if (isBooleanConst(n)) return n.bool ? 'true' : 'false'
     if (isCodeNode(n)) return wSelf.code(n)
     if (isArrayConst(n)) return wSelf.map([n])
     if (isObjectConst(n)) return wSelf.map([n])

@@ -1,5 +1,12 @@
-import { Application } from '../../../load/types';
+import { projectTransformer } from 'generate/lib/generator';
+import { genI18N } from '../client/app/i18n';
 
-export function generateWorker(app: Application) {
-  
-}
+export const generateClientProject = projectTransformer({
+  projectPath: 'client',
+  transformations: {
+    ...genI18N.transformerFactory,
+  },
+  sources: [
+  ],
+  cfg: {}
+})

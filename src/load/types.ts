@@ -79,6 +79,9 @@ export interface NumberConst extends SourceNode<'NumberConst'> {
   num: number
 }
 
+export function isBooleanConst(node: any): node is BooleanConst {
+  return node && node.kind === 'BooleanConst'
+}
 export interface BooleanConst extends SourceNode<'BooleanConst'> {
   bool: Boolean
 }
@@ -468,6 +471,7 @@ export interface Process extends SourceNodeMapped<'Process'> {
   vars: ProcessVars
   allow: AllowRoles
   volatile: BooleanConst
+  singleton: BooleanConst
   defComp: Component
   refs: {
     component: Component

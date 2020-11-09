@@ -1052,8 +1052,18 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             vars: parseVars,
             allow: parseAllowRoles,
             volatile: parseBolArg,
-          }, [])
-          pprops.title
+            singleton: parseBolArg,
+          }, ['singleton', 'volatile'])
+          if (!pprops.volatile) pprops.volatile = {
+            kind: 'BooleanConst',
+            sourceRef: ws.getRef(processName),
+            bool: false,
+          }
+          if (!pprops.singleton) pprops.singleton = {
+            kind: 'BooleanConst',
+            sourceRef: ws.getRef(processName),
+            bool: false
+          }
           const process: Process = {
             kind: 'Process',
             sourceRef: ws.getRef(processName),
@@ -1414,7 +1424,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
               return {
                 kind: 'BaseType',
                 sourceRef: typeName.sourceRef,
-                base: compid.str + '_enum_' + typeName.str as any,
+                base: compid.str + '_type_' + typeName.str as any,
                 enumOptions: typeProps.options,
                 complexFields: false, arrayType: false
               }
@@ -1451,7 +1461,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
               return {
                 kind: 'BaseType',
                 sourceRef: typeName.sourceRef,
-                base: compid.str + '_complex_' + typeName.str as any,
+                base: compid.str + '_type_' + typeName.str as any,
                 complexFields: typeProps.fields,
                 enumOptions: false, arrayType: false
               }
@@ -1472,7 +1482,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
               return {
                 kind: 'BaseType',
                 sourceRef: typeName.sourceRef,
-                base: compid.str + '_array_' + typeName.str as any,
+                base: compid.str + '_type_' + typeName.str as any,
                 arrayType: typeProps.itemType,
                 enumOptions: false, complexFields: false
               }

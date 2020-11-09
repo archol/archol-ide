@@ -31,9 +31,9 @@ export const generateClientMenu = sourceTransformer({
         run(v) {
           if (isCodeNode(v)) return w.code(v)
           if (isStringConst(v)) {
-            info.src.require('appWindowDoc', '~/rx/app/appwindow', v)
+            info.src.require('appWindowPub', '~/rx/app/appwindow', v)
             return w.funcDecl([], '', [
-              ['appWindowDoc.goUrl(', w.string(v), ')']
+              ['appWindowPub.goUrl(', w.string(v), ')']
             ])
           }
           throw info.ws.fatal('conteúdo inesperado ', v)

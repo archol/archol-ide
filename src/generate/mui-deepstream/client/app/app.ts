@@ -11,6 +11,7 @@ export const generateClientApp = sourceTransformer({
         ['export const appInstance = ', app.uses],
         ['export const appInfo = ', w.object({
           name: app.name,
+          worker: ['new Worker(', w.string('./worker/index.ts'), ')'],
           start: r('start'),
           login: r('login'),
           error: r('error'),
