@@ -2,7 +2,7 @@ import { CodePartL } from 'generate/lib/codeWriter'
 import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
 
 
-export const generateClientApp = sourceTransformer({
+export const generateWorkerIndex = sourceTransformer({
   filePath: '~/app/worker/index.tsx',
   cfg: {},
   transformations: {
@@ -15,3 +15,9 @@ export const generateClientApp = sourceTransformer({
     }
   }
 })
+
+
+doc semelhante a record / list mas com validação
+
+fazer open doc
+set doc 
