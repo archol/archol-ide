@@ -14,7 +14,7 @@ export const genUseType = nodeTransformer({
     if (tref) {
       const compuri = tref.ref.defComp.uri.id.str
       const id = compuri + '_type_' + tref.ref.name.str
-      info.src.require(id, '~/app/' + compuri + '/' + compuri, usetype)
+      info.src.require(id, '~/app/' + compuri + '/types/' + tref.ref.name.str, usetype)
       return id
     }
     throw info.ws.fatal('Erro ao usar tipo ' + usetype.type.str, usetype)
