@@ -14,7 +14,7 @@ import {
   UseTypeAsArray, Types, SourceNodeKind, SourceNodeObjectKind, SourceNodeArrayKind, BuilderConfig, AppMappings,
   RoleDefs, RoleGroups, WidgetEntry, WidgetMarkdown, WidgetContent, AnyRole, ProcessUse, SourceRef, WidgetItem,
   isCodeNode, isTypeBase, RoutePathItem,
-  DocTestingScenarios, DocTestingCol, DocTestingDoc
+  DocTestingScenarios, DocTestingCol, DocTestingDoc, DocActionTestCases
 } from './types'
 
 export async function loadApp(ws: Workspace, appName: string): Promise<Application> {
@@ -1578,8 +1578,9 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             to: parseUseDocStates,
             icon: parseIcon,
             description: parseI18N,
-            run: parserForCode()
-          }, ['run', 'from'])
+            run: parserForCode(),
+            testing: parseTestAction,
+          }, ['run', 'from', 'testing'])
           const ac: DocAction = {
             kind: 'DocAction',
             sourceRef: ws.getRef(argAction),
@@ -1606,6 +1607,13 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           else parserForArrArg('UsedDocStates', parseStrArg)(argUseDocStates)
             .items.forEach((i) => useDocStates.states.items.push(i))
           return useDocStates
+        }
+        function parseTestAction(argTestAction: ts.Node): DocActionTestCases {
+          const cases = objectConst<'DocActionTestCases', Code>('DocActionTestCases', ws.getRef(argTestAction))
+          const props = parseObjArg(argTestAction, {
+            '*': parserForCode()
+          }, ['*'])
+          return cases
         }
       })
       return { routes }

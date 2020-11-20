@@ -1,6 +1,6 @@
 import { CodeBlockWriter } from 'ts-morph';
 import { mapObject } from 'utils';
-import { Application, Component, Process, Workspace, Operation, normalTypes, View, Type, Document, Fields, SourceNodeWithName, SourceNode } from '../../load/types';
+import { Application, Component, Process, Workspace, Operation, normalTypes, View, Type, Document, Fields, SourceNodeWithName, SourceNode, DocAction, ComponentRef } from '../../load/types';
 import { quote, typePipeObj, typePipeStr } from '../lib/generator';
 import { materialUiIcons } from './materialuiicons';
 
@@ -239,6 +239,13 @@ interface ${compid}_DeclDocFields {
     comp.operations.props.forEach((f) => genDeclCompOperation(f.val))
     comp.views.props.forEach((v) => genDeclCompView(v.val))
     comp.documents.props.forEach((d) => genDeclCompDoc(d.val))
+
+    w.writeLine(`
+    declare interface ${compid}_database {      
+      ${comp.documents.props.map((d) => d.key.str + ': ' + compid + '_document_' + d.key.str + '_Data').join(',\n')}
+    }
+    `)
+
     genTestInfo()
     return
 
@@ -380,29 +387,13 @@ declare interface ${compid}_document_${docName}_Decl {
   secondaryFields: ${compid}_DeclDocFields
   indexes: { [name: string]: ${compid}_document_${docName}_Fieldname[] }
   actions: ${compid}_document_${docName}_DeclActions
-  testdata: ${compid}_document_${docName}_Scenarios
+  //testdata: ${compid}_document_${docName}_Scenarios
 }
 declare type ${compid}_document_${docName}_Fieldname = ${typePipeStr(doc.refs.allFields.items.map((f) => f.path))}
 declare type ${compid}_document_${docName}_StateName = ${typePipeStr(doc.refs.states.items.map((f) => f.path))}
 declare type ${compid}_document_${docName}_ActionName = ${typePipeStr(doc.refs.actions.items.map((f) => f.path))}
 declare interface ${compid}_document_${docName}_DeclActions {
-  ${doc.refs.actions.items.map((a) =>
-        `${a.path}: {
-      from?: ${compid}_document_${docName}_StateName | ${compid}_document_${docName}_StateName[],
-      to: ${compid}_document_${docName}_StateName | ${compid}_document_${docName}_StateName[],
-      icon: Icon,
-      description: I18N,
-      run?(data: ${compid}_document_${docName}_Data, ${a.ref.run ? a.ref.run.params.map((p, idx) => {
-          const ptxt = p.getText()
-          if (idx === 0) {
-            if (ptxt.includes(':')) ws.error('nao deve ter o tipo', p)
-            return null
-          }
-          return ptxt
-        }).filter((p) => p !== null).join() : ''}): ${a.ref.run ? a.ref.run.ret.getText() : 'Promise<void>'
-        }
-     }
-    `)}      
+  ${doc.refs.actions.items.map(genAction).join(',\n')}      
 }
 
 declare type ${compid}_document_${docName}_Scenarios = {
@@ -415,24 +406,45 @@ declare type ${compid}_document_${docName}_TestCaseDoc = {
 
 declare interface ${compid}_document_${docName}_Data {
   ${doc.refs.allFields.items.map((f) =>
-          `${f.path}:${f.ref.type.base(null)}`
-        ).join('\n')}  
+        `${f.path}:${f.ref.type.base(null)}`
+      ).join('\n')}  
 }
 declare interface ${compid}_document_${docName}_Ref {
   ${doc.refs.actions.items.map((a) =>
-          `${a.path}: ${a.ref.run ?
-            '(' +
-            a.ref.run.params.slice(1).map(p => p.getText()).join(', ') +
-            ') => ' +
-            a.ref.run.ret.getText()
-            : '() => Promise<void>'
-          }
+        `${a.path}: ${a.ref.run ?
+          '(' +
+          a.ref.run.params.slice(1).map(p => p.getText()).join(', ') +
+          ') => ' +
+          a.ref.run.ret.getText()
+          : '() => Promise<void>'
+        }
 `).join('')}}
 `.trimStart())
       if (doc.testdata) doc.testdata.props.forEach((testcases) => {
         if (allTestScenarios.indexOf(testcases.key.str) === -1)
           allTestScenarios.push(testcases.key.str)
       })
+      function genAction(a: ComponentRef<DocAction>) {
+        const acargs = a.ref.run ? a.ref.run.params.map((p, idx) => {
+          const ptxt = p.getText()
+          if (idx === 0) {
+            if (ptxt.includes(':')) ws.error('nao deve ter o tipo', p)
+            return null
+          }
+          return ptxt
+        }).filter((p) => p !== null).join() : ''
+        const acret = a.ref.run ? a.ref.run.ret.getText() : 'Promise<void>'
+        return `${a.path}: {
+          from?: ${compid}_document_${docName}_StateName | ${compid}_document_${docName}_StateName[],
+          to: ${compid}_document_${docName}_StateName | ${compid}_document_${docName}_StateName[],
+          icon: Icon,
+          description: I18N,
+          run?(data: ${compid}_document_${docName}_Data, ${acargs}): ${acret}     
+        //  testing: {
+        //    [testname: string]: (fn: (${acargs})=> ${acret}, db: ${compid}_database)=>void
+        //  }
+      }`
+      }
     }
     function genTestInfo() {
       declsource.addStatements((w) => {

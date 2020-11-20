@@ -11,7 +11,7 @@ export type SourceNodeRefsKind = 'RefTypes' | 'RefDocuments' | 'RefProcesses' | 
 export type SourceNodeObjectKind = 'AppBuilders' | 'Pagelets' | 'AppMappings' |
   'I18NMsg' | 'ComponentUses' | 'RoleDefs' | 'RoleGroups' | 'Types' | 'EnumOptions' | 'Fields' | 'Documents' |
   'DocActions' | 'DocFields' | 'DocIndexes' | 'DocumentStates' | 'Processes' | 'Tasks' |
-  'BindVars' | 'Views' | 'Operations' | 'Routes' | 'DocTestingScenarios' |
+  'BindVars' | 'Views' | 'Operations' | 'Routes' | 'DocTestingScenarios' | 'DocActionTestCases' |
   SourceNodeRefsKind
 
 export type SourceNodeWidgetKind = 'WidgetEntry' | 'WidgetMarkdown'
@@ -419,7 +419,7 @@ export interface Document extends SourceNodeMapped<'Document'> {
     states: ComponentRefs<DocumentState>
     actions: ComponentRefs<DocAction>
   },
-  testdata?: DocTestingScenarios
+  testdata: DocTestingScenarios
 }
 
 export type DocTestingScenarios = ObjectConst<'DocTestingScenarios', DocTestingCol>
@@ -436,7 +436,10 @@ export interface DocAction extends SourceNodeMapped<'DocAction'> {
   icon: Icon
   description: I18N
   run?: Code
+  testing: DocActionTestCases
 }
+
+export type DocActionTestCases = ObjectConst<'DocActionTestCases', Code>
 
 export type DocFields = ObjectConst<'DocFields', DocField>
 
@@ -809,4 +812,5 @@ export type SourceNodeType<KIND extends SourceNodeKind> = KIND extends 'Applicat
   KIND extends 'DocTestingScenarios' ? DocTestingScenarios :
   KIND extends 'DocTestingCol' ? DocTestingCol :
   KIND extends 'DocTestingDoc' ? DocTestingDoc :
+  KIND extends 'DocActionTestCases' ? DocActionTestCases :
   unknown
