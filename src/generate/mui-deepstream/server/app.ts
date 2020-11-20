@@ -1,14 +1,14 @@
 import { CodePartL } from 'generate/lib/codeWriter'
 import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
-import { generateWorkerCompDocs } from './docs/compdocs'
+import { generateServerCompDocs } from './docs/compdocs'
 
 // doc semelhante a record / list mas com validação
 
 // fazer open doc
 // set doc 
 
-export const generateWorkerIndex = sourceTransformer({
-  filePath: '~/app/worker/index.tsx',
+export const generateServerIndex = sourceTransformer({
+  filePath: '~/app/app.ts',
   cfg: {},
   transformations: {
     Application(w, app, { transformFile, src }) {
@@ -36,9 +36,9 @@ const genCompRef = nodeTransformer({
       w.object({
         documents: w.mapObj(comp.documents, (val, key) => {
           const docuri = compuri + '_document_' + val.name.str
-          const docsrc = '~/app/worker/' + compuri + '/documents/' + val.name.str
+          const docsrc = '~/app/' + compuri + '/documents/' + val.name.str
           src.require(docuri, docsrc, val)
-          transformFile(docsrc + '.ts', generateWorkerCompDocs.make(val, { compuri, docuri }))
+          transformFile(docsrc + '.ts', generateServerCompDocs.make(val, { compuri, docuri }))
           return id
         }),
         // operation: w.mapObj(comp.operations, (val, key) =>

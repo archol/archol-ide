@@ -1,4 +1,5 @@
 import { CodeBlockWriter } from 'ts-morph';
+import { mapObject } from 'utils';
 import { Application, Component, Process, Workspace, Operation, normalTypes, View, Type, Document, Fields, SourceNodeWithName, SourceNode } from '../../load/types';
 import { quote, typePipeObj, typePipeStr } from '../lib/generator';
 import { materialUiIcons } from './materialuiicons';
@@ -101,6 +102,9 @@ declare type ${appname}_Mappings = {
 
 
   function genDeclComp(comp: Component, w: CodeBlockWriter) {
+
+    const allTestScenarios: string[] = []
+
     const compid = comp.uri.id.str
     w.writeLine(`
 declare function declareComponent (ns: '${comp.uri.ns.str}', path: '${comp.uri.path.str}'): ${compid}_DeclUses
@@ -235,6 +239,7 @@ interface ${compid}_DeclDocFields {
     comp.operations.props.forEach((f) => genDeclCompOperation(f.val))
     comp.views.props.forEach((v) => genDeclCompView(v.val))
     comp.documents.props.forEach((d) => genDeclCompDoc(d.val))
+    genTestInfo()
     return
 
     function genDeclCompProcess(process: Process) {
@@ -375,6 +380,7 @@ declare interface ${compid}_document_${docName}_Decl {
   secondaryFields: ${compid}_DeclDocFields
   indexes: { [name: string]: ${compid}_document_${docName}_Fieldname[] }
   actions: ${compid}_document_${docName}_DeclActions
+  testdata: ${compid}_document_${docName}_Scenarios
 }
 declare type ${compid}_document_${docName}_Fieldname = ${typePipeStr(doc.refs.allFields.items.map((f) => f.path))}
 declare type ${compid}_document_${docName}_StateName = ${typePipeStr(doc.refs.states.items.map((f) => f.path))}
@@ -398,6 +404,15 @@ declare interface ${compid}_document_${docName}_DeclActions {
      }
     `)}      
 }
+
+declare type ${compid}_document_${docName}_Scenarios = {
+  [scenario in ${compid}_TestScenarios]: ${compid}_document_${docName}_TestCaseDoc[]
+}
+declare type ${compid}_document_${docName}_TestCaseDoc = {
+  $id: string,
+  $state: cvv_org_br_cadastro_document_voluntario_StateName,
+} & ${compid}_document_${docName}_Data
+
 declare interface ${compid}_document_${docName}_Data {
   ${doc.refs.allFields.items.map((f) =>
           `${f.path}:${f.ref.type.base(null)}`
@@ -414,6 +429,17 @@ declare interface ${compid}_document_${docName}_Ref {
           }
 `).join('')}}
 `.trimStart())
+      if (doc.testdata) doc.testdata.props.forEach((testcases) => {
+        if (allTestScenarios.indexOf(testcases.key.str) === -1)
+          allTestScenarios.push(testcases.key.str)
+      })
+    }
+    function genTestInfo() {
+      declsource.addStatements((w) => {
+        w.write(`
+    declare type ${compid}_TestScenarios = ${typePipeStr(allTestScenarios)}
+    `)
+      })
     }
   }
   function declareGlobals() {
@@ -481,6 +507,7 @@ declare type AllComponentUris = ${typePipeStr(AllComponentUris)}
 `.trimStart())
     })
   }
+
 }
 
 function addArrayTypes(s: string[]) {

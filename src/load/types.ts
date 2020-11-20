@@ -3,7 +3,7 @@ import * as ts from 'typescript'
 
 export type SourceNodeArrayKind = 'AppLanguages' | 'RoleGroup' | 'DocIndexFields' |
   'UsedDocStates' | 'AllowLocRoleList' | 'Widgets' | 'otherActions' | 'allActions' |
-  'UseTaskForks' | 'Menu' | 'RoutePath'
+  'UseTaskForks' | 'Menu' | 'RoutePath' | 'DocTestingCol'
 
 export type SourceNodeRefsKind = 'RefTypes' | 'RefDocuments' | 'RefProcesses' | 'RefRoles' | 'RefViews' |
   'RefOperations' | 'RefPrimaryFields' | 'RefSecondaryFields' | 'RefDocIndexes' | 'RefDocStates' | 'RefDocAction'
@@ -11,7 +11,7 @@ export type SourceNodeRefsKind = 'RefTypes' | 'RefDocuments' | 'RefProcesses' | 
 export type SourceNodeObjectKind = 'AppBuilders' | 'Pagelets' | 'AppMappings' |
   'I18NMsg' | 'ComponentUses' | 'RoleDefs' | 'RoleGroups' | 'Types' | 'EnumOptions' | 'Fields' | 'Documents' |
   'DocActions' | 'DocFields' | 'DocIndexes' | 'DocumentStates' | 'Processes' | 'Tasks' |
-  'BindVars' | 'Views' | 'Operations' | 'Routes' |
+  'BindVars' | 'Views' | 'Operations' | 'Routes' | 'DocTestingScenarios' |
   SourceNodeRefsKind
 
 export type SourceNodeWidgetKind = 'WidgetEntry' | 'WidgetMarkdown'
@@ -23,7 +23,7 @@ export type SourceNodeKind = 'Application' | 'Component' | 'StringConst' | 'Numb
   'Process' | 'ProcessUse' | 'ProcessVars' | 'AllowLocRoles' | 'AllowSysRole' | 'UseTask' | 'UITask' | 'UseView' | 'SystemTask' |
   'UseOperation' | 'BindVar' | 'View' | 'ViewAction' | 'WidgetContent' | 'WidgetEntry' | 'WidgetMarkdown' | 'OperationLevel' |
   'Operation' | 'Code' | 'BuilderConfig' | 'Pagelet' | 'RouteCode' | 'RouteRedirect' | 'MenuItem' | 'MenuItemSeparator' |
-  'RoutePathItem' |
+  'RoutePathItem' | 'DocTestingDoc' |
   //
   SourceNodeArrayKind | SourceNodeObjectKind | SourceNodeWidgetKind
 
@@ -418,7 +418,14 @@ export interface Document extends SourceNodeMapped<'Document'> {
     indexes: ComponentRefs<DocIndex>
     states: ComponentRefs<DocumentState>
     actions: ComponentRefs<DocAction>
-  }
+  },
+  testdata?: DocTestingScenarios
+}
+
+export type DocTestingScenarios = ObjectConst<'DocTestingScenarios', DocTestingCol>
+export type DocTestingCol = ArrayConst<'DocTestingCol', DocTestingDoc>
+export interface DocTestingDoc extends SourceNode<'DocTestingDoc'> {
+  data: any
 }
 
 export type DocActions = ObjectConst<'DocActions', DocAction>
@@ -799,4 +806,7 @@ export type SourceNodeType<KIND extends SourceNodeKind> = KIND extends 'Applicat
   KIND extends 'MenuItemSeparator' ? MenuItemSeparator :
   KIND extends 'RoleDef' ? RoleDef :
   KIND extends 'RoleGroup' ? RoleGroup :
+  KIND extends 'DocTestingScenarios' ? DocTestingScenarios :
+  KIND extends 'DocTestingCol' ? DocTestingCol :
+  KIND extends 'DocTestingDoc' ? DocTestingDoc :
   unknown

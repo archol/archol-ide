@@ -1,8 +1,6 @@
-import { pbkdf2 } from 'crypto';
-import { create } from 'domain';
+
 import { join } from 'path';
 import * as ts from 'ts-morph'
-import { isTemplateHead } from 'typescript';
 import { deferPromise, DeferredPromise, mapObjectToArray } from '../utils';
 import {
   Application, ArrayConst, BooleanConst, NumberConst, objectConst, ObjectConst, Component,
@@ -14,7 +12,9 @@ import {
   Pagelet, Menu, MenuItem, MenuItemSeparator, SourceNodeMapped, SourceNodeRefsKind, isComponent, RouteRedirect,
   RouteCode, RoleGroup, TsNode, basicTypes3, ComponentRefs, ComponentRef, isView, EnumOption, ComplexType, ArrayType,
   UseTypeAsArray, Types, SourceNodeKind, SourceNodeObjectKind, SourceNodeArrayKind, BuilderConfig, AppMappings,
-  RoleDefs, RoleGroups, WidgetEntry, WidgetMarkdown, WidgetContent, AnyRole, ProcessUse, SourceRef, WidgetItem, isCodeNode as isCodeNode, isTypeBase, RoutePathItem,
+  RoleDefs, RoleGroups, WidgetEntry, WidgetMarkdown, WidgetContent, AnyRole, ProcessUse, SourceRef, WidgetItem,
+  isCodeNode, isTypeBase, RoutePathItem,
+  DocTestingScenarios, DocTestingCol, DocTestingDoc
 } from './types'
 
 export async function loadApp(ws: Workspace, appName: string): Promise<Application> {
@@ -113,7 +113,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     }
   }
 
-  function isArrArg(arg: ts.Node) {
+  function isArrArg(arg: ts.Node): arg is ts.ArrayLiteralExpression {
     return (arg instanceof ts.ArrayLiteralExpression)
   }
 
@@ -1254,7 +1254,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           content: parseWidgetContent,
           primaryAction: parseAction,
           secondaryAction: parseAction,
-          otherActions: parserForArrArg('otherActions', parseAction)
+          otherActions: parserForArrArg('otherActions', parseAction),
         }, ['title', 'secondaryAction', 'otherActions'])
         const allActions = arrayConst<'allActions', ViewAction>('allActions', ws.getRef(itmView))
         allActions.items.push(vprops.primaryAction)
@@ -1509,7 +1509,8 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           },
           states: parseDocumentStates,
           actions: parseDocActions,
-        }, [])
+          testdata: parseDocTestingScenarios
+        }, ['testdata'])
         const doc: Document = {
           kind: 'Document',
           sourceRef: ws.getRef(itmDoc),
@@ -1614,6 +1615,42 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       if (argsRoute.length !== 1) ws.error(expr1Route.getSourceFile().getFilePath() + ' routes precisa de um parametro', expr1Route)
       comp.routes = parseRoutes(argsRoute[0])
       return comp
+    }
+
+    function parseDocTestingScenarios(argCenario: ts.Node): DocTestingScenarios {
+      const r = ws.getRef(argCenario)
+      if (isObjArg(argCenario)) {
+        const cenarios = objectConst<'DocTestingScenarios', DocTestingCol>(
+          'DocTestingScenarios', r)
+        parseObjArg(argCenario, {
+          '*'(val, name) {
+            const testcases = parseDocTestingCol(val)
+            cenarios.add(name, testcases)
+            return testcases
+          }
+        }, ['*'])
+        return cenarios
+      }
+      throw ws.fatal('Cenários de teste eram esperados aqui', r)
+    }
+
+    function parseDocTestingCol(argCaso: ts.Node): DocTestingCol {
+      const r = ws.getRef(argCaso)
+      if (isArrArg(argCaso)) {
+        const casos = parserForArrArg('DocTestingCol', (item) => {
+          const data = parseObjArgAny(item, {
+            '*': (val) => val
+          }, ['*']) as any
+          const caso: DocTestingDoc = {
+            kind: 'DocTestingDoc',
+            sourceRef: ws.getRef(argCaso),
+            data
+          }
+          return caso
+        })(argCaso)
+        return casos
+      }
+      throw ws.fatal('Caso de coleção era esperado aqui', r)
     }
   }
 
