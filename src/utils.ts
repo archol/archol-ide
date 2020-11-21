@@ -105,3 +105,8 @@ export function tildeExpand(src: string, imp: string) {
     impparts.splice(0, i);
   }
 }
+
+export function parseArcholDate(str: string) {
+  if (str) return new Date(str).toISOString()
+  return new Date().toISOString()
+}

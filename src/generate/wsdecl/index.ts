@@ -103,8 +103,6 @@ declare type ${appname}_Mappings = {
 
   function genDeclComp(comp: Component, w: CodeBlockWriter) {
 
-    const allTestScenarios: string[] = []
-
     const compid = comp.uri.id.str
     w.writeLine(`
 declare function declareComponent (ns: '${comp.uri.ns.str}', path: '${comp.uri.path.str}'): ${compid}_DeclUses
@@ -146,10 +144,16 @@ declare interface ${compid}_DeclDocuments {
   documents (documents: {${comp.documents.props.map((d) => `${d.key.str}: ${compid}_document_${d.key.str}_Decl,`).join('\n')}
   }): ${compid}_DeclRoutes
 }
+
+declare type ${compid}_DocNames = ${typePipeStr(comp.documents.props.map((d) => d.key.str))}
+
 declare interface ${compid}_DeclRoutes {
-  routes (routes: { [path:string]: ${compid}_Route}): void
+  routes (routes: { [path:string]: ${compid}_Route}): ${compid}_DeclTesting
 }
 declare type ${compid}_Route = string | ((app: ${compid}_Ref, ...args: any[]) => void)
+declare interface ${compid}_DeclTesting {
+  testing (scenarios: {[scenario in ${compid}_TestScenarios]: ${compid}_TestScenario}): void
+}
 
 declare interface ${compid}_Ref {
   dep: {
@@ -242,7 +246,9 @@ interface ${compid}_DeclDocFields {
 
     w.writeLine(`
     declare interface ${compid}_database {      
-      ${comp.documents.props.map((d) => d.key.str + ': ' + compid + '_document_' + d.key.str + '_Data').join(',\n')}
+      ${comp.documents.props.map((d) => d.key.str +
+      ': {[id in ' + compid + '_document_' + d.key.str + '_GUID]:'
+      + compid + '_document_' + d.key.str + '_Data$}').join(',\n')}
     }
     `)
 
@@ -387,8 +393,21 @@ declare interface ${compid}_document_${docName}_Decl {
   secondaryFields: ${compid}_DeclDocFields
   indexes: { [name: string]: ${compid}_document_${docName}_Fieldname[] }
   actions: ${compid}_document_${docName}_DeclActions
-  //testdata: ${compid}_document_${docName}_Scenarios
 }
+declare type ${compid}_document_${docName}_GUID = ${typePipeStr(
+        [`${compid}_document_${docName}_GUID`].concat((() => {
+          const r: string[] = []
+          comp.testing.props.forEach((scenario) => {
+            scenario.val.documents.props.forEach(d => {
+              d.val.data.items.forEach((v) => {
+                console.log(v.data)
+                r.push(v.data.$id)
+              })
+            })
+          })
+          return r
+        })())
+      )}
 declare type ${compid}_document_${docName}_Fieldname = ${typePipeStr(doc.refs.allFields.items.map((f) => f.path))}
 declare type ${compid}_document_${docName}_StateName = ${typePipeStr(doc.refs.states.items.map((f) => f.path))}
 declare type ${compid}_document_${docName}_ActionName = ${typePipeStr(doc.refs.actions.items.map((f) => f.path))}
@@ -396,62 +415,84 @@ declare interface ${compid}_document_${docName}_DeclActions {
   ${doc.refs.actions.items.map(genAction).join(',\n')}      
 }
 
-declare type ${compid}_document_${docName}_Scenarios = {
-  [scenario in ${compid}_TestScenarios]: ${compid}_document_${docName}_TestCaseDoc[]
-}
-declare type ${compid}_document_${docName}_TestCaseDoc = {
-  $id: string,
-  $state: cvv_org_br_cadastro_document_voluntario_StateName,
-} & ${compid}_document_${docName}_Data
-
 declare interface ${compid}_document_${docName}_Data {
   ${doc.refs.allFields.items.map((f) =>
         `${f.path}:${f.ref.type.base(null)}`
       ).join('\n')}  
 }
+declare interface ${compid}_document_${docName}_Data$ extends ${compid}_document_${docName}_Data {
+  $id: ${compid}_document_${docName}_GUID
+  $state: ${compid}_document_${docName}_StateName
+}
+
 declare interface ${compid}_document_${docName}_Ref {
   ${doc.refs.actions.items.map((a) =>
         `${a.path}: ${a.ref.run ?
           '(' +
-          a.ref.run.params.slice(1).map(p => p.getText()).join(', ') +
+          (a.ref.from ? 'data: ' + compid + '_document_' + docName + '_GUID,' : '') +
+          actionArgs(a) +
           ') => ' +
-          a.ref.run.ret.getText()
-          : '() => Promise<void>'
+          actionRet(a, docName)
+
+          : '(' + (a.ref.from ? 'data: ' + compid + '_document_' + docName + '_GUID' : '')
+          + ') => Promise<void>'
         }
 `).join('')}}
 `.trimStart())
-      if (doc.testdata) doc.testdata.props.forEach((testcases) => {
-        if (allTestScenarios.indexOf(testcases.key.str) === -1)
-          allTestScenarios.push(testcases.key.str)
-      })
       function genAction(a: ComponentRef<DocAction>) {
-        const acargs = a.ref.run ? a.ref.run.params.map((p, idx) => {
-          const ptxt = p.getText()
-          if (idx === 0) {
-            if (ptxt.includes(':')) ws.error('nao deve ter o tipo', p)
-            return null
-          }
-          return ptxt
-        }).filter((p) => p !== null).join() : ''
-        const acret = a.ref.run ? a.ref.run.ret.getText() : 'Promise<void>'
+        const acargs = actionArgs(a)
+        const acret = a.ref.from ? actionRet(a, docName) : 'Promise<void>'
         return `${a.path}: {
           from?: ${compid}_document_${docName}_StateName | ${compid}_document_${docName}_StateName[],
           to: ${compid}_document_${docName}_StateName | ${compid}_document_${docName}_StateName[],
           icon: Icon,
           description: I18N,
           run?(data: ${compid}_document_${docName}_Data, ${acargs}): ${acret}     
-        //  testing: {
-        //    [testname: string]: (fn: (${acargs})=> ${acret}, db: ${compid}_database)=>void
-        //  }
-      }`
+        }`
       }
     }
+
+    function actionArgs(a: ComponentRef<DocAction>) {
+      return a.ref.run ? a.ref.run.params.map((p, idx) => {
+        const ptxt = p.getText()
+        if (idx === 0) {
+          if (ptxt.includes(':')) ws.error('nao deve ter o tipo', p)
+          return null
+        }
+        return ptxt
+      }).filter((p) => p !== null).join() : ''
+    }
+
+    function actionRet(a: ComponentRef<DocAction>, docName: string) {
+      return a.ref.from ?
+        (a.ref.run ? a.ref.run.ret.getText() : 'Promise<void>')
+        : `Promise<${compid}_document_${docName}_GUID>`
+    }
+
     function genTestInfo() {
+
+      const scenarios: string[] = comp.testing.props.map((t) => t.key.str)
+
       declsource.addStatements((w) => {
         w.write(`
-    declare type ${compid}_TestScenarios = ${typePipeStr(allTestScenarios)}
+        declare interface ${compid}_TestScenario {
+          now: string,
+          cases: ${compid}_TestCases
+          documents: ${compid}_TestDocuments
+        }
+
+        declare interface ${compid}_TestCases {
+          [testname: string]: (pkg: ${compid}_Ref, db: ${compid}_database)=>void
+        }
+              
+        declare interface ${compid}_TestDocuments {${comp.documents.props.map((d) => `
+          ${d.key.str}: ${compid}_document_${d.key.str}_Data$[]`)}
+        }
+            
+        declare type ${compid}_TestScenarios = ${typePipeStr(scenarios)}
     `)
       })
+
     }
   }
   function declareGlobals() {
@@ -515,6 +556,10 @@ declare type Pagelet = {
 declare interface Builders { "mui-deepstream": BuilderConfig }
 
 declare type AllComponentUris = ${typePipeStr(AllComponentUris)}
+
+declare function expect<T>(actual:T): {
+  toBe(expected: T)
+}
 
 `.trimStart())
     })

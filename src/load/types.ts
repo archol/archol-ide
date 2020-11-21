@@ -3,7 +3,7 @@ import * as ts from 'typescript'
 
 export type SourceNodeArrayKind = 'AppLanguages' | 'RoleGroup' | 'DocIndexFields' |
   'UsedDocStates' | 'AllowLocRoleList' | 'Widgets' | 'otherActions' | 'allActions' |
-  'UseTaskForks' | 'Menu' | 'RoutePath' | 'DocTestingCol'
+  'UseTaskForks' | 'Menu' | 'RoutePath' | 'TestingDocumentItems'
 
 export type SourceNodeRefsKind = 'RefTypes' | 'RefDocuments' | 'RefProcesses' | 'RefRoles' | 'RefViews' |
   'RefOperations' | 'RefPrimaryFields' | 'RefSecondaryFields' | 'RefDocIndexes' | 'RefDocStates' | 'RefDocAction'
@@ -11,19 +11,20 @@ export type SourceNodeRefsKind = 'RefTypes' | 'RefDocuments' | 'RefProcesses' | 
 export type SourceNodeObjectKind = 'AppBuilders' | 'Pagelets' | 'AppMappings' |
   'I18NMsg' | 'ComponentUses' | 'RoleDefs' | 'RoleGroups' | 'Types' | 'EnumOptions' | 'Fields' | 'Documents' |
   'DocActions' | 'DocFields' | 'DocIndexes' | 'DocumentStates' | 'Processes' | 'Tasks' |
-  'BindVars' | 'Views' | 'Operations' | 'Routes' | 'DocTestingScenarios' | 'DocActionTestCases' |
+  'BindVars' | 'Views' | 'Operations' | 'Routes' |
+  'TestingScenarios' | 'TestingCases' | 'TestingDocuments' |
   SourceNodeRefsKind
 
 export type SourceNodeWidgetKind = 'WidgetEntry' | 'WidgetMarkdown'
 
-export type SourceNodeKind = 'Application' | 'Component' | 'StringConst' | 'NumberConst' | 'BooleanConst' |
+export type SourceNodeKind = 'Application' | 'Component' | 'StringConst' | 'DateConst' | 'NumberConst' | 'BooleanConst' |
   'Workspace' | 'Application' | 'Icon' | 'I18N' | 'ComponentUse' | 'Component' | 'RoleDef' |
   'BaseType' | 'NormalType' | 'EnumType' | 'EnumOption' | 'ComplexType' | 'ArrayType' | 'UseType1' | 'UseTypeAsArray' |
   'Field' | 'Document' | 'DocAction' | 'DocField' | 'DocIndex' | 'DocumentState' | 'UseDocStates' |
   'Process' | 'ProcessUse' | 'ProcessVars' | 'AllowLocRoles' | 'AllowSysRole' | 'UseTask' | 'UITask' | 'UseView' | 'SystemTask' |
   'UseOperation' | 'BindVar' | 'View' | 'ViewAction' | 'WidgetContent' | 'WidgetEntry' | 'WidgetMarkdown' | 'OperationLevel' |
   'Operation' | 'Code' | 'BuilderConfig' | 'Pagelet' | 'RouteCode' | 'RouteRedirect' | 'MenuItem' | 'MenuItemSeparator' |
-  'RoutePathItem' | 'DocTestingDoc' |
+  'RoutePathItem' | 'TestingScenario' | 'TestingDocument' | 'TestingDocumentItem' |
   //
   SourceNodeArrayKind | SourceNodeObjectKind | SourceNodeWidgetKind
 
@@ -72,7 +73,15 @@ export function isStringConst(node: any): node is StringConst {
 }
 
 export interface StringConst<T extends string = string> extends SourceNode<'StringConst'> {
-  str: string
+  str: T
+}
+
+export function isDateConst(node: any): node is DateConst {
+  return node && node.kind === 'DateConst'
+}
+
+export interface DateConst extends SourceNode<'DateConst'> {
+  iso: string
 }
 
 export interface NumberConst extends SourceNode<'NumberConst'> {
@@ -218,6 +227,7 @@ export interface Component extends SourceNode<'Component'> {
   views: Views,
   operations: Operations,
   routes: Routes
+  testing: TestingScenarios
 }
 
 export type RoleDefs = ObjectConst<'RoleDefs', RoleDef>
@@ -418,14 +428,7 @@ export interface Document extends SourceNodeMapped<'Document'> {
     indexes: ComponentRefs<DocIndex>
     states: ComponentRefs<DocumentState>
     actions: ComponentRefs<DocAction>
-  },
-  testdata: DocTestingScenarios
-}
-
-export type DocTestingScenarios = ObjectConst<'DocTestingScenarios', DocTestingCol>
-export type DocTestingCol = ArrayConst<'DocTestingCol', DocTestingDoc>
-export interface DocTestingDoc extends SourceNode<'DocTestingDoc'> {
-  data: any
+  }
 }
 
 export type DocActions = ObjectConst<'DocActions', DocAction>
@@ -436,10 +439,7 @@ export interface DocAction extends SourceNodeMapped<'DocAction'> {
   icon: Icon
   description: I18N
   run?: Code
-  testing: DocActionTestCases
 }
-
-export type DocActionTestCases = ObjectConst<'DocActionTestCases', Code>
 
 export type DocFields = ObjectConst<'DocFields', DocField>
 
@@ -746,6 +746,27 @@ export interface ComponentRef<T extends SourceNode<any>> {
   ref: T
 }
 
+export type TestingScenarios = ObjectConst<'TestingScenarios', TestingScenario>
+
+export interface TestingScenario extends SourceNode<'TestingScenario'> {
+  now: DateConst
+  cases: TestingCases
+  documents: TestingDocuments
+}
+
+export type TestingCases = ObjectConst<'TestingCases', Code>
+export type TestingDocuments = ObjectConst<'TestingDocuments', TestingDocument>
+export interface TestingDocument extends SourceNode<'TestingDocument'> {
+  name: StringConst,
+  data: TestingDocumentItems
+}
+
+export type TestingDocumentItems = ArrayConst<'TestingDocumentItems', TestingDocumentItem>
+
+export interface TestingDocumentItem extends SourceNode<'TestingDocumentItem'> {
+  data: any
+}
+
 export type SourceNodeType<KIND extends SourceNodeKind> = KIND extends 'Application' ? Application :
   KIND extends 'Component' ? Component :
   KIND extends 'StringConst' ? StringConst :
@@ -809,8 +830,10 @@ export type SourceNodeType<KIND extends SourceNodeKind> = KIND extends 'Applicat
   KIND extends 'MenuItemSeparator' ? MenuItemSeparator :
   KIND extends 'RoleDef' ? RoleDef :
   KIND extends 'RoleGroup' ? RoleGroup :
-  KIND extends 'DocTestingScenarios' ? DocTestingScenarios :
-  KIND extends 'DocTestingCol' ? DocTestingCol :
-  KIND extends 'DocTestingDoc' ? DocTestingDoc :
-  KIND extends 'DocActionTestCases' ? DocActionTestCases :
+  KIND extends 'TestingScenarios' ? TestingScenarios :
+  KIND extends 'TestingScenario' ? TestingScenario :
+  KIND extends 'TestingCases' ? TestingCases :
+  KIND extends 'TestingDocuments' ? TestingDocuments :
+  KIND extends 'TestingDocumentItems' ? TestingDocumentItems :
+  KIND extends 'TestingDocumentItem' ? TestingDocumentItem :
   unknown

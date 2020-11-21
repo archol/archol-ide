@@ -1,9 +1,9 @@
 
 import { join } from 'path';
 import * as ts from 'ts-morph'
-import { deferPromise, DeferredPromise, mapObjectToArray } from '../utils';
+import { deferPromise, DeferredPromise, mapObjectToArray, parseArcholDate } from '../utils';
 import {
-  Application, ArrayConst, BooleanConst, NumberConst, objectConst, ObjectConst, Component,
+  Application, ArrayConst, BooleanConst, NumberConst, objectConst, ObjectConst, Component, DateConst,
   SourceNode, StringConst, Workspace, sysRoles, isDocument, isProcess, isWidgetContent, EnumType, UseType1,
   Process, Operation, View, Type, Document, RoleDef, Code, I18N, arrayConst, Icon, ComponentUse, ComponentUses,
   Task, UseTask, AllowSysRole, AllowLocRoles, AllowRoles, Fields, Field, UseType, BindVar, ProcessVars,
@@ -13,8 +13,8 @@ import {
   RouteCode, RoleGroup, TsNode, basicTypes3, ComponentRefs, ComponentRef, isView, EnumOption, ComplexType, ArrayType,
   UseTypeAsArray, Types, SourceNodeKind, SourceNodeObjectKind, SourceNodeArrayKind, BuilderConfig, AppMappings,
   RoleDefs, RoleGroups, WidgetEntry, WidgetMarkdown, WidgetContent, AnyRole, ProcessUse, SourceRef, WidgetItem,
-  isCodeNode, isTypeBase, RoutePathItem,
-  DocTestingScenarios, DocTestingCol, DocTestingDoc, DocActionTestCases
+  RoutePathItem, TestingScenario, TestingCases,
+  TestingDocuments, TestingDocument, TestingDocumentItems, TestingDocumentItem
 } from './types'
 
 export async function loadApp(ws: Workspace, appName: string): Promise<Application> {
@@ -137,6 +137,26 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     return (arg: ts.Node) => parseStrArg<T>(arg)
   }
 
+  function parseDateArg(arg: ts.Node): DateConst {
+    let ret: DateConst = undefined as any
+    if (arg instanceof ts.StringLiteral) ret = {
+      kind: 'DateConst',
+      sourceRef: ws.getRef(arg),
+      iso: parseArcholDate(arg.getLiteralValue())
+    }
+    else if (arg instanceof ts.NoSubstitutionTemplateLiteral) ret = {
+      kind: 'DateConst',
+      sourceRef: ws.getRef(arg),
+      iso: parseArcholDate(arg.getLiteralValue())
+    }
+    else ws.error(arg.getSourceFile().getFilePath() + ' ' + arg.getText() + ' string é esperada', arg)
+    return ret
+  }
+
+  function isNumArg(arg: ts.Node): arg is ts.NumericLiteral {
+    return (arg instanceof ts.NumericLiteral)
+  }
+
   function parseNumArg(arg: ts.Node): NumberConst {
     let ret: NumberConst = undefined as any
     if (arg instanceof ts.NumericLiteral) ret = {
@@ -146,6 +166,10 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     }
     else ws.error(arg.getSourceFile().getFilePath() + ' ' + arg.getText() + ' number é esperada', arg)
     return ret
+  }
+
+  function isBolArg(arg: ts.Node): arg is ts.BooleanLiteral {
+    return (arg instanceof ts.BooleanLiteral)
   }
 
   function parseBolArg(arg: ts.Node): BooleanConst {
@@ -551,10 +575,10 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         if (!ok) ws.error('Rota inválida: ' + itmPath.str, itmPath)
         const r: RoutePathItem = {
           ...itmPath,
-          str: p,
+          str: p as any,
         }
         if (isparam) {
-          r.str = '=' + r.str.replace('{', '').replace('}', '')
+          r.str = ('=' + r.str.replace('{', '').replace('}', '')) as any
           r.type = true as any
           params.push(r)
         }
@@ -1509,8 +1533,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           },
           states: parseDocumentStates,
           actions: parseDocActions,
-          testdata: parseDocTestingScenarios
-        }, ['testdata'])
+        }, [])
         const doc: Document = {
           kind: 'Document',
           sourceRef: ws.getRef(itmDoc),
@@ -1579,8 +1602,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             icon: parseIcon,
             description: parseI18N,
             run: parserForCode(),
-            testing: parseTestAction,
-          }, ['run', 'from', 'testing'])
+          }, ['run', 'from'])
           const ac: DocAction = {
             kind: 'DocAction',
             sourceRef: ws.getRef(argAction),
@@ -1608,13 +1630,6 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             .items.forEach((i) => useDocStates.states.items.push(i))
           return useDocStates
         }
-        function parseTestAction(argTestAction: ts.Node): DocActionTestCases {
-          const cases = objectConst<'DocActionTestCases', Code>('DocActionTestCases', ws.getRef(argTestAction))
-          const props = parseObjArg(argTestAction, {
-            '*': parserForCode()
-          }, ['*'])
-          return cases
-        }
       })
       return { routes }
     }
@@ -1622,43 +1637,78 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       const argsRoute = expr1Route.getArguments()
       if (argsRoute.length !== 1) ws.error(expr1Route.getSourceFile().getFilePath() + ' routes precisa de um parametro', expr1Route)
       comp.routes = parseRoutes(argsRoute[0])
+      return { testing }
+    }
+
+    function testing(expr1Scenarios: ts.CallExpression) {
+      const argsScenarios = expr1Scenarios.getArguments()
+      if (argsScenarios.length !== 1) ws.error(expr1Scenarios.getSourceFile().getFilePath() + ' routes precisa de um parametro', expr1Scenarios)
+      comp.testing = parseColObjArg<'TestingScenarios', TestingScenario>(
+        'TestingScenarios', argsScenarios[0], parseTestingScenario)
       return comp
     }
 
-    function parseDocTestingScenarios(argCenario: ts.Node): DocTestingScenarios {
-      const r = ws.getRef(argCenario)
-      if (isObjArg(argCenario)) {
-        const cenarios = objectConst<'DocTestingScenarios', DocTestingCol>(
-          'DocTestingScenarios', r)
-        parseObjArg(argCenario, {
+    function parseTestingScenario(argCenario: ts.Node): TestingScenario {
+      const props = parseObjArg(argCenario, {
+        now: parseDateArg,
+        cases: parseTestingCases,
+        documents: parseTestingDocuments,
+      }, [])
+      const scenario: TestingScenario = {
+        kind: 'TestingScenario',
+        sourceRef: ws.getRef(argCenario),
+        ...props
+      }
+      return scenario
+    }
+
+    function parseTestingCases(argCase: ts.Node): TestingCases {
+      const cases = objectConst<'TestingCases', Code>('TestingCases', ws.getRef(argCase))
+      const props = parseObjArg(argCase, {
+        '*': parserForCode()
+      }, ['*'])
+      return cases
+    }
+
+    function parseTestingDocuments(argDoc: ts.Node): TestingDocuments {
+      const r = ws.getRef(argDoc)
+      if (isObjArg(argDoc)) {
+        const documents = objectConst<'TestingDocuments', TestingDocument>(
+          'TestingDocuments', r)
+        parseObjArg(argDoc, {
           '*'(val, name) {
-            const testcases = parseDocTestingCol(val)
-            cenarios.add(name, testcases)
-            return testcases
+            const doc: TestingDocument = {
+              kind: 'TestingDocument',
+              sourceRef: ws.getRef(name),
+              name,
+              data: parseTestingDocumentItems(val)
+            }
+            documents.add(name, doc)
+            return doc
           }
         }, ['*'])
-        return cenarios
+        return documents
       }
       throw ws.fatal('Cenários de teste eram esperados aqui', r)
     }
 
-    function parseDocTestingCol(argCaso: ts.Node): DocTestingCol {
-      const r = ws.getRef(argCaso)
-      if (isArrArg(argCaso)) {
-        const casos = parserForArrArg('DocTestingCol', (item) => {
+    function parseTestingDocumentItems(argItems: ts.Node): TestingDocumentItems {
+      return parserForArrArg<'TestingDocumentItems', TestingDocumentItem>(
+        'TestingDocumentItems', (item) => {
           const data = parseObjArgAny(item, {
-            '*': (val) => val
+            '*'(val) {
+              if (isNumArg(val)) return val.getLiteralValue()
+              if (isStrArg(val)) return parseStrArg(val).str
+              ws.error('valor invalido', val)
+            }
           }, ['*']) as any
-          const caso: DocTestingDoc = {
-            kind: 'DocTestingDoc',
-            sourceRef: ws.getRef(argCaso),
+          const caso: TestingDocumentItem = {
+            kind: 'TestingDocumentItem',
+            sourceRef: ws.getRef(argItems),
             data
           }
           return caso
-        })(argCaso)
-        return casos
-      }
-      throw ws.fatal('Caso de coleção era esperado aqui', r)
+        })(argItems)
     }
   }
 
@@ -1818,6 +1868,7 @@ function invalidComponent(uri: StringConst) {
     views: objectConst('Views', uri.sourceRef),
     operations: objectConst('Operations', uri.sourceRef),
     routes: objectConst('Routes', uri.sourceRef),
+    testing: objectConst('TestingScenarios', uri.sourceRef),
   }
   return comp
 }
