@@ -1,7 +1,9 @@
+import { strict } from 'assert'
+import { scrypt } from 'crypto'
 import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
-import { genFieldsWithBase, genFieldsWithType } from '../../common/fields'
+import { genFieldsWithBase, genFieldsWithType } from '../common/fields'
 
-export const generateClientTypings = sourceTransformer({
+export const generateServerTypings = sourceTransformer({
   filePath: '~/app/typings.ts',
   cfg: {},
   transformations: {
@@ -34,17 +36,24 @@ const genCompRef = nodeTransformer({
     return w.chipResult(id, [
       ['export interface ' + id,
       w.object({
-        process: w.mapObj(comp.processes, (val, key) =>
-          src.chip(10, genProcessRef.make(val, { compuri }))
+        type: w.mapObj(comp.types, (val, key) =>
+          ['T', val.nodeMapping.uri]
         ),
-        view: w.mapObj(comp.views, (val, key) =>
-          src.chip(20,
-            genViewInstanceType.make(val, { compuri }))
-        ),
-        operation: w.mapObj(comp.operations, (val, key) =>
-          src.chip(30,
-            genOpInstanceType.make(val, { compuri }))
-        ),
+        document: w.mapObj(comp.documents, (val, key) => {
+          src.require('T' + val.nodeMapping.uri(), '~/app/' + val.nodeMapping.uri('/'), val)
+          return ['T', val.nodeMapping.uri]
+        }),
+        // process: w.mapObj(comp.processes, (val, key) =>
+        //   src.chip(10, genProcessRef.make(val, { compuri }))
+        // ),
+        // view: w.mapObj(comp.views, (val, key) =>
+        //   src.chip(20,
+        //     genViewInstanceType.make(val, { compuri }))
+        // ),
+        // operation: w.mapObj(comp.operations, (val, key) =>
+        //   src.chip(30,
+        //     genOpInstanceType.make(val, { compuri }))
+        // ),
       })]
     ], false)
   },

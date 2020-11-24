@@ -2,7 +2,7 @@ import { CodeLines, CodePartL, CodePartLines } from 'generate/lib/codeWriter'
 import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
 import { withPathTransverser } from 'generate/lib/transverses/withPathTransverser'
 import { isCodeNode, isWidgetContent, isWidgetEntry, isWidgetMarkdown, WidgetContent, WidgetEntry, WidgetMarkdown } from 'load/types'
-import { genUseType } from './useType'
+import { genUseType } from '../../common/useType'
 
 export const generateClientCompProcesses = sourceTransformer({
   multiple: true,

@@ -400,7 +400,6 @@ declare type ${compid}_document_${docName}_GUID = ${typePipeStr(
           comp.testing.props.forEach((scenario) => {
             scenario.val.documents.props.forEach(d => {
               d.val.data.items.forEach((v) => {
-                console.log(v.data)
                 r.push(v.data.$id)
               })
             })

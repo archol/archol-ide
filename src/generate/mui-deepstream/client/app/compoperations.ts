@@ -1,7 +1,7 @@
 import { CodeLines, CodePartL, CodePartLines } from 'generate/lib/codeWriter'
 import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
 import { isWidgetContent, isWidgetEntry, isWidgetMarkdown, WidgetContent, WidgetEntry, WidgetMarkdown } from 'load/types'
-import { genUseType } from './useType'
+import { genUseType } from '../../common/useType'
 
 export const generateClientCompOperations = sourceTransformer({
   multiple: true,

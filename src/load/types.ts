@@ -42,10 +42,15 @@ export interface SourceNodeWithName<KIND extends SourceNodeKind> extends SourceN
   name: StringConst
 }
 
+export interface NodeMapping {
+  parent: SourceNodeMapped<any>
+  name: string
+  uri(sep?: string): string
+  path: Array<SourceNodeMapped<any>>
+}
+
 export interface SourceNodeMapped<KIND extends SourceNodeKind> extends SourceNodeWithName<KIND> {
-  nodeMapping: {
-    id: string
-  }
+  nodeMapping: NodeMapping
 }
 
 export interface SourceRef {
@@ -155,7 +160,7 @@ export interface Workspace extends SourceNode<'Workspace'> {
   allComponents(): string[]
 }
 
-export interface Application extends SourceNode<'Application'> {
+export interface Application extends SourceNodeMapped<'Application'> {
   name: StringConst
   description: I18N,
   icon: Icon,
@@ -170,7 +175,7 @@ export interface Application extends SourceNode<'Application'> {
   menu: Menu
   routes: Routes
   mappings: AppMappings
-  mappingList: { [id: string]: SourceNodeMapped<any> }
+  mappingList: { [id: string]: { parent: null | SourceNodeMapped<any>, node: SourceNodeMapped<any> } }
   sysroles: RoleDefs,
 
   getMapped(uri: StringConst): StringConst
@@ -200,7 +205,7 @@ export function isComponent(node: any): node is Component {
   return node && node.kind === 'Component'
 }
 
-export interface Component extends SourceNode<'Component'> {
+export interface Component extends SourceNodeMapped<'Component'> {
   uri: {
     id: StringConst
     full: StringConst
@@ -273,7 +278,10 @@ export const basicTypes3: {
     sourceRef: unkownErrorPos,
     base: () => ({ kind: 'BaseType', sourceRef: unkownErrorPos, base: 'invalid', enumOptions: false, complexFields: false, arrayType: false }),
     nodeMapping: {
-      id: 'invalid'
+      parent: null as any,
+      name: 'invalid',
+      uri: () => 'invalid',
+      path: []
     },
     name: {
       kind: 'StringConst',
@@ -287,7 +295,10 @@ export const basicTypes3: {
     sourceRef: unkownErrorPos,
     base: () => ({ kind: 'BaseType', sourceRef: unkownErrorPos, base: 'string', enumOptions: false, complexFields: false, arrayType: false }),
     nodeMapping: {
-      id: 'string'
+      parent: null as any,
+      name: 'string',
+      uri: () => 'string',
+      path: []
     },
     name: {
       kind: 'StringConst',
@@ -301,7 +312,10 @@ export const basicTypes3: {
     sourceRef: unkownErrorPos,
     base: () => ({ kind: 'BaseType', sourceRef: unkownErrorPos, base: 'number', enumOptions: false, complexFields: false, arrayType: false }),
     nodeMapping: {
-      id: 'number'
+      parent: null as any,
+      name: 'number',
+      uri: () => 'number',
+      path: []
     },
     name: {
       kind: 'StringConst',
@@ -315,7 +329,10 @@ export const basicTypes3: {
     sourceRef: unkownErrorPos,
     base: () => ({ kind: 'BaseType', sourceRef: unkownErrorPos, base: 'boolean', enumOptions: false, complexFields: false, arrayType: false }),
     nodeMapping: {
-      id: 'boolean'
+      parent: null as any,
+      name: 'boolean',
+      uri: () => 'boolean',
+      path: []
     },
     name: {
       kind: 'StringConst',
@@ -329,7 +346,10 @@ export const basicTypes3: {
     sourceRef: unkownErrorPos,
     base: () => ({ kind: 'BaseType', sourceRef: unkownErrorPos, base: 'date', enumOptions: false, complexFields: false, arrayType: false }),
     nodeMapping: {
-      id: 'date'
+      parent: null as any,
+      name: 'date',
+      uri: () => 'date',
+      path: []
     },
     name: {
       kind: 'StringConst',

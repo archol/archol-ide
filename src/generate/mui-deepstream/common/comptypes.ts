@@ -3,7 +3,7 @@ import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
 import { isWidgetContent, isWidgetEntry, isWidgetMarkdown, WidgetContent, WidgetEntry, WidgetMarkdown } from 'load/types'
 import { genUseType } from './useType'
 
-export const generateClientCompTypes = sourceTransformer({
+export const generateCompTypes = sourceTransformer({
   multiple: true,
   cfg: {},
   transformations: {
@@ -15,7 +15,7 @@ export const generateClientCompTypes = sourceTransformer({
     Component(w, comp, { transformFile }) {
       const compuri = comp.uri.id.str
       comp.types.props.forEach((v) => {
-        transformFile('~/app/' + comp.uri.id.str + '/types/' + v.key.str + '.tsx', genType.make(v.val, { compuri }))
+        transformFile('~/app/' + comp.uri.id.str + '/types/' + v.key.str + '.ts', genType.make(v.val, { compuri }))
       })
       return ''
     },

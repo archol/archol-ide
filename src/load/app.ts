@@ -14,14 +14,14 @@ import {
   UseTypeAsArray, Types, SourceNodeKind, SourceNodeObjectKind, SourceNodeArrayKind, BuilderConfig, AppMappings,
   RoleDefs, RoleGroups, WidgetEntry, WidgetMarkdown, WidgetContent, AnyRole, ProcessUse, SourceRef, WidgetItem,
   RoutePathItem, TestingScenario, TestingCases,
-  TestingDocuments, TestingDocument, TestingDocumentItems, TestingDocumentItem
+  TestingDocuments, TestingDocument, TestingDocumentItems, TestingDocumentItem, NodeMapping
 } from './types'
 
 export async function loadApp(ws: Workspace, appName: string): Promise<Application> {
   const appsource = ws.ts.getSourceFiles().filter(s => s.getBaseName() === appName + '.app.ts')[0]
 
   if (!appsource) ws.fatal('Aplicação não encontrada: ' + appName + debugFiles(), ws)
-  const mappingList: { [id: string]: SourceNodeMapped<any> } = {}
+  const mappingList: { [id: string]: { parent: null | SourceNodeMapped<any>, node: SourceNodeMapped<any> } } = {}
   const mappingPending: Array<Promise<any>> = []
   const appComponentsDef: { [compFullUri: string]: DeferredPromise<Component> } = {}
   const appComponents: { [compFullUri: string]: Component } = {}
@@ -268,17 +268,41 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     return r
   }
 
-  function nodeMapping(names: string[], register: () => SourceNodeMapped<any>) {
-    const id = names.join('.')
-    mappingPending.push(new Promise((resolve) => {
-      setTimeout(() => {
-        mappingList[id] = register()
+  function nodeMapping(
+    _parent: null | (() => SourceNodeMapped<any>),
+    kind: string,
+    _node: () => SourceNodeMapped<any>
+  ): NodeMapping {
+    const p = new Promise((resolve) => {
+      setTimeout(async () => {
+        const parent = _parent && _parent()
+        const node = _node()
+        const path: Array<SourceNodeMapped<any>> = []
+        const _uri: string[] = []
+        let p = parent
+        while (p) {
+          if (!(p.name && p.nodeMapping)) console.log(p)
+          _uri.push(p.name.str)
+          path.push(p)
+          let pp = p.nodeMapping.parent
+          if ((pp as any) instanceof Promise) {
+            pp = await (pp as any)
+          }
+          p = pp
+        }
+        const uri = (sep?: string) => [..._uri, kind, node.name.str].join(sep || '_')
+        node.nodeMapping = {
+          name: node.name.str,
+          uri,
+          path,
+          parent: parent as any,
+        }
+        mappingList[uri()] = { parent, node }
         resolve()
       }, 1)
-    }))
-    return {
-      id
-    }
+    })
+    mappingPending.push(p)
+    return p as any as NodeMapping
   }
 
   function parsePropertyName(nameNode: any) {
@@ -452,7 +476,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
   }
 
   async function declareApplication(name: StringConst, opts: ts.Node): Promise<Application> {
-    const appprops: Omit<Omit<Omit<Omit<Omit<Omit<Omit<Application, 'kind'>, 'sourceRef'>, 'name'>, 'getMapped'>, 'allComponents'>, 'mappingList'>, 'allroles'>
+    const appprops: Omit<Omit<Omit<Omit<Omit<Omit<Omit<Omit<Application, 'nodeMapping'>, 'kind'>, 'sourceRef'>, 'name'>, 'getMapped'>, 'allComponents'>, 'mappingList'>, 'allroles'>
       = parseObjArg(opts, {
         description: parseI18N,
         icon: parseIcon,
@@ -467,7 +491,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         routes: parseRoutes,
         menu: parseMenu(() => appprops.uses),
         sysroles(val) {
-          return parseRoleDefs(name)(val, true)
+          return parseRoleDefs(app)(val, true)
         }
       }, [])
     appsysroles = appprops.sysroles
@@ -475,6 +499,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     const app: Application = {
       ...appprops,
       kind: 'Application',
+      nodeMapping: nodeMapping(null, '', () => app),
       sourceRef: ws.getRef(name),
       name,
       allComponents: mapObjectToArray(appComponents, (p) => p),
@@ -664,7 +689,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     }
   }
 
-  function parseRoleDefs(parent: StringConst) {
+  function parseRoleDefs(parent: Application | Component) {
     return (argRoles: ts.Node, sys: boolean): RoleDefs => {
       const roleDefs = parseColObjArg('RoleDefs', argRoles, (itm, name) => {
         const rprops = parseObjArg(itm, {
@@ -674,7 +699,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         const role: RoleDef = {
           kind: 'RoleDef',
           sourceRef: ws.getRef(itm),
-          nodeMapping: nodeMapping([parent.str, 'role', name.str], () => role),
+          nodeMapping: nodeMapping(() => parent, 'role', () => role),
           name,
           defComp: null as any,
           ...rprops
@@ -821,6 +846,8 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     }
     const comp: Component = {
       kind: 'Component',
+      name: compid,
+      nodeMapping: nodeMapping(null, '', () => comp),
       sourceRef: ws.getRef(compfull),
       uri: compuri,
     } as any
@@ -892,7 +919,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       }
     }
 
-    function parseRolesGroup(parent: StringConst) {
+    function parseRolesGroup(parent: () => Component) {
       return (argRoles: ts.Node, sys: boolean): RoleGroups => {
         const roleGroups = parseColObjArg('RoleGroups', argRoles, (itm, name) => {
 
@@ -900,7 +927,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           const role: RoleGroup = {
             kind: 'RoleGroup',
             sourceRef: ws.getRef(itm),
-            nodeMapping: nodeMapping([parent.str, 'role', name.str], () => role),
+            nodeMapping: nodeMapping(parent, 'role', () => role),
             name,
             allow: roles,
             defComp: null as any
@@ -1057,8 +1084,8 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     function roles(expr1Roles: ts.CallExpression) {
       const args = expr1Roles.getArguments()
       if (args.length !== 1) ws.error(expr1Roles.getSourceFile().getFilePath() + ' roles precisa de um parametro', expr1Roles)
-      comp.roleDefs = parseRoleDefs(compid)(args[0], false)
-      comp.roleGroups = parseRolesGroup(compid)(args[0], false)
+      comp.roleDefs = parseRoleDefs(comp)(args[0], false)
+      comp.roleGroups = parseRolesGroup(() => comp)(args[0], false)
       return { processes }
     }
     function processes(expr1Process: ts.CallExpression) {
@@ -1093,7 +1120,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             sourceRef: ws.getRef(processName),
             name: processName,
             refs: null as any,
-            nodeMapping: nodeMapping([compid.str, 'process', processName.str], () => process),
+            nodeMapping: nodeMapping(() => comp, 'process', () => process),
             ...pprops,
             defComp: null as any
           }
@@ -1250,7 +1277,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           kind: 'Operation',
           sourceRef: ws.getRef(argsOps[0]),
           name: opName,
-          nodeMapping: nodeMapping([compid.str, 'function', opName.str], () => op),
+          nodeMapping: nodeMapping(() => comp, 'operation', () => op),
           ...fprops,
           defComp: null as any
         }
@@ -1290,7 +1317,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           kind: 'View',
           sourceRef: ws.getRef(itmView),
           name: viewName,
-          nodeMapping: nodeMapping([compid.str, 'view', viewName.str], () => view),
+          nodeMapping: nodeMapping(() => comp, 'view', () => view),
           allActions,
           refs: null as any,
           ...vprops,
@@ -1429,7 +1456,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             kind: 'NormalType',
             sourceRef: ws.getRef(itmType),
             name: typeName,
-            nodeMapping: nodeMapping([compid.str, 'type', typeName.str], () => type),
+            nodeMapping: nodeMapping(() => comp, 'type', () => type),
             ...typeProps,
             base: fbase,
             defComp: null as any
@@ -1442,7 +1469,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             kind: 'EnumType',
             sourceRef: ws.getRef(itmType),
             name: typeName,
-            nodeMapping: nodeMapping([compid.str, 'type', typeName.str], () => etype),
+            nodeMapping: nodeMapping(() => comp, 'type', () => etype),
             ...typeProps,
             base() {
               return {
@@ -1479,7 +1506,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             kind: 'ComplexType',
             sourceRef: ws.getRef(itmType),
             name: typeName,
-            nodeMapping: nodeMapping([compid.str, 'type', typeName.str], () => ctype),
+            nodeMapping: nodeMapping(() => comp, 'type', () => ctype),
             ...typeProps,
             base() {
               return {
@@ -1500,7 +1527,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             kind: 'ArrayType',
             sourceRef: ws.getRef(itmType),
             name: typeName,
-            nodeMapping: nodeMapping([compid.str, 'type', typeName.str], () => atype),
+            nodeMapping: nodeMapping(() => comp, 'type', () => atype),
             ...typeProps,
             base() {
               return {
@@ -1539,7 +1566,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           sourceRef: ws.getRef(itmDoc),
           name: docName,
           refs: null as any,
-          nodeMapping: nodeMapping([compid.str, 'document', docName.str], () => doc),
+          nodeMapping: nodeMapping(() => comp, 'document', () => doc),
           ...dprops,
           defComp: null as any
         }
@@ -1556,7 +1583,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             kind: 'DocField',
             sourceRef: ws.getRef(argField),
             name: fieldname,
-            nodeMapping: nodeMapping([compid.str, 'document', docName.str, 'field', fieldname.str], () => field),
+            nodeMapping: nodeMapping(() => doc, 'field', () => field),
             ...fprops
           }
           return field
@@ -1570,7 +1597,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             kind: 'DocIndex',
             sourceRef: ws.getRef(argIndex),
             name: indexname,
-            nodeMapping: nodeMapping([compid.str, 'document', docName.str, 'index', indexname.str], () => index),
+            nodeMapping: nodeMapping(() => doc, 'index', () => index),
             fields
           }
           return index
@@ -1587,7 +1614,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             kind: 'DocumentState',
             sourceRef: ws.getRef(argState),
             name: statename,
-            nodeMapping: nodeMapping([compid.str, 'document', docName.str, 'state', statename.str], () => state),
+            nodeMapping: nodeMapping(() => comp, 'state', () => state),
             ...sprops
           }
           return state
@@ -1607,7 +1634,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             kind: 'DocAction',
             sourceRef: ws.getRef(argAction),
             name: actionname,
-            nodeMapping: nodeMapping([compid.str, 'document', docName.str, 'action', actionname.str], () => ac),
+            nodeMapping: nodeMapping(() => doc, 'action', () => ac),
             ...aprops
           }
           return ac
@@ -1849,6 +1876,13 @@ function invalidComponent(uri: StringConst) {
       ns: uri,
       path: uri
     },
+    name: uri,
+    nodeMapping: {
+      name: uri.str,
+      uri: () => uri.str,
+      path: [],
+      parent: null as any
+    },
     uses: objectConst('ComponentUses', uri.sourceRef),
     refs: {
       baseTypes: componentRefs([]),
@@ -1899,7 +1933,10 @@ function makeInvalid(ws: Workspace, s: string, sourceRef: SourceRef) {
       }
     },
     nodeMapping: {
-      id: 'invalid' + s
+      name: s,
+      uri: () => s,
+      path: [],
+      parent: null as any
     },
     name: {
       kind: 'StringConst',

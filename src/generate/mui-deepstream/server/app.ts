@@ -1,4 +1,3 @@
-import { CodePartL } from 'generate/lib/codeWriter'
 import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
 import { generateServerCompDocs } from './docs/compdocs'
 
@@ -29,6 +28,7 @@ export const generateServerIndex = sourceTransformer({
 
 const genCompRef = nodeTransformer({
   Component(w, comp, { src, transformFile }) {
+
     const compuri = comp.uri.id.str
     const id = 'T' + compuri + 'Ref'
     return w.chipResult(id, [
@@ -36,7 +36,7 @@ const genCompRef = nodeTransformer({
       w.object({
         documents: w.mapObj(comp.documents, (val, key) => {
           const docuri = compuri + '_document_' + val.name.str
-          const docsrc = '~/app/' + compuri + '/documents/' + val.name.str
+          const docsrc = '~/app/' + compuri + '/document/' + val.name.str
           src.require(docuri, docsrc, val)
           transformFile(docsrc + '.ts', generateServerCompDocs.make(val, { compuri, docuri }))
           return id

@@ -16,7 +16,7 @@ export type CodeTraversal = (src: GenInfo<any>) => (traversal: TransformTraversa
 export interface CodeWriter {
   statements(lines: CodePartLines, block: boolean): CodeLines
   chipResult(id: string, lines: CodePartLines, block: boolean): ChipRes
-  lines(lines: CodePartLines, start: string, end: string, separator: string): CodeLines
+  lines(lines: CodePartLines, start: string, end: string, separator: string | { notInLast: string }): CodeLines
   transform(transformer: NodeTransformer<any, any>): CodePartR[]
   transform(node: SourceNode<any>): CodePartR[]
   map(nodes: Array<ObjectConst<any> | ArrayConst<any>>): CodeLines
@@ -62,7 +62,7 @@ export interface CodeLines {
   $lines$: CodeLine[]
   start: string
   end: string
-  separator: string
+  separator: string | { notInLast: string }
 }
 
 export function isCodeLines(o: any): o is CodeLines {
@@ -365,15 +365,19 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
     function resolveCodeLines(c: CodePartL) {
       if (isCodeLines(c)) {
         write(c.start)
-        c.$lines$.forEach((l, idx) => {
-          if (idx === 0 && c.start) writeln()
-          const o = txt.length
-          incIdent()
-          resolveCodePart(l.$parts$)
-          decIdent()
-          if (c.separator && (!lineIsEmpty) && o < txt.length) write(c.separator)
-          writeln()
-        })
+        c.$lines$
+          .filter((l) => l != null)
+          .forEach((l, idx, arr) => {
+            if (idx === 0 && c.start) writeln()
+            const o = txt.length
+            incIdent()
+            resolveCodePart(l.$parts$)
+            decIdent()
+            if (c.separator && (!lineIsEmpty) && o < txt.length)
+              if (typeof c.separator === 'string') write(c.separator)
+              else if (idx < arr.length - 1) write(c.separator.notInLast)
+            writeln()
+          })
         if (c.end) write(c.end)
       } else resolveCodePart(c)
     }
