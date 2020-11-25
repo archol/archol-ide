@@ -6,7 +6,7 @@ export const generateServerCompDocs = nodeTransformer({
     const pubid = 'doc:' + cfg.docuri
     src.require('ColId', '~/lib/types', doc)
     src.require('CollecionDecl', '~/lib/types', doc)
-    src.require('T' + doc.nodeMapping.uri(), '~/app/types', doc)
+    src.require('T' + doc.nodeMapping.uri(), '~/app/typings', doc)
     return [
       [
         'export const ', doc.nodeMapping.uri(), ': CollecionDecl<T', doc.nodeMapping.uri, '> = ',
@@ -22,12 +22,11 @@ export const generateServerCompDocs = nodeTransformer({
                   if (!ftype.validate) return null
                   return [
                     f.val.type,
-                    '.validate(doc[',
-                    f.key,
-                    '])'
+                    '.validate(doc.',
+                    f.key.str,
+                    ')'
                   ]
-                }), '', 'undefined', '||'
-                )
+                }), '', 'undefined', '||')
               ]])
         })
       ],
@@ -36,7 +35,7 @@ export const generateServerCompDocs = nodeTransformer({
     //   return compuse.val.ref(compuse.val.sourceRef)
     // })
   },
-  ...genUseType.transformerFactory
+  ...genUseType.transformerFactory,
 }, { compuri: '', docuri: '' })
 
 

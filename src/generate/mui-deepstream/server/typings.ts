@@ -1,7 +1,7 @@
-import { strict } from 'assert'
-import { scrypt } from 'crypto'
+
 import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
 import { genFieldsWithBase, genFieldsWithType } from '../common/fields'
+import { genUseType } from '../common/useType'
 
 export const generateServerTypings = sourceTransformer({
   filePath: '~/app/typings.ts',
@@ -39,10 +39,9 @@ const genCompRef = nodeTransformer({
         type: w.mapObj(comp.types, (val, key) =>
           ['T', val.nodeMapping.uri]
         ),
-        document: w.mapObj(comp.documents, (val, key) => {
-          src.require('T' + val.nodeMapping.uri(), '~/app/' + val.nodeMapping.uri('/'), val)
-          return ['T', val.nodeMapping.uri]
-        }),
+        document: w.mapObj(comp.documents, (val) =>
+          src.chip(10, genDocType.make(val, { compuri }))
+        ),
         // process: w.mapObj(comp.processes, (val, key) =>
         //   src.chip(10, genProcessRef.make(val, { compuri }))
         // ),
@@ -59,67 +58,22 @@ const genCompRef = nodeTransformer({
   },
 }, {})
 
-const genProcessRef = nodeTransformer({
-  Process(w, proc, info) {
-    const procpref = info.cfg.compuri + '_process_' + proc.name.str
-    const procDecl = 'T' + procpref + 'Decl'
-    const procInput = 'T' + procpref + 'Input'
-    const procLocal = 'T' + procpref + 'Local'
-    const procOutput = 'T' + procpref + 'Output'
-    const procTask = 'T' + procpref + 'Task'
-    const procTyping = procInput + ', ' + procLocal + ', ' + procOutput + ', ' + procTask
-
-    info.src.require('ArcholGUID', '~/lib/archol/types', proc)
-    info.src.require('AppContent', '~/lib/archol/types', proc)
-    info.src.require('ProcessDecl', '~/lib/archol/process', proc)
-    info.src.require('TaskDecl', '~/lib/archol/process', proc)
-
-    return w.chipResult(procDecl, [
-      ['export interface ', procInput, genFieldsWithBase.make(proc.vars.input, {})],
-      ['export interface ', procLocal, genFieldsWithBase.make(proc.vars.local, {})],
-      ['export interface ', procOutput, genFieldsWithBase.make(proc.vars.output, {})],
-      ['export interface ', procTask, w.mapObj(proc.tasks, (v, k) => {
-        const taskdecl = 'T' + procpref + '_task_' + k.str + 'Decl'
-        info.src.chip(11, [
-          ['export type ' + taskdecl, ' = ', 'TaskDecl<', procTyping, ', ', k, '>']
-        ], false)
-        return taskdecl
-      })],
-      ['export type ' + procDecl, ' = ProcessDecl<', procTyping, '>'],
+const genDocType = nodeTransformer({
+  Document(w, doc, info) {
+    const doct = 'T' + doc.nodeMapping.uri()
+    debugger
+    return w.chipResult(doct, [
+      ['export interface ', doct,
+        w.mapObj(doc.primaryFields.merge(doc.secondaryFields), (f) => {
+          return 'T' + f.type.base(f)
+        })
+      ],
     ], false)
   },
-  UITask(w, task, info) {
-    info.src.require('TaskDecl', '~/lib/archol/process', task)
-
-    // const usedView = task.useView.ref(task)
-    // const usedViewData = 'T' + info.cfg.compuri + '_view_' + usedView.name.str + 'Data'
-
-    return ['TaskDecl']
+  DocField(w, doc, { src, cfg }) {
+    return [doc.name.str, ':', doc.type]
   },
-  SystemTask(w, task, info) {
-    info.src.require('TaskDecl', '~/lib/archol/process', task)
-    return ['TaskDecl']
-  },
-}, { compuri: '' })
-
-const genProcessInstanceTypeX = nodeTransformer({
-  Process(w, proc, info) {
-    const procpref = 'T' + info.cfg.compuri + '_process_' + proc.name.str
-    const id = procpref + 'Instance'
-    info.src.require('ProcesInstance', '~/lib/archol/process', proc)
-    return w.chipResult(id, [
-      // [
-      //   'export interface ', id,
-      //   w.object({
-      //     componentId: w.string(info.cfg.compuri),
-      //     processId: w.string(proc.name.str),
-      //     instanceId: info.src.require('ArcholGUID', '~/lib/archol/types', proc),
-      //     vars: [id, 'Vars']
-      //   })
-      // ],
-
-    ], false)
-  },
+  ...genUseType.transformerFactory,
 }, { compuri: '' })
 
 const genType = nodeTransformer({

@@ -1,5 +1,4 @@
-import { CodePartL } from 'generate/lib/codeWriter'
-import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
+import { sourceTransformer } from 'generate/lib/generator'
 import { generateCompUses } from './compuses'
 
 export const generateClientApp = sourceTransformer({

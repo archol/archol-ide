@@ -118,6 +118,7 @@ export interface ObjectConst<KIND extends SourceNodeObjectKind, T extends Source
   get(key: string | StringConst): T | undefined
   keys(): string[]
   map<U>(callbackfn: (value: T, key: StringConst) => U, thisArg?: any): U[];
+  merge<KIND2 extends SourceNodeObjectKind>(other: ObjectConst<KIND2, T>): ObjectConst<KIND | KIND2, T>
 }
 
 export function isArrayConst<KIND extends SourceNodeArrayKind>(node: any): node is ArrayConst<KIND> {
@@ -741,9 +742,35 @@ export function objectConst<KIND extends SourceNodeObjectKind, T extends SourceN
     },
     add(key, val) {
       props.push({ key, val })
-    }
+    },
+    merge
   }
   return ret
+  function merge<KIND2 extends SourceNodeObjectKind>(other: ObjectConst<KIND2, T>): ObjectConst<KIND | KIND2, T> {
+    const props2: Array<ObjectConstProp<KIND | KIND2, T>> = [
+      ...props,
+      ...other.props
+    ]
+    const ret2: ObjectConst<KIND, T> = {
+      kind,
+      sourceRef,
+      props: props2,
+      get(key: string | StringConst): T | undefined {
+        if (typeof key === 'object') key = key.str
+        const f = props2.filter((p) => p.key.str === key)[0]
+        return f && f.val
+      },
+      map(fn) {
+        return props2.map((p) => fn(p.val, p.key))
+      },
+      keys() {
+        return props2.map((p) => p.key.str)
+      },
+      merge
+    }
+    return ret2
+  }
+
 }
 
 export function arrayConst<KIND extends SourceNodeArrayKind, T extends SourceNode<any>>(kind: KIND, sourceRef: SourceRef) {
