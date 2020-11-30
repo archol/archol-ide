@@ -3,7 +3,7 @@ import * as ts from 'typescript'
 
 export type SourceNodeArrayKind = 'AppLanguages' | 'RoleGroup' | 'DocIndexFields' |
   'UsedDocStates' | 'AllowLocRoleList' | 'Widgets' | 'otherActions' | 'allActions' |
-  'UseTaskForks' | 'Menu' | 'RoutePath' | 'TestingDocumentItems'
+  'UseTaskForks' | 'Menu' | 'RoutePath' | 'CompTestingDocumentItems' | 'AppTestScenarios'
 
 export type SourceNodeRefsKind = 'RefTypes' | 'RefDocuments' | 'RefProcesses' | 'RefRoles' | 'RefViews' |
   'RefOperations' | 'RefPrimaryFields' | 'RefSecondaryFields' | 'RefDocIndexes' | 'RefDocStates' | 'RefDocAction'
@@ -12,7 +12,7 @@ export type SourceNodeObjectKind = 'AppBuilders' | 'Pagelets' | 'AppMappings' |
   'I18NMsg' | 'ComponentUses' | 'RoleDefs' | 'RoleGroups' | 'Types' | 'EnumOptions' | 'Fields' | 'Documents' |
   'DocActions' | 'DocFields' | 'DocIndexes' | 'DocumentStates' | 'Processes' | 'Tasks' |
   'BindVars' | 'Views' | 'Operations' | 'Routes' |
-  'TestingScenarios' | 'TestingCases' | 'TestingDocuments' |
+  'CompTestingScenarios' | 'CompTestingCases' | 'CompTestingDocuments' |
   SourceNodeRefsKind
 
 export type SourceNodeWidgetKind = 'WidgetEntry' | 'WidgetMarkdown'
@@ -24,7 +24,7 @@ export type SourceNodeKind = 'Application' | 'Component' | 'StringConst' | 'Date
   'Process' | 'ProcessUse' | 'ProcessVars' | 'AllowLocRoles' | 'AllowSysRole' | 'UseTask' | 'UITask' | 'UseView' | 'SystemTask' |
   'UseOperation' | 'BindVar' | 'View' | 'ViewAction' | 'WidgetContent' | 'WidgetEntry' | 'WidgetMarkdown' | 'OperationLevel' |
   'Operation' | 'Code' | 'BuilderConfig' | 'Pagelet' | 'RouteCode' | 'RouteRedirect' | 'MenuItem' | 'MenuItemSeparator' |
-  'RoutePathItem' | 'TestingScenario' | 'TestingDocument' | 'TestingDocumentItem' |
+  'RoutePathItem' | 'CompTestingScenario' | 'CompTestingDocument' | 'CompTestingDocumentItem' |
   //
   SourceNodeArrayKind | SourceNodeObjectKind | SourceNodeWidgetKind
 
@@ -43,6 +43,7 @@ export interface SourceNodeWithName<KIND extends SourceNodeKind> extends SourceN
 }
 
 export interface NodeMapping {
+  component: Component
   parent: SourceNodeMapped<any>
   name: string
   uri(sep?: string): string
@@ -87,6 +88,10 @@ export function isDateConst(node: any): node is DateConst {
 
 export interface DateConst extends SourceNode<'DateConst'> {
   iso: string
+}
+
+export function isNumberConst(node: any): node is NumberConst {
+  return node && node.kind === 'NumberConst'
 }
 
 export interface NumberConst extends SourceNode<'NumberConst'> {
@@ -178,10 +183,11 @@ export interface Application extends SourceNodeMapped<'Application'> {
   mappings: AppMappings
   mappingList: { [id: string]: { parent: null | SourceNodeMapped<any>, node: SourceNodeMapped<any> } }
   sysroles: RoleDefs,
-
+  testscenarios: AppTestScenarios,
   getMapped(uri: StringConst): StringConst
 }
 
+export type AppTestScenarios = ArrayConst<"AppTestScenarios", StringConst>
 export type AppMappings = ObjectConst<'AppMappings', StringConst>
 
 export interface Icon extends SourceNode<'Icon'> {
@@ -233,7 +239,7 @@ export interface Component extends SourceNodeMapped<'Component'> {
   views: Views,
   operations: Operations,
   routes: Routes
-  testing: TestingScenarios
+  testing: CompTestingScenarios
 }
 
 export type RoleDefs = ObjectConst<'RoleDefs', RoleDef>
@@ -270,6 +276,58 @@ export const normalTypes = {
   date: true
 }
 
+export const internalComponent: Component = {
+  kind: 'Component',
+  sourceRef: unkownErrorPos,
+  name: {
+    kind: 'StringConst',
+    sourceRef: unkownErrorPos,
+    str: '$internal'
+  },
+  nodeMapping: {
+    component: null as any,
+    name: '$internal',
+    parent: null as any,
+    path: [],
+    uri() {
+      return '$internal'
+    }
+  },
+  uri: {
+    id: {
+      kind: 'StringConst',
+      sourceRef: unkownErrorPos,
+      str: '$internal'
+    },
+    full: {
+      kind: 'StringConst',
+      sourceRef: unkownErrorPos,
+      str: '$internal'
+    },
+    ns: {
+      kind: 'StringConst',
+      sourceRef: unkownErrorPos,
+      str: '$internal'
+    },
+    path: {
+      kind: 'StringConst',
+      sourceRef: unkownErrorPos,
+      str: '$internal'
+    },
+  },
+  uses: objectConst('ComponentUses', unkownErrorPos),
+  refs: null as any,
+  types: objectConst('Types', unkownErrorPos),
+  documents: objectConst('Documents', unkownErrorPos),
+  processes: objectConst('Processes', unkownErrorPos),
+  roleDefs: objectConst('RoleDefs', unkownErrorPos),
+  roleGroups: objectConst('RoleGroups', unkownErrorPos),
+  views: objectConst('Views', unkownErrorPos),
+  operations: objectConst('Operations', unkownErrorPos),
+  routes: objectConst('Routes', unkownErrorPos),
+  testing: objectConst('CompTestingScenarios', unkownErrorPos),
+}
+
 export type BasicTypesOnly = Exclude<Exclude<Exclude<keyof typeof normalTypes, 'enum'>, 'complex'>, 'array'>
 export const basicTypes3: {
   [k in BasicTypesOnly]: NormalType
@@ -279,7 +337,8 @@ export const basicTypes3: {
     sourceRef: unkownErrorPos,
     base: () => ({ kind: 'BaseType', sourceRef: unkownErrorPos, base: 'invalid', enumOptions: false, complexFields: false, arrayType: false }),
     nodeMapping: {
-      parent: null as any,
+      component: internalComponent,
+      parent: internalComponent,
       name: 'invalid',
       uri: () => 'invalid',
       path: []
@@ -296,7 +355,8 @@ export const basicTypes3: {
     sourceRef: unkownErrorPos,
     base: () => ({ kind: 'BaseType', sourceRef: unkownErrorPos, base: 'string', enumOptions: false, complexFields: false, arrayType: false }),
     nodeMapping: {
-      parent: null as any,
+      component: internalComponent,
+      parent: internalComponent,
       name: 'string',
       uri: () => 'string',
       path: []
@@ -313,7 +373,8 @@ export const basicTypes3: {
     sourceRef: unkownErrorPos,
     base: () => ({ kind: 'BaseType', sourceRef: unkownErrorPos, base: 'number', enumOptions: false, complexFields: false, arrayType: false }),
     nodeMapping: {
-      parent: null as any,
+      component: internalComponent,
+      parent: internalComponent,
       name: 'number',
       uri: () => 'number',
       path: []
@@ -330,7 +391,8 @@ export const basicTypes3: {
     sourceRef: unkownErrorPos,
     base: () => ({ kind: 'BaseType', sourceRef: unkownErrorPos, base: 'boolean', enumOptions: false, complexFields: false, arrayType: false }),
     nodeMapping: {
-      parent: null as any,
+      component: internalComponent,
+      parent: internalComponent,
       name: 'boolean',
       uri: () => 'boolean',
       path: []
@@ -347,7 +409,8 @@ export const basicTypes3: {
     sourceRef: unkownErrorPos,
     base: () => ({ kind: 'BaseType', sourceRef: unkownErrorPos, base: 'date', enumOptions: false, complexFields: false, arrayType: false }),
     nodeMapping: {
-      parent: null as any,
+      component: internalComponent,
+      parent: internalComponent,
       name: 'date',
       uri: () => 'date',
       path: []
@@ -793,25 +856,25 @@ export interface ComponentRef<T extends SourceNode<any>> {
   ref: T
 }
 
-export type TestingScenarios = ObjectConst<'TestingScenarios', TestingScenario>
+export type CompTestingScenarios = ObjectConst<'CompTestingScenarios', CompTestingScenario>
 
-export interface TestingScenario extends SourceNode<'TestingScenario'> {
+export interface CompTestingScenario extends SourceNodeMapped<'CompTestingScenario'> {
   now: DateConst
-  cases: TestingCases
-  documents: TestingDocuments
+  cases: CompTestingCases
+  documents: CompTestingDocuments
 }
 
-export type TestingCases = ObjectConst<'TestingCases', Code>
-export type TestingDocuments = ObjectConst<'TestingDocuments', TestingDocument>
-export interface TestingDocument extends SourceNode<'TestingDocument'> {
+export type CompTestingCases = ObjectConst<'CompTestingCases', Code>
+export type CompTestingDocuments = ObjectConst<'CompTestingDocuments', CompTestingDocument>
+export interface CompTestingDocument extends SourceNode<'CompTestingDocument'> {
   name: StringConst,
-  data: TestingDocumentItems
+  data: CompTestingDocumentItems
 }
 
-export type TestingDocumentItems = ArrayConst<'TestingDocumentItems', TestingDocumentItem>
+export type CompTestingDocumentItems = ArrayConst<'CompTestingDocumentItems', CompTestingDocumentItem>
 
-export interface TestingDocumentItem extends SourceNode<'TestingDocumentItem'> {
-  data: any
+export interface CompTestingDocumentItem extends SourceNode<'CompTestingDocumentItem'> {
+  data: { [field: string]: StringConst | NumberConst | BooleanConst }
 }
 
 export type SourceNodeType<KIND extends SourceNodeKind> = KIND extends 'Application' ? Application :
@@ -877,10 +940,12 @@ export type SourceNodeType<KIND extends SourceNodeKind> = KIND extends 'Applicat
   KIND extends 'MenuItemSeparator' ? MenuItemSeparator :
   KIND extends 'RoleDef' ? RoleDef :
   KIND extends 'RoleGroup' ? RoleGroup :
-  KIND extends 'TestingScenarios' ? TestingScenarios :
-  KIND extends 'TestingScenario' ? TestingScenario :
-  KIND extends 'TestingCases' ? TestingCases :
-  KIND extends 'TestingDocuments' ? TestingDocuments :
-  KIND extends 'TestingDocumentItems' ? TestingDocumentItems :
-  KIND extends 'TestingDocumentItem' ? TestingDocumentItem :
+  KIND extends 'AppTestScenarios' ? AppTestScenarios :
+  KIND extends 'CompTestingScenarios' ? CompTestingScenarios :
+  KIND extends 'CompTestingScenario' ? CompTestingScenario :
+  KIND extends 'CompTestingCases' ? CompTestingCases :
+  KIND extends 'CompTestingDocuments' ? CompTestingDocuments :
+  KIND extends 'CompTestingDocument' ? CompTestingDocument :
+  KIND extends 'CompTestingDocumentItems' ? CompTestingDocumentItems :
+  KIND extends 'CompTestingDocumentItem' ? CompTestingDocumentItem :
   unknown

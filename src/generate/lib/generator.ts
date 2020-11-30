@@ -220,7 +220,10 @@ export async function generateApplication<CFG extends object, SW extends GenNode
         }
       } = {}
 
-      if (!filePath.startsWith('~/app/')) ws.fatal('genereateFile precisa começar com ~/app', ws.sourceRef)
+      if (!filePath.startsWith('~/app/'))
+        if (!filePath.startsWith('~/test/'))
+          ws.fatal('genereateFile precisa começar com ~/app ou ~/test', ws.sourceRef)
+
       const srcfile = openSourceFile(prj.projectPath, filePath.substr(2))
       const w = codeWriter([srctransformations, prj.transformations, wstransformations], {
         ws,

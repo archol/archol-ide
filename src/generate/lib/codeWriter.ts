@@ -1,6 +1,6 @@
 import {
   ArrayConst, ObjectConst,
-  SourceNode, SourceNodeKind, SourceNodeType, StringConst, isBooleanConst,
+  SourceNode, SourceNodeKind, SourceNodeType, StringConst, isBooleanConst, isNumberConst,
   isObjectConst, isSourceNode, isStringConst, Code, isCodeNode, isArrayConst, SourceNodeObjectKind, Workspace, ObjectConstProp, isObjectConstProp, TsNode
 } from "load/types"
 import { mapObjectToArray } from 'utils'
@@ -135,7 +135,7 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
       return wSelf.lines(lines, '[', ']', ',')
     },
     code(node, opts): FuncDecl {
-      const body: CodePartLines = opts?.traversals ? (() => {
+      let body: CodePartLines = opts?.traversals ? (() => {
         const tmpp = new Project({ useInMemoryFileSystem: true });
         const tmps = tmpp.createSourceFile(
           "tmp.ts", [
@@ -154,8 +154,8 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
       })
       let retType = node.ret.getText()
       if (opts) {
-        if (opts.before) body.unshift(opts.before)
-        if (opts.after) body.push(opts.after)
+        if (opts.before) body = [...opts.before, ...body]
+        if (opts.after) body = [...opts.after, ...body]
         if (typeof opts.forceRetType === 'string') retType = opts.forceRetType
       }
       // return wSelf.lines([
@@ -275,6 +275,7 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
 
   function defaultTransformer(n: SourceNode<any>) {
     if (isStringConst(n)) return wSelf.string(n)
+    if (isNumberConst(n)) return n.num.toString()
     if (isBooleanConst(n)) return n.bool ? 'true' : 'false'
     if (isCodeNode(n)) return wSelf.code(n)
     if (isArrayConst(n)) return wSelf.map([n])

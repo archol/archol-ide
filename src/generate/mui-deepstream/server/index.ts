@@ -2,6 +2,7 @@ import { projectTransformer } from 'generate/lib/generator';
 import { genI18N } from '../client/app/i18n';
 import { generateCompTypes } from '../common/comptypes';
 import { generateServerIndex } from './app';
+import { generateServerDbTest } from './testing';
 import { generateServerTypings } from './typings';
 
 export const generateServerProject = projectTransformer({
@@ -13,6 +14,7 @@ export const generateServerProject = projectTransformer({
     generateCompTypes,
     generateServerTypings,
     generateServerIndex,
+    generateServerDbTest
   ],
   cfg: {}
 })

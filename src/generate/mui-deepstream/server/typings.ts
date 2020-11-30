@@ -61,7 +61,6 @@ const genCompRef = nodeTransformer({
 const genDocType = nodeTransformer({
   Document(w, doc, info) {
     const doct = 'T' + doc.nodeMapping.uri()
-    debugger
     return w.chipResult(doct, [
       ['export interface ', doct,
         w.mapObj(doc.primaryFields.merge(doc.secondaryFields), (f) => {

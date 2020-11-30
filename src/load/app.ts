@@ -13,8 +13,9 @@ import {
   RouteCode, RoleGroup, TsNode, basicTypes3, ComponentRefs, ComponentRef, isView, EnumOption, ComplexType, ArrayType,
   UseTypeAsArray, Types, SourceNodeKind, SourceNodeObjectKind, SourceNodeArrayKind, BuilderConfig, AppMappings,
   RoleDefs, RoleGroups, WidgetEntry, WidgetMarkdown, WidgetContent, AnyRole, ProcessUse, SourceRef, WidgetItem,
-  RoutePathItem, TestingScenario, TestingCases,
-  TestingDocuments, TestingDocument, TestingDocumentItems, TestingDocumentItem, NodeMapping
+  RoutePathItem, CompTestingScenario, CompTestingCases,
+  CompTestingDocuments, CompTestingDocument, CompTestingDocumentItems, CompTestingDocumentItem,
+  NodeMapping, internalComponent, AppTestScenarios
 } from './types'
 
 export async function loadApp(ws: Workspace, appName: string): Promise<Application> {
@@ -25,6 +26,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
   const mappingPending: Array<Promise<any>> = []
   const appComponentsDef: { [compFullUri: string]: DeferredPromise<Component> } = {}
   const appComponents: { [compFullUri: string]: Component } = {}
+  const apptestscenarios: AppTestScenarios = arrayConst('AppTestScenarios', ws.sourceRef)
   let appsysroles: RoleDefs
 
   const stmts = appsource.getStatements();
@@ -269,6 +271,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
   }
 
   function nodeMapping(
+    _comp: null | (() => Component),
     _parent: null | (() => SourceNodeMapped<any>),
     kind: string,
     _node: () => SourceNodeMapped<any>
@@ -290,12 +293,13 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           }
           p = pp
         }
-        const uri = (sep?: string) => [..._uri, kind, node.name.str].join(sep || '_')
+        const uri = (sep?: string) => [..._uri, kind, node.name.str].filter(s => !!s).join(sep || '_')
         node.nodeMapping = {
           name: node.name.str,
           uri,
           path,
           parent: parent as any,
+          component: (_comp && _comp()) as any
         }
         mappingList[uri()] = { parent, node }
         resolve()
@@ -476,7 +480,10 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
   }
 
   async function declareApplication(name: StringConst, opts: ts.Node): Promise<Application> {
-    const appprops: Omit<Omit<Omit<Omit<Omit<Omit<Omit<Omit<Application, 'nodeMapping'>, 'kind'>, 'sourceRef'>, 'name'>, 'getMapped'>, 'allComponents'>, 'mappingList'>, 'allroles'>
+    const appprops: Omit<Omit<Omit<Omit<Omit<Omit<Omit<Omit<Omit<
+      Application,
+      'nodeMapping'>, 'kind'>, 'sourceRef'>, 'name'>, 'getMapped'>, 'allComponents'>, 'mappingList'>,
+      'allroles'>, 'testscenarios'>
       = parseObjArg(opts, {
         description: parseI18N,
         icon: parseIcon,
@@ -499,11 +506,12 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     const app: Application = {
       ...appprops,
       kind: 'Application',
-      nodeMapping: nodeMapping(null, '', () => app),
+      nodeMapping: nodeMapping(null, null, '', () => app),
       sourceRef: ws.getRef(name),
       name,
       allComponents: mapObjectToArray(appComponents, (p) => p),
       mappingList,
+      testscenarios: apptestscenarios,
       getMapped(uri: StringConst) {
         const id = app.mappings.get(uri)
         if (id) return id
@@ -699,7 +707,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         const role: RoleDef = {
           kind: 'RoleDef',
           sourceRef: ws.getRef(itm),
-          nodeMapping: nodeMapping(() => parent, 'role', () => role),
+          nodeMapping: nodeMapping(isComponent(parent) ? (() => parent) : null, () => parent, 'role', () => role),
           name,
           defComp: null as any,
           ...rprops
@@ -847,7 +855,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     const comp: Component = {
       kind: 'Component',
       name: compid,
-      nodeMapping: nodeMapping(null, '', () => comp),
+      nodeMapping: nodeMapping(null, null, '', () => comp),
       sourceRef: ws.getRef(compfull),
       uri: compuri,
     } as any
@@ -927,7 +935,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           const role: RoleGroup = {
             kind: 'RoleGroup',
             sourceRef: ws.getRef(itm),
-            nodeMapping: nodeMapping(parent, 'role', () => role),
+            nodeMapping: nodeMapping(parent, parent, 'role', () => role),
             name,
             allow: roles,
             defComp: null as any
@@ -1120,7 +1128,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             sourceRef: ws.getRef(processName),
             name: processName,
             refs: null as any,
-            nodeMapping: nodeMapping(() => comp, 'process', () => process),
+            nodeMapping: nodeMapping(() => comp, () => comp, 'process', () => process),
             ...pprops,
             defComp: null as any
           }
@@ -1277,7 +1285,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           kind: 'Operation',
           sourceRef: ws.getRef(argsOps[0]),
           name: opName,
-          nodeMapping: nodeMapping(() => comp, 'operation', () => op),
+          nodeMapping: nodeMapping(() => comp, () => comp, 'operation', () => op),
           ...fprops,
           defComp: null as any
         }
@@ -1317,7 +1325,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           kind: 'View',
           sourceRef: ws.getRef(itmView),
           name: viewName,
-          nodeMapping: nodeMapping(() => comp, 'view', () => view),
+          nodeMapping: nodeMapping(() => comp, () => comp, 'view', () => view),
           allActions,
           refs: null as any,
           ...vprops,
@@ -1456,7 +1464,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             kind: 'NormalType',
             sourceRef: ws.getRef(itmType),
             name: typeName,
-            nodeMapping: nodeMapping(() => comp, 'type', () => type),
+            nodeMapping: nodeMapping(() => comp, () => comp, 'type', () => type),
             ...typeProps,
             base: fbase,
             defComp: null as any
@@ -1469,7 +1477,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             kind: 'EnumType',
             sourceRef: ws.getRef(itmType),
             name: typeName,
-            nodeMapping: nodeMapping(() => comp, 'type', () => etype),
+            nodeMapping: nodeMapping(() => comp, () => comp, 'type', () => etype),
             ...typeProps,
             base() {
               return {
@@ -1506,7 +1514,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             kind: 'ComplexType',
             sourceRef: ws.getRef(itmType),
             name: typeName,
-            nodeMapping: nodeMapping(() => comp, 'type', () => ctype),
+            nodeMapping: nodeMapping(() => comp, () => comp, 'type', () => ctype),
             ...typeProps,
             base() {
               return {
@@ -1527,7 +1535,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             kind: 'ArrayType',
             sourceRef: ws.getRef(itmType),
             name: typeName,
-            nodeMapping: nodeMapping(() => comp, 'type', () => atype),
+            nodeMapping: nodeMapping(() => comp, () => comp, 'type', () => atype),
             ...typeProps,
             base() {
               return {
@@ -1566,7 +1574,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           sourceRef: ws.getRef(itmDoc),
           name: docName,
           refs: null as any,
-          nodeMapping: nodeMapping(() => comp, 'document', () => doc),
+          nodeMapping: nodeMapping(() => comp, () => comp, 'document', () => doc),
           ...dprops,
           defComp: null as any
         }
@@ -1583,7 +1591,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             kind: 'DocField',
             sourceRef: ws.getRef(argField),
             name: fieldname,
-            nodeMapping: nodeMapping(() => doc, 'field', () => field),
+            nodeMapping: nodeMapping(() => comp, () => doc, 'field', () => field),
             ...fprops
           }
           return field
@@ -1597,7 +1605,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             kind: 'DocIndex',
             sourceRef: ws.getRef(argIndex),
             name: indexname,
-            nodeMapping: nodeMapping(() => doc, 'index', () => index),
+            nodeMapping: nodeMapping(() => comp, () => doc, 'index', () => index),
             fields
           }
           return index
@@ -1614,7 +1622,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             kind: 'DocumentState',
             sourceRef: ws.getRef(argState),
             name: statename,
-            nodeMapping: nodeMapping(() => comp, 'state', () => state),
+            nodeMapping: nodeMapping(() => comp, () => comp, 'state', () => state),
             ...sprops
           }
           return state
@@ -1634,7 +1642,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
             kind: 'DocAction',
             sourceRef: ws.getRef(argAction),
             name: actionname,
-            nodeMapping: nodeMapping(() => doc, 'action', () => ac),
+            nodeMapping: nodeMapping(() => comp, () => doc, 'action', () => ac),
             ...aprops
           }
           return ac
@@ -1670,42 +1678,50 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
     function testing(expr1Scenarios: ts.CallExpression) {
       const argsScenarios = expr1Scenarios.getArguments()
       if (argsScenarios.length !== 1) ws.error(expr1Scenarios.getSourceFile().getFilePath() + ' routes precisa de um parametro', expr1Scenarios)
-      comp.testing = parseColObjArg<'TestingScenarios', TestingScenario>(
-        'TestingScenarios', argsScenarios[0], parseTestingScenario)
+      comp.testing = parseColObjArg<'CompTestingScenarios', CompTestingScenario>(
+        'CompTestingScenarios', argsScenarios[0], parseTestingScenario)
       return comp
     }
 
-    function parseTestingScenario(argCenario: ts.Node): TestingScenario {
+    function parseTestingScenario(argCenario: ts.Node, name: StringConst): CompTestingScenario {
+      if (!apptestscenarios.items.some((t) => t.str === name.str))
+        apptestscenarios.items.push({ ...name })
       const props = parseObjArg(argCenario, {
         now: parseDateArg,
         cases: parseTestingCases,
         documents: parseTestingDocuments,
       }, [])
-      const scenario: TestingScenario = {
-        kind: 'TestingScenario',
+      const scenario: CompTestingScenario = {
+        kind: 'CompTestingScenario',
         sourceRef: ws.getRef(argCenario),
+        name,
+        nodeMapping: nodeMapping(() => comp, () => comp, 'test', () => scenario),
         ...props
       }
       return scenario
     }
 
-    function parseTestingCases(argCase: ts.Node): TestingCases {
-      const cases = objectConst<'TestingCases', Code>('TestingCases', ws.getRef(argCase))
-      const props = parseObjArg(argCase, {
-        '*': parserForCode()
+    function parseTestingCases(argCase: ts.Node): CompTestingCases {
+      const cases = objectConst<'CompTestingCases', Code>('CompTestingCases', ws.getRef(argCase))
+      parseObjArg(argCase, {
+        '*'(val, key) {
+          const code = parserForCode()(val)
+          cases.add(key, code)
+          return code
+        },
       }, ['*'])
       return cases
     }
 
-    function parseTestingDocuments(argDoc: ts.Node): TestingDocuments {
+    function parseTestingDocuments(argDoc: ts.Node): CompTestingDocuments {
       const r = ws.getRef(argDoc)
       if (isObjArg(argDoc)) {
-        const documents = objectConst<'TestingDocuments', TestingDocument>(
-          'TestingDocuments', r)
+        const documents = objectConst<'CompTestingDocuments', CompTestingDocument>(
+          'CompTestingDocuments', r)
         parseObjArg(argDoc, {
           '*'(val, name) {
-            const doc: TestingDocument = {
-              kind: 'TestingDocument',
+            const doc: CompTestingDocument = {
+              kind: 'CompTestingDocument',
               sourceRef: ws.getRef(name),
               name,
               data: parseTestingDocumentItems(val)
@@ -1719,18 +1735,19 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       throw ws.fatal('Cenários de teste eram esperados aqui', r)
     }
 
-    function parseTestingDocumentItems(argItems: ts.Node): TestingDocumentItems {
-      return parserForArrArg<'TestingDocumentItems', TestingDocumentItem>(
-        'TestingDocumentItems', (item) => {
+    function parseTestingDocumentItems(argItems: ts.Node): CompTestingDocumentItems {
+      return parserForArrArg<'CompTestingDocumentItems', CompTestingDocumentItem>(
+        'CompTestingDocumentItems', (item) => {
           const data = parseObjArgAny(item, {
             '*'(val) {
-              if (isNumArg(val)) return val.getLiteralValue()
-              if (isStrArg(val)) return parseStrArg(val).str
+              if (isNumArg(val)) return parseNumArg(val)
+              if (isStrArg(val)) return parseStrArg(val)
+              if (isBolArg(val)) return parseBolArg(val)
               ws.error('valor invalido', val)
             }
           }, ['*']) as any
-          const caso: TestingDocumentItem = {
-            kind: 'TestingDocumentItem',
+          const caso: CompTestingDocumentItem = {
+            kind: 'CompTestingDocumentItem',
             sourceRef: ws.getRef(argItems),
             data
           }
@@ -1881,7 +1898,8 @@ function invalidComponent(uri: StringConst) {
       name: uri.str,
       uri: () => uri.str,
       path: [],
-      parent: null as any
+      component: internalComponent,
+      parent: internalComponent,
     },
     uses: objectConst('ComponentUses', uri.sourceRef),
     refs: {
@@ -1902,7 +1920,7 @@ function invalidComponent(uri: StringConst) {
     views: objectConst('Views', uri.sourceRef),
     operations: objectConst('Operations', uri.sourceRef),
     routes: objectConst('Routes', uri.sourceRef),
-    testing: objectConst('TestingScenarios', uri.sourceRef),
+    testing: objectConst('CompTestingScenarios', uri.sourceRef),
   }
   return comp
 }
@@ -1936,7 +1954,8 @@ function makeInvalid(ws: Workspace, s: string, sourceRef: SourceRef) {
       name: s,
       uri: () => s,
       path: [],
-      parent: null as any
+      component: internalComponent,
+      parent: internalComponent,
     },
     name: {
       kind: 'StringConst',
