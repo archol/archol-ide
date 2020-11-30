@@ -84,7 +84,7 @@ export function tildeExpand(src: string, imp: string) {
   const srcparts = src.split("/");
   const impparts = imp.split("/");
   deleteStart();
-  if (imp.startsWith("~/app/")) {
+  if (imp.startsWith("~/app/") || imp.startsWith("~/test/")) {
     let s1 = new Array(srcparts.length - 1).fill("../").join("").trim();
     const t1 = join(s1, impparts.join('/'));
     return s1 ? t1 : './' + t1

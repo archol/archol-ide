@@ -14,7 +14,7 @@ export const generateServerIndex = sourceTransformer({
       return w.statements([
         //        'const ctx: Worker = self as any',
         //        'ctx.postMessage()'
-        app.uses
+        ['export const appInstance=', app.uses]
       ], false)
     },
     ComponentUses(w, comps) {
@@ -39,7 +39,7 @@ const genCompRef = nodeTransformer({
           const docsrc = '~/app/' + compuri + '/document/' + val.name.str
           src.require(docuri, docsrc, val)
           transformFile(docsrc + '.ts', generateServerCompDocs.make(val, { compuri, docuri }))
-          return id
+          return docuri
         }),
         // operation: w.mapObj(comp.operations, (val, key) =>
         //   src.chip(30,

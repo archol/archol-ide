@@ -38,7 +38,7 @@ const generateCases = nodeTransformer({
             "it(", c.key, ',', w.code(c.val, {
               arrow: true, forceParams: [], forceRetType: '',
               before: [
-                ['const {', c.val.params[0].getText(), ',', c.val.params[1].getText(), '}=await createTestDatabase(', scenario.name, ')'],
+                ['const {', c.val.params[0].getText(), ',', c.val.params[1].getText(), '}=await createTestDatabase()'],
               ]
             }), ')'
           ])
@@ -50,28 +50,35 @@ const generateCases = nodeTransformer({
 
 const generateDataCenarioIndex = nodeTransformer({
   Application(w, app, { src, cfg, transformFile }) {
-    return [
-      'export const ' + cfg.cenario + 'Data = ',
-      w.mapObj(app.uses, (val) => {
-        const comp = val.ref(val)
-        const compid = comp.uri.id
-        const c = comp.testing.get(cfg.cenario)
-        if (c) {
-          const cntsrc = '~/test/' + cfg.cenario + '/' + compid.str + '/' + compid.str + '.data.test'
-          src.require(compid.str, cntsrc, val)
-          transformFile(cntsrc + '.ts', generateDataCenarioContent.make(c.documents, { cenario: cfg.cenario }))
-          return compid.str
-        } else return w.object({})
-      })
-    ]
+    src.require('appInstance', '~/app/app', app.sourceRef)
+    return w.statements([
+      [
+        'export const ' + cfg.cenario + 'Data = ',
+        w.mapObj(app.uses, (val) => {
+          const comp = val.ref(val)
+          const compid = comp.uri.id
+          const c = comp.testing.get(cfg.cenario)
+          if (c) {
+            const cntsrc = '~/test/' + cfg.cenario + '/' + compid.str + '/' + compid.str + '.data.test'
+            src.require('createTestDatabaseFor', '~/lib/testing', val)
+            src.requireDefault(compid.str, cntsrc, val)
+            transformFile(cntsrc + '.ts', generateDataCenarioContent.make(c.documents, { cenario: cfg.cenario }))
+            return compid.str
+          } else return w.object({})
+        })
+      ],
+      [
+        'export function createTestDatabase', w.funcDecl([], '', [
+          'return createTestDatabaseFor()'
+        ])
+      ]
+    ], false)
   },
 }, { cenario: '' })
 
 const generateDataCenarioContent = nodeTransformer({
-  CompTestingDocument(w, doc) {
-    console.log('CompTestingDocument')
-    return w.string('xxx')
-    // return doc.data
+  CompTestingDocuments(w, docs) {
+    return ['export default ', w.mapObj(docs, (v) => v.data)]
   },
   CompTestingDocumentItem(w, doc) {
     return w.object(doc.data)
