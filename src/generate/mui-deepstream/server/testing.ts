@@ -69,7 +69,7 @@ const generateDataCenarioIndex = nodeTransformer({
       ],
       [
         'export function createTestDatabase', w.funcDecl([], '', [
-          'return createTestDatabaseFor()'
+          ['return createTestDatabaseFor(appInstance, ', cfg.cenario + 'Data', ')']
         ])
       ]
     ], false)
