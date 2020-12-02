@@ -61,10 +61,31 @@ const genCompRef = nodeTransformer({
 const genDocType = nodeTransformer({
   Document(w, doc, info) {
     const doct = 'T' + doc.nodeMapping.uri()
+    info.src.require('DatabaseDriver1', '~/lib/types', doc)
     return w.chipResult(doct, [
-      ['export interface ', doct,
+      ['export interface ', doct, 'Data',
         w.mapObj(doc.primaryFields.merge(doc.secondaryFields), (f) => {
           return 'T' + f.type.base(f)
+        })
+      ],
+      ['export interface ', doct, 'Exec',
+        w.mapObj(doc.actions, (ac) => {
+          const acargs = ac.run ? ac.run.params : ['data']
+          const acret = ac.run ? ac.run.ret.getText() : 'void'
+          return w.code(ac.run, {
+            forceParamType(p, idx) {
+              if (idx === 0) return doct + 'Data'
+            },
+            beforeParams: ['driver: DatabaseDriver1'],
+            declOnly: true,
+          })
+          // const acargs = ['driver'].concat( ac.run ? ac.run.params : [])
+          // //   const acret = ac.run ? ac.run.ret : 'void'
+          // //   return w.code(ac.run, {
+          // //     beforeParams: ,
+          // //     after: ac.to ? (ac.from ? updateDoc() : insertDoc()) : deleteDoc(),
+          // //   })
+          // return w.funcDecl([], 'void', null)
         })
       ],
     ], false)

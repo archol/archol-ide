@@ -16,7 +16,7 @@ export const generateServerDbTest = sourceTransformer({
           const c = comp.testing.get(cenario)
           if (c) {
             transformFile('~/test/' + cenario.str + '/' + comp.nodeMapping.uri() + '/' + comp.nodeMapping.uri() + '.cases.test.ts',
-              generateCases.make(c, {}))
+              generateCases.make(c, { compalias: u.key.str }))
             // transformFile('~/test/' + cenario.str + '/' + comp.nodeMapping.uri + '/' + comp.nodeMapping.uri + '.data.test.ts',
             //   generateData.make(c, {}))
           }
@@ -28,7 +28,7 @@ export const generateServerDbTest = sourceTransformer({
 })
 
 const generateCases = nodeTransformer({
-  CompTestingScenario(w, scenario, { src }) {
+  CompTestingScenario(w, scenario, { src, cfg }) {
     src.require('expect', '~/lib/testing', scenario)
     src.require('createTestDatabase', '~/test/' + scenario.name.str + '/' + scenario.name.str + '.data.test', scenario)
     return w.statements([
@@ -38,7 +38,9 @@ const generateCases = nodeTransformer({
             "it(", c.key, ',', w.code(c.val, {
               arrow: true, forceParams: [], forceRetType: '',
               before: [
-                ['const {', c.val.params[0].getText(), ',', c.val.params[1].getText(), '}=await createTestDatabase()'],
+                ['const $t = await createTestDatabase()'],
+                ['const ', c.val.params[0].getText(), ' = $t.app.' + cfg.compalias],
+                ['const ', c.val.params[1].getText(), ' = $t.db'],
               ]
             }), ')'
           ])
@@ -46,7 +48,7 @@ const generateCases = nodeTransformer({
       ]
     ], false)
   }
-}, {})
+}, { compalias: '' })
 
 const generateDataCenarioIndex = nodeTransformer({
   Application(w, app, { src, cfg, transformFile }) {

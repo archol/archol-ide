@@ -20,11 +20,12 @@ export interface CodeWriter {
   transform(transformer: NodeTransformer<any, any>): CodePartR[]
   transform(node: SourceNode<any>): CodePartR[]
   map(nodes: Array<ObjectConst<any> | ArrayConst<any>>): CodeLines
-  code(node: Code, opts?: {
+  code(node: Code | undefined, opts?: {
     before?: CodePartLines, after?: CodePartLines,
-    forceParams?: string[], forceRetType?: string,
+    forceParams?: string[], beforeParams?: string[], forceRetType?: string,
     forceParamType?: (param: string, idx: number) => string | undefined,
     arrow?: boolean,
+    declOnly?: boolean
     traversals?: CodeTraversal[]
   }): FuncDecl
   funcDecl(args: string[], ret: string, statements: null | CodePartLines, opts?: { arrow?: boolean, async?: boolean }): FuncDecl
@@ -135,7 +136,7 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
       return wSelf.lines(lines, '[', ']', ',')
     },
     code(node, opts): FuncDecl {
-      let body: CodePartLines = opts?.traversals ? (() => {
+      let body: CodePartLines = node ? (opts?.traversals ? (() => {
         const tmpp = new Project({ useInMemoryFileSystem: true });
         const tmps = tmpp.createSourceFile(
           "tmp.ts", [
@@ -151,28 +152,31 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
         throw info.ws.fatal('Erro ao transformar código', node)
       })() : node.body.map((b) => {
         return b.getText()
-      })
-      let retType = node.ret.getText()
+      })) : []
+      let retType = node ? node.ret.getText() : ''
       if (opts) {
         if (opts.before) body = [...opts.before, ...body]
-        if (opts.after) body = [...opts.after, ...body]
+        if (opts.after) body = [...body, ...opts.after]
         if (typeof opts.forceRetType === 'string') retType = opts.forceRetType
       }
       // return wSelf.lines([
       //   ['(', node.params.map(p => p.getText()).join(','), ')', retType ? ':' : '', retType, '=>', body]
       // ], '', '', '')
-      wSelf.lines(body, '', '', '')
+      //if (!())
+      //wSelf.lines(body, '', '', '')
+      const params: string[] = (opts && opts.forceParams) || (node ? node.params.map((p, pidx) => {
+        if (opts && opts.forceParamType) {
+          const s = opts.forceParamType(p.getName(), pidx)
+          if (s) return p.getName() + ': ' + s
+        }
+        return p.getText()
+      }) : [])
+      if (opts && opts.beforeParams) params.unshift(...opts.beforeParams)
       return wSelf.funcDecl(
-        (opts && opts.forceParams) || node.params.map((p, pidx) => {
-          if (opts && opts.forceParamType) {
-            const s = opts.forceParamType(p.getName(), pidx)
-            if (s) return p.getName() + ': ' + s
-          }
-          return p.getText()
-        }),
+        params,
         retType,
-        body,
-        { async: node.async, arrow: opts && opts.arrow }
+        opts && opts.declOnly ? null : body,
+        { async: node ? node.async : false, arrow: opts && opts.arrow }
       )
     },
     funcDecl(args: string[], ret: string, statements: null | CodePartLines, opts?): FuncDecl {
@@ -252,7 +256,7 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
       if (v === undefined) return null
       if (v === null) return null
     }
-    if (isFuncDecl(v)) return [v.$func$.async ? 'async ' : '', k, v]
+    if (isFuncDecl(v)) return [v.$func$.async && (v.$func$.body) ? 'async ' : '', k, v]
     if (v)
       return [k, ':', v]
     return k

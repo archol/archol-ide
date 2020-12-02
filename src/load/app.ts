@@ -1631,16 +1631,28 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           return parseColObjArg('DocActions', argActions, parseDocAction)
         }
         function parseDocAction(argAction: ts.Node, actionname: StringConst): DocAction {
+          const sourceRef = ws.getRef(argAction)
           const aprops = parseObjArg(argAction, {
             from: parseUseDocStates,
             to: parseUseDocStates,
             icon: parseIcon,
             description: parseI18N,
             run: parserForCode(),
-          }, ['run', 'from'])
+          }, ['run', 'from', 'to'])
+          if (!aprops.from) {
+            if (!aprops.to)
+              ws.error('from or to is mandatory', sourceRef)
+            const ret = (aprops.run && aprops.run.ret.getText()) || 'void'
+            if (ret !== 'void' && ret !== 'Promise<void>')
+              ws.error('insert action, return must be void actual="' + ret + '"', sourceRef)
+          }
+          if (aprops.run) {
+            if (!(aprops.run.params.length && aprops.run.params[0].getText() === 'data'))
+              ws.error('action precisa ter parametro data, actual="' + aprops.run.params[0].getText() + '"', aprops.run.sourceRef)
+          }
           const ac: DocAction = {
             kind: 'DocAction',
-            sourceRef: ws.getRef(argAction),
+            sourceRef,
             name: actionname,
             nodeMapping: nodeMapping(() => comp, () => doc, 'action', () => ac),
             ...aprops

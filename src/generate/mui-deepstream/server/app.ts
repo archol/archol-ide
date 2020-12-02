@@ -1,3 +1,4 @@
+import { CodePartLines } from 'generate/lib/codeWriter'
 import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
 import { genUseType } from '../common/useType'
 
@@ -59,14 +60,19 @@ const generateDataCenarioContent = nodeTransformer({
   },
   ...genUseType.transformerFactory,
   Document(w, doc, { src, cfg }) {
+    const col = doc.nodeMapping.uri()
+    const colData = 'T' + col + 'Data'
+    const colExec = 'T' + col + 'Exec'
     src.require('ColId', '~/lib/types', doc)
     src.require('CollecionDecl', '~/lib/types', doc)
-    src.require('T' + doc.nodeMapping.uri(), '~/app/typings', doc)
+    src.require(colData, '~/app/typings', doc)
+    src.require(colExec, '~/app/typings', doc)
     return [
       [
-        'export const ', doc.nodeMapping.uri(), ': CollecionDecl<T', doc.nodeMapping.uri, '> = ',
+        'export const ', col,
+        ': CollecionDecl<', colData, ',', colExec, '> = ',
         w.object({
-          collection: [w.string(doc.nodeMapping.uri()), ' as ColId'],
+          collection: [w.string(col), ' as ColId'],
           identification: w.string(doc.identification),
           validate: w.funcDecl(['doc'], '',
             [
@@ -82,7 +88,31 @@ const generateDataCenarioContent = nodeTransformer({
                     ')'
                   ]
                 }), '', 'undefined', '||')
-              ]])
+              ]]),
+          exec: w.mapObj(doc.actions, (ac) => {
+            const acargs = ac.run ? ac.run.params : ['data']
+            const acret = ac.run ? ac.run.ret : 'void'
+            return w.code(ac.run, {
+              beforeParams: ['driver'],
+              after: ac.to ? (ac.from ? updateDoc() : insertDoc()) : deleteDoc(),
+            })
+            function insertDoc(): CodePartLines {
+              return [
+                'return driver.insertOne(data)'
+              ]
+            }
+            function updateDoc(): CodePartLines {
+              return [
+                'const {$id, ...setdata} = data',
+                'return driver.updateOne(data)'
+              ]
+            }
+            function deleteDoc(): CodePartLines {
+              return [
+                'return driver.deleteOne(data.$id)'
+              ]
+            }
+          })
         })
       ],
     ]
