@@ -8,7 +8,7 @@ import {
   quote, NodeTransformer, isNodeTransformer, NodeTransformerFactory, isNodeTransformerFactory,
   GenNodes, GenInfo, GenFunc
 } from './generator'
-import { Project, TransformTraversalControl, ts } from 'ts-morph'
+import { Project, TransformTraversalControl, ts, ParameterDeclaration } from 'ts-morph'
 
 export type CodePartLines = Array<CodePartL | null>
 export type CodeTraversal = (src: GenInfo<any>) => (traversal: TransformTraversalControl) => ts.Node
@@ -22,7 +22,7 @@ export interface CodeWriter {
   map(nodes: Array<ObjectConst<any> | ArrayConst<any>>): CodeLines
   code(node: Code | undefined, opts?: {
     before?: CodePartLines, after?: CodePartLines,
-    forceParams?: string[], beforeParams?: string[], forceRetType?: string,
+    forceParams?: Array<string | ParameterDeclaration>, beforeParams?: string[], forceRetType?: string,
     forceParamType?: (param: string, idx: number) => string | undefined,
     arrow?: boolean,
     declOnly?: boolean
@@ -40,6 +40,7 @@ export interface CodeWriter {
   object(obj: { [name: string]: CodePartL }): CodeLines
   object(obj: { [name: string]: CodePartLo }, objNode: SourceNode<any>): CodeLines
   string(node: StringConst | string): string
+  stringType(strs: Array<StringConst | string>): string
   resolveCode(code: CodePartR[]): string
 }
 
@@ -64,6 +65,8 @@ export interface CodeLines {
   start: string
   end: string
   separator: string | { notInLast: string }
+  insert(ilines: CodePartLines): void
+  append(ilines: CodePartLines): void
 }
 
 export function isCodeLines(o: any): o is CodeLines {
@@ -120,7 +123,15 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
       return wSelf.lines(statements, block ? '{' : '', block ? '}' : '', ';')
     },
     lines(lines: CodePartLines, start: string, end: string, separator: string): CodeLines {
-      return { $lines$: flatLines(lines), start, end, separator }
+      return {
+        $lines$: flatLines(lines), start, end, separator,
+        insert(ilines: CodePartLines): void {
+          this.$lines$ = flatLines(ilines).concat(this.$lines$)
+        },
+        append(ilines: CodePartLines, lineIndex?: number): void {
+          this.$lines$ = this.$lines$.concat(flatLines(ilines))
+        }
+      }
     },
     transform(n: any) {
       if (isNodeTransformer(n))
@@ -164,13 +175,8 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
       // ], '', '', '')
       //if (!())
       //wSelf.lines(body, '', '', '')
-      const params: string[] = (opts && opts.forceParams) || (node ? node.params.map((p, pidx) => {
-        if (opts && opts.forceParamType) {
-          const s = opts.forceParamType(p.getName(), pidx)
-          if (s) return p.getName() + ': ' + s
-        }
-        return p.getText()
-      }) : [])
+      const params: string[] = (opts && opts.forceParams && tparams(opts.forceParams))
+        || (node && tparams(node.params)) || []
       if (opts && opts.beforeParams) params.unshift(...opts.beforeParams)
       return wSelf.funcDecl(
         params,
@@ -178,6 +184,26 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
         opts && opts.declOnly ? null : body,
         { async: node ? node.async : false, arrow: opts && opts.arrow }
       )
+      function tparams(nparams?: Array<string | ParameterDeclaration>): string[] {
+        return nparams ? nparams.map((p, pidx) => {
+          let pname: string
+          let ptype: string
+          if (typeof p === 'string') {
+            const ps = p.split(':').map((pi) => pi.trim())
+            pname = ps[0]
+            ptype = ps[1]
+          }
+          else {
+            pname = p.getName()
+            ptype = p.getType().getText()
+          }
+          if (opts && opts.forceParamType) {
+            const s = opts.forceParamType(pname, pidx)
+            if (s) return pname + ': ' + s
+          }
+          return pname + (ptype ? ': ' + ptype : '')
+        }) : []
+      }
     },
     funcDecl(args: string[], ret: string, statements: null | CodePartLines, opts?): FuncDecl {
       const body = statements && wSelf.statements(statements, true)
@@ -235,6 +261,14 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
       if (isStringConst(node)) return quote(node.str)
       if (Array.isArray(node)) return quote(node.join(''))
       return quote(node)
+    },
+    stringType(strs: Array<StringConst | string>): string {
+      const v = strs.map((inode) => {
+        if (isStringConst(inode)) return quote(inode.str)
+        if (Array.isArray(inode)) return quote(inode.join(''))
+        return quote(inode)
+      })
+      return v.join(' | ')
     },
     chipResult(id, lines, block) {
       return {

@@ -450,7 +450,7 @@ declare interface ${compid}_document_${docName}_Ref {
         const acret = a.ref.from ? actionRet(a, docName) : 'Promise<void>'
         return `${a.path}: {
           from?: ${compid}_document_${docName}_StateName | ${compid}_document_${docName}_StateName[],
-          to: ${compid}_document_${docName}_StateName | ${compid}_document_${docName}_StateName[],
+          to?: ${compid}_document_${docName}_StateName | ${compid}_document_${docName}_StateName[],
           icon: Icon,
           description: I18N,
           run?(data: ${compid}_document_${docName}_Data, ${acargs}): ${acret}     

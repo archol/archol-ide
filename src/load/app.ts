@@ -293,7 +293,7 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           }
           p = pp
         }
-        const uri = (sep?: string) => [..._uri, kind, node.name.str].filter(s => !!s).join(sep || '_')
+        const uri = (sep?: string, nokind?: boolean) => [..._uri, nokind ? '' : kind, node.name.str].filter(s => !!s).join(sep || '_')
         node.nodeMapping = {
           name: node.name.str,
           uri,

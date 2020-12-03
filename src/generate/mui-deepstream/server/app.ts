@@ -1,4 +1,4 @@
-import { CodePartLines } from 'generate/lib/codeWriter'
+import { CodePartL, CodePartLines } from 'generate/lib/codeWriter'
 import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
 import { genUseType } from '../common/useType'
 
@@ -60,19 +60,20 @@ const generateDataCenarioContent = nodeTransformer({
   },
   ...genUseType.transformerFactory,
   Document(w, doc, { src, cfg }) {
-    const col = doc.nodeMapping.uri()
-    const colData = 'T' + col + 'Data'
-    const colExec = 'T' + col + 'Exec'
+    const coluri = doc.nodeMapping.uri()
+    const colname = doc.nodeMapping.uri('_', true)
+    const colData = 'T' + coluri + 'Data'
+    const colExec = 'T' + coluri + 'Exec'
     src.require('ColId', '~/lib/types', doc)
     src.require('CollecionDecl', '~/lib/types', doc)
     src.require(colData, '~/app/typings', doc)
     src.require(colExec, '~/app/typings', doc)
     return [
       [
-        'export const ', col,
+        'export const ', coluri,
         ': CollecionDecl<', colData, ',', colExec, '> = ',
         w.object({
-          collection: [w.string(col), ' as ColId'],
+          collection: [w.string(coluri), ' as ColId'],
           identification: w.string(doc.identification),
           validate: w.funcDecl(['doc'], '',
             [
@@ -90,26 +91,40 @@ const generateDataCenarioContent = nodeTransformer({
                 }), '', 'undefined', '||')
               ]]),
           exec: w.mapObj(doc.actions, (ac) => {
-            const acargs = ac.run ? ac.run.params : ['data']
-            const acret = ac.run ? ac.run.ret : 'void'
+            const acargs = ac.run && ac.run.params.length ? ac.run.params : ['data']
+            const acret = (!ac.from) ?
+              'Promise<T' + coluri + 'GUID>' : ((!ac.to) ? 'Promise<void>' :
+                (ac.run && ac.run.ret.getText()) || 'Promise<void>'
+              )
+            const setStatus: CodePartL[] = ac.to && ac.to.states.items.length === 1 ? [
+              ['data.$state=', ac.to.states.items[0]]
+            ] : []
+            const updatedb: CodePartL[] = ac.to ? (
+              ac.from ? updateDoc() : insertDoc()
+            ) : deleteDoc()
+            const after: CodePartL[] = setStatus.concat(updatedb)
+
             return w.code(ac.run, {
-              beforeParams: ['driver'],
-              after: ac.to ? (ac.from ? updateDoc() : insertDoc()) : deleteDoc(),
+              beforeParams: ['db'],
+              forceParams: acargs,
+              forceParamType(p, idx) {
+                if (idx === 0) return colData
+              },
+              after,
             })
-            function insertDoc(): CodePartLines {
+            function insertDoc(): CodePartL[] {
               return [
-                'return driver.insertOne(data)'
+                ['return db.', colname, '.insertOne( data)']
               ]
             }
-            function updateDoc(): CodePartLines {
+            function updateDoc(): CodePartL[] {
               return [
-                'const {$id, ...setdata} = data',
-                'return driver.updateOne(data)'
+                ['return db.', colname, '.updateOne(data)']
               ]
             }
-            function deleteDoc(): CodePartLines {
+            function deleteDoc(): CodePartL[] {
               return [
-                'return driver.deleteOne(data.$id)'
+                ['return db.', colname, '.deleteOne(data.$id)']
               ]
             }
           })

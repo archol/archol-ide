@@ -32,51 +32,73 @@ const genCompRef = nodeTransformer({
       1,
       genType.make(t.val, { compuri })) && ''
     )
-    const id = 'T' + compuri + 'Ref'
-    return w.chipResult(id, [
-      ['export interface ' + id,
-      w.object({
-        type: w.mapObj(comp.types, (val, key) =>
-          ['T', val.nodeMapping.uri]
-        ),
-        document: w.mapObj(comp.documents, (val) =>
-          src.chip(10, genDocType.make(val, { compuri }))
-        ),
-        // process: w.mapObj(comp.processes, (val, key) =>
-        //   src.chip(10, genProcessRef.make(val, { compuri }))
-        // ),
-        // view: w.mapObj(comp.views, (val, key) =>
-        //   src.chip(20,
-        //     genViewInstanceType.make(val, { compuri }))
-        // ),
-        // operation: w.mapObj(comp.operations, (val, key) =>
-        //   src.chip(30,
-        //     genOpInstanceType.make(val, { compuri }))
-        // ),
-      })]
+    const compid = 'T' + compuri
+    return w.chipResult(compid + 'Ref', [
+      [
+        'export interface ' + compid + 'Ref',
+        w.object({
+          type: w.mapObj(comp.types, (val, key) =>
+            ['T', val.nodeMapping.uri]
+          ),
+          document: w.mapObj(comp.documents, (val) =>
+            src.chip(10, genDocType.make(val, { compuri }))
+          ),
+          // process: w.mapObj(comp.processes, (val, key) =>
+          //   src.chip(10, genProcessRef.make(val, { compuri }))
+          // ),
+          // view: w.mapObj(comp.views, (val, key) =>
+          //   src.chip(20,
+          //     genViewInstanceType.make(val, { compuri }))
+          // ),
+          // operation: w.mapObj(comp.operations, (val, key) =>
+          //   src.chip(30,
+          //     genOpInstanceType.make(val, { compuri }))
+          // ),
+        }),
+        [
+          'export interface ' + compid + 'Database',
+          w.mapObj(comp.documents, (val, key) =>
+            w.property(
+              val.nodeMapping.uri('_', true),
+              ['Collection<T', val.nodeMapping.uri(), 'GUID, T', val.nodeMapping.uri(), 'State, T', val.nodeMapping.uri(), 'Data>']
+            )
+          ),
+        ]
+      ]
     ], false)
   },
 }, {})
 
 const genDocType = nodeTransformer({
   Document(w, doc, info) {
+    info.src.require('Collection', '~/lib/types', doc)
     const doct = 'T' + doc.nodeMapping.uri()
-    info.src.require('DatabaseDriver1', '~/lib/types', doc)
-    return w.chipResult(doct, [
-      ['export interface ', doct, 'Data',
-        w.mapObj(doc.primaryFields.merge(doc.secondaryFields), (f) => {
-          return 'T' + f.type.base(f)
-        })
-      ],
+    const doctData = w.mapObj(
+      doc.primaryFields.merge(doc.secondaryFields), (f) => {
+        return 'T' + f.type.base(f)
+      })
+    doctData.insert([
+      ['$id: ' + doct + 'GUID'],
+      ['$state: ' + doct + 'State'],
+    ])
+    return w.chipResult(doct + 'Exec', [
+      ['export type ', doct, 'GUID = ', w.string(doct + '$GUID')],
+      ['export type ', doct, 'State = ', w.stringType(doc.states.props.map((v) => v.key))],
+      ['export interface ', doct, 'Data', doctData],
       ['export interface ', doct, 'Exec',
         w.mapObj(doc.actions, (ac) => {
-          const acargs = ac.run ? ac.run.params : ['data']
-          const acret = ac.run ? ac.run.ret.getText() : 'void'
+          const acargs = ac.run && ac.run.params.length ? ac.run.params : ['data']
+          const acret = (!ac.from) ?
+            'Promise<' + doct + 'GUID>' : ((!ac.to) ? 'Promise<void>' :
+              (ac.run && ac.run.ret.getText()) || 'Promise<void>'
+            )
           return w.code(ac.run, {
+            forceParams: acargs,
             forceParamType(p, idx) {
               if (idx === 0) return doct + 'Data'
             },
-            beforeParams: ['driver: DatabaseDriver1'],
+            beforeParams: ['db: T' + info.cfg.compuri + 'Database'],
+            forceRetType: acret,
             declOnly: true,
           })
           // const acargs = ['driver'].concat( ac.run ? ac.run.params : [])

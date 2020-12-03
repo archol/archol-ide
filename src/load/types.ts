@@ -46,7 +46,7 @@ export interface NodeMapping {
   component: Component
   parent: SourceNodeMapped<any>
   name: string
-  uri(sep?: string): string
+  uri(sep?: string, nokind?: boolean): string
   path: Array<SourceNodeMapped<any>>
 }
 
