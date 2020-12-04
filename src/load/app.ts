@@ -15,7 +15,7 @@ import {
   RoleDefs, RoleGroups, WidgetEntry, WidgetMarkdown, WidgetContent, AnyRole, ProcessUse, SourceRef, WidgetItem,
   RoutePathItem, CompTestingScenario, CompTestingCases,
   CompTestingDocuments, CompTestingDocument, CompTestingDocumentItems, CompTestingDocumentItem,
-  NodeMapping, internalComponent, AppTestScenarios
+  NodeMapping, internalComponent, AppTestScenarios, isStringConst
 } from './types'
 
 export async function loadApp(ws: Workspace, appName: string): Promise<Application> {
@@ -1692,6 +1692,21 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
       if (argsScenarios.length !== 1) ws.error(expr1Scenarios.getSourceFile().getFilePath() + ' routes precisa de um parametro', expr1Scenarios)
       comp.testing = parseColObjArg<'CompTestingScenarios', CompTestingScenario>(
         'CompTestingScenarios', argsScenarios[0], parseTestingScenario)
+      comp.testingGUIDs = (forDocName: string) => {
+        const r: string[] = []
+        comp.testing.props.forEach((scenario) => {
+          scenario.val.documents.props.forEach(d => {
+            if (d.key.str === forDocName)
+              d.val.data.items.forEach((docval, docname) => {
+                if (isStringConst(docval.data.$id))
+                  r.push(docval.data.$id.str)
+                else
+                  ws.fatal('id nos dados de teste invalida', docval.sourceRef)
+              })
+          })
+        })
+        return r
+      }
       return comp
     }
 
@@ -1933,6 +1948,9 @@ function invalidComponent(uri: StringConst) {
     operations: objectConst('Operations', uri.sourceRef),
     routes: objectConst('Routes', uri.sourceRef),
     testing: objectConst('CompTestingScenarios', uri.sourceRef),
+    testingGUIDs() {
+      return []
+    }
   }
   return comp
 }

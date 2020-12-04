@@ -23,7 +23,7 @@ export interface CodeWriter {
   code(node: Code | undefined, opts?: {
     before?: CodePartLines, after?: CodePartLines,
     forceParams?: Array<string | ParameterDeclaration>, beforeParams?: string[], forceRetType?: string,
-    forceParamType?: (param: string, idx: number) => string | undefined,
+    forceParamType?: (param: string, idx: number) => string | undefined | false,
     arrow?: boolean,
     declOnly?: boolean
     traversals?: CodeTraversal[]
@@ -199,10 +199,11 @@ export function codeWriter<CFG extends object>(transforms: Array<GenNodes<CFG>>,
           }
           if (opts && opts.forceParamType) {
             const s = opts.forceParamType(pname, pidx)
+            if (s === false) return ''
             if (s) return pname + ': ' + s
           }
           return pname + (ptype ? ': ' + ptype : '')
-        }) : []
+        }).filter((s) => !!s) : []
       }
     },
     funcDecl(args: string[], ret: string, statements: null | CodePartLines, opts?): FuncDecl {

@@ -165,10 +165,10 @@ declare interface ${compid}_Ref {
   process: {  
     ${comp.processes.props.map((p) => `${p.key.str}: ${compid}_process_${p.key.str}_Ref,`).join('\n')}
   },
-  documents: {  
+  document: {  
     ${comp.documents.props.map((d) => `${d.key.str}: ${compid}_document_${d.key.str}_Ref,`).join('\n')}
   },
-  operations: {  
+  operation: {  
     ${comp.operations.props.map((f) => `${f.key.str}: ${compid}_operation_${f.key.str}_Ref,`).join('\n')}
   },
 }
@@ -398,21 +398,7 @@ declare interface ${compid}_document_${docName}_Decl {
   actions: ${compid}_document_${docName}_DeclActions
 }
 declare type ${compid}_document_${docName}_GUID = ${typePipeStr(
-        [`${compid}_document_${docName}_GUID`].concat((() => {
-          const r: string[] = []
-          comp.testing.props.forEach((scenario) => {
-            scenario.val.documents.props.forEach(d => {
-              d.val.data.items.forEach((v) => {
-                debugger
-                if (isStringConst(v.data.$id))
-                  r.push(v.data.$id.str)
-                else
-                  ws.fatal('id nos dados de testo invalida', v.sourceRef)
-              })
-            })
-          })
-          return r
-        })())
+        [`${compid}_document_${docName}_GUID`].concat(comp.testingGUIDs(docName))
       )}
 declare type ${compid}_document_${docName}_Fieldname = ${typePipeStr(doc.refs.allFields.items.map((f) => f.path))}
 declare type ${compid}_document_${docName}_StateName = ${typePipeStr(doc.refs.states.items.map((f) => f.path))}

@@ -1,5 +1,7 @@
 
 import { nodeTransformer, sourceTransformer } from 'generate/lib/generator'
+import { Component } from 'load/types'
+import { ParameterDeclaration } from 'ts-morph'
 import { genFieldsWithBase, genFieldsWithType } from '../common/fields'
 import { genUseType } from '../common/useType'
 
@@ -9,7 +11,25 @@ export const generateServerTypings = sourceTransformer({
   transformations: {
     Application(w, app, { src }) {
       return w.statements([
-        ['export interface AppRef ', app.uses],
+        [
+          'export interface TAppRef ', app.uses
+        ],
+        [
+          app.testscenarios.items.map((scenario) => {
+            return ['export interface TAppRefProxy',
+              w.mapObj(app.uses, (val, key) => {
+                const compuri = val.ref(val).nodeMapping.uri('_')
+                const proxy = 'T' + compuri + 'RefProxy'
+                return proxy
+              })
+            ]
+          })
+        ],
+        [
+          'export interface TDbProxy ', w.mapObj(app.uses,
+            (ucomp) => 'T' + ucomp.ref(ucomp.sourceRef).uri.id.str + 'DbProxy'
+          )
+        ],
         'export type Tstring=string',
         'export type Tnumber=number',
         'export type Tboolean=boolean',
@@ -17,7 +37,7 @@ export const generateServerTypings = sourceTransformer({
       ], false)
     },
     ComponentUses(w, comps) {
-      return [w.mapObj(comps, (val, key) => val)]
+      return w.statements([w.mapObj(comps, (val, key) => val)], false)
     },
     ComponentUse(w, comp, { src }) {
       return src.chip(1, genCompRef.make(comp.ref(comp), {}))
@@ -41,7 +61,7 @@ const genCompRef = nodeTransformer({
             ['T', val.nodeMapping.uri]
           ),
           document: w.mapObj(comp.documents, (val) =>
-            src.chip(10, genDocType.make(val, { compuri }))
+            src.chip(10, genDocType.make(val, { comp, compuri }))
           ),
           // process: w.mapObj(comp.processes, (val, key) =>
           //   src.chip(10, genProcessRef.make(val, { compuri }))
@@ -56,6 +76,15 @@ const genCompRef = nodeTransformer({
           // ),
         }),
         [
+          'export interface ' + compid + 'RefProxy',
+          w.mapObj(comp.documents, (val, key) =>
+            w.property(
+              val.nodeMapping.uri('_', true),
+              ['T', val.nodeMapping.uri(), 'RefProxy']
+            )
+          ),
+        ],
+        [
           'export interface ' + compid + 'Database',
           w.mapObj(comp.documents, (val, key) =>
             w.property(
@@ -64,7 +93,15 @@ const genCompRef = nodeTransformer({
             )
           ),
         ]
-      ]
+      ],
+      [
+        'export interface ' + compid + 'DbProxy',
+        w.object({
+          document: w.mapObj(comp.documents, (val) =>
+            src.chip(10, genDocType.make(val, { comp, compuri })).id.replace(/Exec$/g, 'DbProxy')
+          ),
+        }),
+      ],
     ], false)
   },
 }, {})
@@ -82,9 +119,14 @@ const genDocType = nodeTransformer({
       ['$state: ' + doct + 'State'],
     ])
     return w.chipResult(doct + 'Exec', [
-      ['export type ', doct, 'GUID = ', w.string(doct + '$GUID')],
+      ['export type ', doct, 'GUID = ', w.stringType([doct + '$GUID', ...info.cfg.comp.testingGUIDs(doc.name.str)])],
       ['export type ', doct, 'State = ', w.stringType(doc.states.props.map((v) => v.key))],
       ['export interface ', doct, 'Data', doctData],
+      [
+        'export interface ', doct, 'DbProxy', w.object({
+          get: w.funcDecl(['$id: ' + doct + 'GUID'], 'Promise<' + doct + 'Data>', null)
+        })
+      ],
       ['export interface ', doct, 'Exec',
         w.mapObj(doc.actions, (ac) => {
           const acargs = ac.run && ac.run.params.length ? ac.run.params : ['data']
@@ -101,13 +143,24 @@ const genDocType = nodeTransformer({
             forceRetType: acret,
             declOnly: true,
           })
-          // const acargs = ['driver'].concat( ac.run ? ac.run.params : [])
-          // //   const acret = ac.run ? ac.run.ret : 'void'
-          // //   return w.code(ac.run, {
-          // //     beforeParams: ,
-          // //     after: ac.to ? (ac.from ? updateDoc() : insertDoc()) : deleteDoc(),
-          // //   })
-          // return w.funcDecl([], 'void', null)
+        })
+      ],
+      ['export interface ', doct, 'RefProxy',
+        w.mapObj(doc.actions, (ac) => {
+          const acargs: Array<ParameterDeclaration | string> = ac.run && ac.run.params.length ? ac.run.params : ['data']
+          if (ac.from) acargs.splice(1, 0, '$id: ' + doct + 'GUID')
+          const acret = (!ac.from) ?
+            'Promise<' + doct + 'GUID>' : ((!ac.to) ? 'Promise<void>' :
+              (ac.run && ac.run.ret.getText()) || 'Promise<void>'
+            )
+          return w.code(ac.run, {
+            forceParams: acargs,
+            forceParamType(p, idx) {
+              if (idx === 0) return false
+            },
+            forceRetType: acret,
+            declOnly: true,
+          })
         })
       ],
     ], false)
@@ -116,7 +169,7 @@ const genDocType = nodeTransformer({
     return [doc.name.str, ':', doc.type]
   },
   ...genUseType.transformerFactory,
-}, { compuri: '' })
+}, { comp: null as any as Component, compuri: '' })
 
 const genType = nodeTransformer({
   NormalType(w, t, info) {

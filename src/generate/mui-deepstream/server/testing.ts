@@ -40,7 +40,7 @@ const generateCases = nodeTransformer({
               before: [
                 ['const $t = await createTestDatabase()'],
                 ['const ', c.val.params[0].getText(), ' = $t.app.' + cfg.compalias],
-                ['const ', c.val.params[1].getText(), ' = $t.db'],
+                ['const ', c.val.params[1].getText(), ' = $t.db.' + cfg.compalias],
               ]
             }), ')'
           ])
@@ -53,6 +53,9 @@ const generateCases = nodeTransformer({
 const generateDataCenarioIndex = nodeTransformer({
   Application(w, app, { src, cfg, transformFile }) {
     src.require('appInstance', '~/app/app', app.sourceRef)
+    src.require('TAppRefProxy', '~/app/typings', app.sourceRef)
+    src.require('TDbProxy', '~/app/typings', app.sourceRef)
+    src.require('createTestDatabaseFor', '~/lib/testing', app.sourceRef)
     return w.statements([
       [
         'export const ' + cfg.cenario + 'Data = ',
@@ -62,7 +65,6 @@ const generateDataCenarioIndex = nodeTransformer({
           const c = comp.testing.get(cfg.cenario)
           if (c) {
             const cntsrc = '~/test/' + cfg.cenario + '/' + compid.str + '/' + compid.str + '.data.test'
-            src.require('createTestDatabaseFor', '~/lib/testing', val)
             src.requireDefault(compid.str, cntsrc, val)
             transformFile(cntsrc + '.ts', generateDataCenarioContent.make(c.documents, { cenario: cfg.cenario }))
             return compid.str
@@ -71,7 +73,7 @@ const generateDataCenarioIndex = nodeTransformer({
       ],
       [
         'export function createTestDatabase', w.funcDecl([], '', [
-          ['return createTestDatabaseFor(appInstance, ', cfg.cenario + 'Data', ')']
+          ['return createTestDatabaseFor<TAppRefProxy, TDbProxy>(appInstance, ', cfg.cenario + 'Data', ')']
         ])
       ]
     ], false)

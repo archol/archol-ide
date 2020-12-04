@@ -240,6 +240,7 @@ export interface Component extends SourceNodeMapped<'Component'> {
   operations: Operations,
   routes: Routes
   testing: CompTestingScenarios
+  testingGUIDs(docName: string): string[]
 }
 
 export type RoleDefs = ObjectConst<'RoleDefs', RoleDef>
@@ -326,6 +327,9 @@ export const internalComponent: Component = {
   operations: objectConst('Operations', unkownErrorPos),
   routes: objectConst('Routes', unkownErrorPos),
   testing: objectConst('CompTestingScenarios', unkownErrorPos),
+  testingGUIDs() {
+    return []
+  }
 }
 
 export type BasicTypesOnly = Exclude<Exclude<Exclude<keyof typeof normalTypes, 'enum'>, 'complex'>, 'array'>
