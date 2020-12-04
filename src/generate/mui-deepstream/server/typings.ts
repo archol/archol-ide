@@ -77,12 +77,11 @@ const genCompRef = nodeTransformer({
         }),
         [
           'export interface ' + compid + 'RefProxy',
-          w.mapObj(comp.documents, (val, key) =>
-            w.property(
-              val.nodeMapping.uri('_', true),
+          w.object({
+            document: w.mapObj(comp.documents, (val, key) =>
               ['T', val.nodeMapping.uri(), 'RefProxy']
-            )
-          ),
+            ),
+          }),
         ],
         [
           'export interface ' + compid + 'Database',
@@ -96,11 +95,9 @@ const genCompRef = nodeTransformer({
       ],
       [
         'export interface ' + compid + 'DbProxy',
-        w.object({
-          document: w.mapObj(comp.documents, (val) =>
-            src.chip(10, genDocType.make(val, { comp, compuri })).id.replace(/Exec$/g, 'DbProxy')
-          ),
-        }),
+        w.mapObj(comp.documents, (val) =>
+          src.chip(10, genDocType.make(val, { comp, compuri })).id.replace(/Exec$/g, 'DbProxy')
+        )
       ],
     ], false)
   },
