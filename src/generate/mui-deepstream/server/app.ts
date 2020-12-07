@@ -34,9 +34,10 @@ const generateDataCenarioContent = nodeTransformer({
   },
   Component(w, comp, { src, transformFile }) {
     const compuri = comp.uri.id.str
+    src.require('T' + compuri + 'Ref', '~/app/typings', comp)
     return [
       [
-        'export const ' + compuri + '=',
+        'export const ' + compuri + ': T' + compuri + 'Ref =',
         w.object({
           type: w.mapObj(comp.types, (val, key) => {
             const typeuri = compuri + '_type_' + val.name.str

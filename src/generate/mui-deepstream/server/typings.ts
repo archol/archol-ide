@@ -53,16 +53,21 @@ const genCompRef = nodeTransformer({
       genType.make(t.val, { compuri })) && ''
     )
     const compid = 'T' + compuri
+    src.require('ArcholType', '~/lib/archol/types', comp)
+    src.require('CollecionDecl', '~/lib/types', comp)
     return w.chipResult(compid + 'Ref', [
       [
         'export interface ' + compid + 'Ref',
         w.object({
           type: w.mapObj(comp.types, (val, key) =>
-            ['T', val.nodeMapping.uri]
+            [
+              'ArcholType<T', val.nodeMapping.uri, '>'
+            ]
           ),
-          document: w.mapObj(comp.documents, (val) =>
-            src.chip(10, genDocType.make(val, { comp, compuri }))
-          ),
+          document: w.mapObj(comp.documents, (val) => {
+            const dexec = src.chip(10, genDocType.make(val, { comp, compuri }))
+            return ['CollecionDecl<T', val.nodeMapping.uri, 'Data, ', dexec, '>']
+          }),
           // process: w.mapObj(comp.processes, (val, key) =>
           //   src.chip(10, genProcessRef.make(val, { compuri }))
           // ),
