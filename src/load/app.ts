@@ -1073,7 +1073,8 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
         const fprops = parseObjArg(itm, {
           description: parseI18N,
           type: parseUseType,
-        }, ['description'])
+          optional: parseBolArg
+        }, ['description', 'optional'])
         const field: Field = {
           kind: 'Field',
           sourceRef: ws.getRef(itm),
@@ -1586,7 +1587,8 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           const fprops = parseObjArg(argField, {
             description: parseI18N,
             type: parseUseType,
-          }, [])
+            optional: parseBolArg
+          }, ['optional'])
           const field: DocField = {
             kind: 'DocField',
             sourceRef: ws.getRef(argField),
@@ -1642,13 +1644,18 @@ export async function loadApp(ws: Workspace, appName: string): Promise<Applicati
           if (!aprops.from) {
             if (!aprops.to)
               ws.error('from or to is mandatory', sourceRef)
-            const ret = (aprops.run && aprops.run.ret.getText()) || 'void'
-            if (ret !== 'void' && ret !== 'Promise<void>')
-              ws.error('insert action, return must be void actual="' + ret + '"', sourceRef)
+            // const ret = (aprops.run && aprops.run.ret.getText()) || 'void'
+            // if (ret !== 'void' && ret !== 'Promise<void>')
+            //   ws.error('insert action, return must be void actual="' + ret + '"', sourceRef)
           }
-          if (aprops.run) {
-            if (!(aprops.run.params.length && aprops.run.params[0].getText() === 'data'))
-              ws.error('action precisa ter parametro data, actual="' + aprops.run.params[0].getText() + '"', aprops.run.sourceRef)
+          if (aprops.from && aprops.run) {
+            if (aprops.to) { // update
+              if (!(aprops.run.params.length && aprops.run.params[0].getText() === 'update'))
+                ws.error('action precisa ter parametro data, actual="' + aprops.run.params[0].getText() + '"', aprops.run.sourceRef)
+            } else { // delete
+              if (!(aprops.run.params.length && aprops.run.params[0].getText() === 'data'))
+                ws.error('action precisa ter parametro data, actual="' + aprops.run.params[0].getText() + '"', aprops.run.sourceRef)
+            }
           }
           const ac: DocAction = {
             kind: 'DocAction',

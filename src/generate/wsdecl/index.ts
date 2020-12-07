@@ -233,12 +233,14 @@ interface ${compid}_DeclFields {
   [fieldName:string]: {
      description?: string
      type: ${compid}_TypeName
+     optional?: boolean
   }
 }
 interface ${compid}_DeclDocFields {
   [fieldName:string]: {
      description: string
      type: ${compid}_TypeName
+     optional?: boolean
   }
 }
 `.trimStart())
@@ -323,7 +325,7 @@ declare type ${compid}_process_${procName}_NextTask = ${compid}_process_${procNa
         declare interface ${compid}_process_${procName}_InstanceVars_${scope} {
           ${function () {
             const fields: Fields = (process.vars as any)[scope]
-            return fields.props.map((f) => f.key.str + ': ' + f.val.type.base(null)).join('\n')
+            return fields.props.map((f) => f.key.str + (f.val.optional ? '?' : '') + ': ' + f.val.type.base(null)).join('\n')
           }()}
         }`.trimStart()))
       }
@@ -374,11 +376,11 @@ declare type ${compid}_view_${viewName}_DeclWidgget = {
 } | { markdown: I18N } 
 declare interface ${compid}_view_${viewName}_DeclData {
   ${view.refs.fields.props.map((f) => {
-        return `${f.key.str}: ${f.val.type ? f.val.type.base(null) : 'invalid type'}`
+        return `${f.key.str}${f.val.optional ? '?' : ''}: ${f.val.type ? f.val.type.base(null) : 'invalid type'}`
       })}
 }
 declare interface ${compid}_view_${viewName}_DeclBind<S> {
-  ${view.refs.fields.props.map((f) => `${f.key.str}: S`)}
+  ${view.refs.fields.props.map((f) => `${f.key.str}${f.val.optional ? '?' : ''}: S`)}
 }
 `.trimStart())
     }
@@ -409,9 +411,13 @@ declare interface ${compid}_document_${docName}_DeclActions {
 
 declare interface ${compid}_document_${docName}_Data {
   ${doc.refs.allFields.items.map((f) =>
-        `${f.path}:${f.ref.type.base(null)}`
+        `${f.path}${f.ref.optional ? '?' : ''}:${f.ref.type.base(null)}`
       ).join('\n')}  
 }
+declare type ${compid}_document_${docName}_Update1 = (data: Partial<${compid}_document_${docName}_Data> )=>Promise<void>
+
+declare type ${compid}_document_${docName}_UpdateM<ST extends ${compid}_document_${docName}_StateName> = (data: Partial<${compid}_document_${docName}_Data> & {$state: ST})=>Promise<void>
+
 declare interface ${compid}_document_${docName}_Data$ extends ${compid}_document_${docName}_Data {
   $id: ${compid}_document_${docName}_GUID
   $state: ${compid}_document_${docName}_StateName
@@ -419,46 +425,64 @@ declare interface ${compid}_document_${docName}_Data$ extends ${compid}_document
 
 declare interface ${compid}_document_${docName}_Ref {
   ${doc.refs.actions.items.map((a) =>
-        `${a.path}: ${a.ref.run ?
-          '(' +
-          (a.ref.from ? 'data: ' + compid + '_document_' + docName + '_GUID,' : '') +
-          actionArgs(a) +
-          ') => ' +
-          actionRet(a, docName)
-
-          : '(' + (a.ref.from ? 'data: ' + compid + '_document_' + docName + '_GUID' : '')
-          + ') => Promise<void>'
+        `${a.path}: ${'(' +
+        actionArgs(docName, a, true) +
+        ') => ' +
+        actionRet(docName, a, true)
         }
 `).join('')}}
 `.trimStart())
+
       function genAction(a: ComponentRef<DocAction>) {
-        const acargs = actionArgs(a)
-        const acret = a.ref.from ? actionRet(a, docName) : 'Promise<void>'
+        const acargs = actionArgs(docName, a, false)
+        const acret = actionRet(docName, a, false)
         return `${a.path}: {
           from?: ${compid}_document_${docName}_StateName | ${compid}_document_${docName}_StateName[],
           to?: ${compid}_document_${docName}_StateName | ${compid}_document_${docName}_StateName[],
           icon: Icon,
           description: I18N,
-          run?(data: ${compid}_document_${docName}_Data, ${acargs}): ${acret}     
+          run?(${acargs}): ${acret}     
         }`
       }
     }
 
-    function actionArgs(a: ComponentRef<DocAction>) {
-      return a.ref.run ? a.ref.run.params.map((p, idx) => {
+    function actionArgs(docName: string, a: ComponentRef<DocAction>, ref: boolean): string {
+      const args: string[] = a.ref.run ? a.ref.run.params.map((p, idx) => {
         const ptxt = p.getText()
-        if (idx === 0) {
+        if (a.ref.from && idx === 0) {
           if (ptxt.includes(':')) ws.error('nao deve ter o tipo', p)
-          return null
+          return null as any as string
         }
         return ptxt
-      }).filter((p) => p !== null).join() : ''
+      }).filter((p) => p !== null) : []
+      if (ref) {
+        if (a.ref.from) args.splice(0, 0, '$id: ' + compid + '_document_' + docName + '_GUID')
+      } else {
+        if (a.ref.from) {
+          if (a.ref.to) {
+            const upd = compid + '_document_' + docName + '_Update' + (
+              a.ref.to.states.items.length === 1 ? '1' : 'M<' + a.ref.to.states.items.map(i => i.str).join(' | ') + '>'
+            )
+            args.splice(0, 0, 'update: ' + upd)
+          } // delete
+          else args.splice(0, 0, 'data: Readonly<' + compid + '_document_' + docName + '_Data>')
+        }
+      }
+      return args.join(', ')
     }
 
-    function actionRet(a: ComponentRef<DocAction>, docName: string) {
-      return a.ref.from ?
-        (a.ref.run ? a.ref.run.ret.getText() : 'Promise<void>')
-        : `Promise<${compid}_document_${docName}_GUID>`
+    function actionRet(docName: string, a: ComponentRef<DocAction>, ref: boolean) {
+      if (ref) {
+        if (a.ref.from) // update or delete
+          return a.ref.run ? a.ref.run.ret.getText() : 'Promise<void>'
+        else // insert
+          return `Promise<${compid}_document_${docName}_GUID>`
+      } else {
+        if (a.ref.from) // update or delete
+          return a.ref.run ? a.ref.run.ret.getText() : 'Promise<void>'
+        else // insert
+          return `Promise<${compid}_document_${docName}_Data>`
+      }
     }
 
     function genTestInfo() {

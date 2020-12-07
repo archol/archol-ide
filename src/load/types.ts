@@ -491,6 +491,7 @@ export type Fields = ObjectConst<'Fields', Field>
 export interface Field extends SourceNodeWithName<'Field'> {
   description?: I18N
   type: UseType
+  optional?: BooleanConst
 }
 
 export type Documents = ObjectConst<'Documents', Document>
@@ -534,6 +535,7 @@ export type DocFields = ObjectConst<'DocFields', DocField>
 export interface DocField extends SourceNodeMapped<'DocField'> {
   description: I18N
   type: UseType
+  optional?: BooleanConst
 }
 
 export type DocIndexes = ObjectConst<'DocIndexes', DocIndex>

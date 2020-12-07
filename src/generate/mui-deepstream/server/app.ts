@@ -106,13 +106,14 @@ const generateDataCenarioContent = nodeTransformer({
               ac.from ? updateDoc() : insertDoc()
             ) : deleteDoc()
             const after: CodePartL[] = setStatus.concat(updatedb)
-
+            if (ac.from) src.require('T' + coluri + 'GUID', '/app/typings', ac)
             return w.code(ac.run, {
               beforeParams: ['db'],
               forceParams: acargs,
               forceParamType(p, idx) {
                 if (idx === 0) return colData
               },
+              forceRetType: acret,
               after,
             })
             function insertDoc(): CodePartL[] {
