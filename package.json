@@ -26,7 +26,7 @@
     "@typescript-eslint/parser": "^4.6.0",
     "eslint": "^7.12.1",
     "nodemon": "^2.0.4",
-    "tsconfig-paths": "^3.9.0",
+    "tsconfig-paths": "^3.10.1",
     "typescript": "^4.0.5"
   }
 }
